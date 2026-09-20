@@ -1,0 +1,188 @@
+{
+  "brand_identity": {
+    "name": "SAFYRA CHIKANKARI",
+    "tagline": "Pure Handcrafted Lucknowi Chikankari • Stories woven across generations",
+    "positioning": "Sophisticated Indian handcrafted luxury fashion house, specializing in 100% authentic handcrafted Chikankari, Mukaish, Badla, Zardozi, and Pitta work.",
+    "emotional_archetype": "Luxury & Heritage (Archetype 5: Cinematic, warm, tactile, timeless luxury with warm ivory and deep dark chocolate brown)",
+    "design_tone": "Editorial, spacious, dignified, authentic, warm, high-converting"
+  },
+  "theme_and_colors": {
+    "theme_mode": "Light (warm textile ivory palette with rich deep dark chocolate brown contrasts)",
+    "color_palette": {
+      "bg_primary": "#FDFBF7",
+      "bg_secondary": "#F9F6F0",
+      "bg_tertiary": "#F2EBDC",
+      "surface_card": "#FFFFFF",
+      "surface_muted": "#F5EFE6",
+      "text_primary": "#2C1A14",
+      "text_secondary": "#5C463D",
+      "text_muted": "#8C746A",
+      "border_subtle": "#E6DEC8",
+      "border_medium": "#D6C7B2",
+      "accent_gold": "#C5A059",
+      "accent_gold_dark": "#9E7B3B",
+      "accent_chocolate": "#1A0F0B",
+      "badge_sale": "#8B261D",
+      "badge_artisan": "#4A5D4E",
+      "whatsapp_green": "#25D366",
+      "dark_section_bg": "#1A0F0B",
+      "dark_section_text": "#FDFBF7"
+    },
+    "rules": "DO NOT use dark blue gradients, generic bright tech colors, or pure #000000 black. Neutral tones must be warm-tinted with chocolate brown (#2C1A14) and ivory (#FDFBF7). Contrast must meet APCA standard (minimum 4.5:1 for body text)."
+  },
+  "typography": {
+    "fonts": {
+      "heading_serif": "'Cormorant Garamond', 'Playfair Display', Georgia, serif",
+      "body_sans": "'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif",
+      "mono_labels": "'JetBrains Mono', monospace"
+    },
+    "scale": {
+      "hero_h1": "text-4xl sm:text-5xl lg:text-6xl font-serif font-light tracking-tight leading-tight",
+      "section_h2": "text-2xl sm:text-3xl lg:text-4xl font-serif font-medium tracking-tight text-[#2C1A14]",
+      "subsection_h3": "text-xl sm:text-2xl font-serif font-normal text-[#2C1A14]",
+      "card_title": "text-lg sm:text-xl font-serif font-medium text-[#2C1A14]",
+      "body_base": "text-base font-sans text-[#5C463D] leading-relaxed",
+      "body_sm": "text-sm font-sans text-[#8C746A] leading-normal",
+      "label_overline": "text-xs font-mono uppercase tracking-[0.25em] text-[#C5A059] font-semibold"
+    },
+    "forbidden_fonts": ["Inter for headings", "Space Grotesk"]
+  },
+  "layout_and_spacing": {
+    "spacing_system": "Generous Spacing (Tailwind scale: p-4, p-8, p-12, p-16, p-24, p-32). 2-3x roomier than standard store grids.",
+    "container_max_width": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "bento_grid_rules": "Use asymmetric product and storytelling grids (Tetris Grid Mode A) on homepage: hero spotlight span 8 cols, square feature span 4 cols, tall craft story span 4 cols row span 2.",
+    "mobile_first": "Every section must default to 1 column on mobile, switching to md:grid-cols-2 lg:grid-cols-3 or lg:grid-cols-4 with touch-friendly swipe carousels and sticky add-to-cart bars."
+  },
+  "components_and_features": {
+    "navigation": {
+      "header_type": "Sticky Header with Glassmorphism (bg-[#FDFBF7]/90 backdrop-blur-md border-b border-[#E6DEC8])",
+      "items": [
+        "Announcement Bar: 'Free Worldwide Shipping on Orders above ₹15,000 | 100% Authentic Handcrafted Lucknowi Chikankari'",
+        "Mega Menu: Collections (Safyra Luxury, Nazakat, Vaaya Kota Doria, Everyday Edit), Categories (Anarkali Sets, Angrakha Suits, Straight Kurtis, Sarees & Dupattas), Fabrics (Pure Kota Doria, Mul Chanderi, Viscose Silk, Muslin), Craft (Mukaish, Badla, Pitta Work, Zardozi)",
+        "Global Search Bar with instant autocomplete and quick filters",
+        "Wishlist Counter Badge & Drawer Trigger",
+        "Cart Drawer Trigger with real-time item counter and total amount",
+        "Admin Portal quick switch button"
+      ]
+    },
+    "homepage_sections": [
+      "Hero Storytelling Banner: High-fashion editorial imagery with CTA 'Discover Pure Chikankari' and quick feature tags ('100% Handcrafted', 'Slow Fashion', 'Fair Artisan Pay')",
+      "Craft & Heritage Bar: Key pillars (Hand-stitched in Lucknow, Authentic Mukaish, Custom Dyeing, Global Express)",
+      "Shop by Category: Visual bento grid (Anarkali, Angrakha, Kurti Sets, Sarees, Dupattas, Fabrics)",
+      "New Arrivals Carousel: Filterable by fabric with quick view, size selector, and add to cart",
+      "Safyra Luxury Range (Spotlight): Highlighting the 'Luxury Nazakat Collection' with dispatch timeline callout (25-29 days made-to-order)",
+      "Best Sellers: Top customer favorites with real ratings and fabric callout",
+      "Shop by Fabric: Kota Doria, Mul Chanderi, Pure Muslin, Viscose Silk, Organza",
+      "Extended Sizes Spotlight: Size inclusive collection (XS to 5XL) with custom fit guarantee",
+      "Artisan & Craft Story Section: Photostory on women artisans of Lucknow, raw textile weaving, Keel/Mukaish embroidery techniques",
+      "Customer Love & Reviews: Verified customer testimonials with photos and star ratings",
+      "Seen on You (Instagram Editorial Grid): User-curated social lookbook",
+      "Founder / Brand Philosophy Story: Slow fashion commitment and slow growth pledge"
+    ],
+    "catalog_and_filters": {
+      "discovery": "Interactive product catalog with search bar, multi-select filters, price slider, and sorting",
+      "filter_facets": [
+        "Category (Anarkalis, Angrakhas, Straight Kurtis, Sarees, Bottomwear, Dupattas)",
+        "Fabric (Pure Kota Doria, Mul Chanderi, Viscose Silk, Pure Muslin, Organza, Mulmul Cotton)",
+        "Craft / Work (Mukaish Work, Badla Work, Pitta Work, Zardozi, Resham Threadwork, Chikankari Keel)",
+        "Size (XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL, Custom)",
+        "Color (Ivory, Champagne, Rose Pink, Sage Green, Powder Blue, Mint, Charcoal)",
+        "Price Range (₹2,500 - ₹25,000)",
+        "Availability (Ready to Ship [48 hrs], Made to Order [20-30 days])"
+      ],
+      "sorting_options": ["Featured", "Price: Low to High", "Price: High to Low", "Newest Arrivals", "Customer Rating"]
+    },
+    "product_detail_page": {
+      "features": [
+        "High-resolution image gallery with thumbnail gallery selector and zoom view",
+        "Key product meta: Title, SKU, Price, MRP discount badge, Artisan Craft Tag",
+        "Interactive Size Selector with stock indicator per size",
+        "Interactive Color Variant selector with live swatch change",
+        "Persuasive Product Specifications Accordion: Fabric, Embroidery / Work details, Fit & Silhouette, Measurements chart, Transparency & Lining info (complimentary inner included notice), Care instructions, Dispatch & Making time (48h vs 25-29 days)",
+        "Interactive Size Guide Modal with chest, waist, hip, length measurements in inches and cm",
+        "Action Buttons: Add to Bag, Buy Now, Add to Wishlist toggle",
+        "Sticky Mobile Bottom Bar: Price + Size selection + Add to Bag button visible on mobile scroll",
+        "Contextual WhatsApp Helper: 'Have questions about sizing or customization? Chat with our Lucknow Stylist' (pre-filled product details)",
+        "Complete the Look section (matching pants, dupatta, inner wear)",
+        "You May Also Like & More from this Fabric recommendations",
+        "Recently Viewed Products sticky drawer/carousel"
+      ]
+    },
+    "wishlist": {
+      "type": "Interactive Wishlist Page & Side Drawer",
+      "functionality": "Toggle wishlist item with heart icon animation, move item straight from wishlist to cart with size selection"
+    },
+    "cart_and_checkout": {
+      "drawer_and_page": [
+        "Slide-over Cart Drawer + Dedicated Full Cart Page",
+        "Free Shipping progress bar (e.g., 'Add ₹2,500 more for Free Worldwide Shipping')",
+        "Quantity modifier, size variant edit, and remove item",
+        "Order Special Instructions / Custom Measurements text box",
+        "Estimated Total, Tax breakdown, and Discount promo code application",
+        "Primary Action: Proceed to Secure Checkout",
+        "Secondary Action: Direct WhatsApp Order Handoff ('Order via WhatsApp' with pre-filled item list and total price)"
+      ]
+    },
+    "admin_catalog_crud": {
+      "location": "Dedicated Admin Catalog Portal accessible via top navigation (/admin)",
+      "capabilities": [
+        "Product List view with search, status filters, and stock quick edit",
+        "Add New Product Modal/Form: Title, Slug, Category, Fabric, Craft Type, Price, Original MRP, Stock, Dispatch Days, Sizes available, Description, Care Instructions, Image URLs",
+        "Edit Product Details & Stock levels for each size variant",
+        "Delete / Archive product",
+        "Reset default sample catalog button"
+      ]
+    },
+    "whatsapp_integration": {
+      "format": "https://wa.me/918090164929?text=...",
+      "triggers": [
+        "Product Page: 'Inquire about custom dyeing or size for [Product Title]'",
+        "Cart Page: 'Hello SAFYRA, I would like to place an order for [Cart Items Summary]'",
+        "Header/Footer: 'Talk to an Artisan / Customer Care'"
+      ]
+    }
+  },
+  "image_urls": {
+    "hero_banner": "https://images.unsplash.com/photo-1667665970118-f55705003914?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "lifestyle_model_1": "https://images.unsplash.com/photo-1667665970124-2273c6ef3489?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "lifestyle_model_2": "https://images.pexels.com/photos/16324981/pexels-photo-16324981.jpeg?auto=compress&cs=tinysrgb&w=940",
+    "luxury_collection": "https://images.pexels.com/photos/7816703/pexels-photo-7816703.jpeg?auto=compress&cs=tinysrgb&w=940",
+    "artisan_craft_1": "https://images.unsplash.com/photo-1638310533874-6c124c012e1d?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "artisan_craft_2": "https://images.unsplash.com/photo-1606681246653-74521ac452f4?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "textile_texture": "https://images.unsplash.com/photo-1569909115134-a0426936c879?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "mens_chikankari": "https://images.unsplash.com/photo-1727835523545-70ee992b5763?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "rose_edition": "https://images.unsplash.com/photo-1667665970124-9d2606f4f7f7?crop=entropy&cs=srgb&fm=jpg&q=85"
+  },
+  "motion_and_interactions": {
+    "library": "Framer Motion",
+    "animations": {
+      "hover_states": "Product cards elevate slightly (-translate-y-1) with soft box shadow transition. Primary buttons expand border or slide gold fill.",
+      "page_transitions": "Fade-in with gentle 10px upward slide.",
+      "cart_drawer": "Slide from right with backdrop blur dark scrim.",
+      "micro_interactions": "Heart pulse animation on wishlist click; size selection bounce; toast alert on item added to cart using Sonner."
+    }
+  },
+  "testing_requirements": {
+    "data_testid_convention": "All interactive buttons, inputs, modals, navigation links, cart controls, wishlist toggles, filter options, and admin form inputs MUST have descriptive kebab-case data-testid attributes.",
+    "examples": [
+      "data-testid='header-nav-link-collections'",
+      "data-testid='global-search-input'",
+      "data-testid='product-card-1'",
+      "data-testid='add-to-cart-button'",
+      "data-testid='sticky-mobile-add-to-cart'",
+      "data-testid='wishlist-toggle-button'",
+      "data-testid='cart-drawer-trigger'",
+      "data-testid='checkout-button'",
+      "data-testid='whatsapp-inquiry-button'",
+      "data-testid='admin-add-product-button'",
+      "data-testid='admin-product-row-edit'"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build a complete, fully-functional, mobile-first frontend application for SAFYRA CHIKANKARI in React/JavaScript (using .js / .jsx files as standard for this codebase context).",
+    "Implement state management for products, wishlist, cart drawer, search query, selected filters, size/color selectors, and admin CRUD state.",
+    "Include pre-seeded realistic SAFYRA catalog data (Nazakat Collection, Vaaya Kota Doria, Aira Angrakha, Sang-e-Mar-Mar, Mehar Muslin Kurti, Noor Chanderi Kurti Set) with authentic prices (₹3,299 - ₹8,400), fabric descriptions, and making timelines.",
+    "Ensure all interactive flows work seamlessly: Filter/sort catalog, Search overlay, Wishlist toggle, Cart drawer update with quantity & total calculation, Size guide modal, Contextual WhatsApp links with product context, and Admin Panel to create/update products.",
+    "Never use generic AI colors, placeholder images, or low-quality layouts. Maintain the warm ivory and deep dark chocolate brown aesthetic throughout."
+  ]
+}
