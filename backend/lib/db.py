@@ -25,6 +25,20 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("category", ASCENDING), ("created_at", DESCENDING)], name="category_created"),
         IndexModel([("fabric", ASCENDING)], name="fabric"),
     ],
+    "users": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("email", ASCENDING)], name="email", unique=True),
+        IndexModel([("role", ASCENDING)], name="role"),
+    ],
+    "sessions": [
+        IndexModel([("token_hash", ASCENDING)], name="token_hash", unique=True),
+        IndexModel([("user_id", ASCENDING)], name="user_id"),
+        IndexModel([("expires_at", ASCENDING)], name="expires_at_ttl", expireAfterSeconds=0),
+    ],
+    "recovery_attempts": [
+        IndexModel([("email", ASCENDING), ("created_at", DESCENDING)], name="email_created"),
+        IndexModel([("created_at", ASCENDING)], name="created_at_ttl", expireAfterSeconds=86400),
+    ],
 }
 
 

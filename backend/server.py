@@ -11,6 +11,8 @@ from typing import List
 import uuid
 from datetime import datetime
 from routers.products import router as products_router
+from routers.auth import router as auth_router
+from routers.account import router as account_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -62,6 +64,8 @@ async def get_status_checks():
     return [StatusCheck(**status_check) for status_check in status_checks]
 
 api_router.include_router(products_router)
+api_router.include_router(auth_router)
+api_router.include_router(account_router)
 
 app.add_middleware(
     CORSMiddleware,

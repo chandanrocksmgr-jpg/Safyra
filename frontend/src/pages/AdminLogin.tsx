@@ -1,0 +1,23 @@
+import { useState, type FormEvent } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import type { AuthResponse, RecoveryQuestionResponse } from "@/lib/auth";
+import { beginSession } from "@/lib/session";
+
+export default function AdminLogin() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"login" | "recover">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [question, setQuestion] = useState("");
+  const [error, setError] = useState("");
+  const login = useMutation({ mutationFn: () => apiPost<AuthResponse>("/auth/admin/login", { email, password }), onSuccess: ({ user }) => { beginSession(user); navigate("/admin"); }, onError: () => setError("Administrator credentials were not verified.") });
+  const loadQuestion = useMutation({ mutationFn: () => apiGet<RecoveryQuestionResponse>(`/auth/admin/recovery-question?email=${encodeURIComponent(email)}`), onSuccess: (data) => { setQuestion(data.question); setError(""); }, onError: () => setError("No verified recovery profile was found.") });
+  const recover = useMutation({ mutationFn: () => apiPost<void>("/auth/admin/recover", { email, answer, new_password: newPassword }), onSuccess: () => { setMode("login"); setPassword(""); setQuestion(""); setError("Password reset. Sign in with your new password."); }, onError: (reason) => setError(reason instanceof ApiError && reason.status === 429 ? "Too many attempts. Try again in 15 minutes." : "The recovery answer could not be verified.") });
+  const submitLogin = (event: FormEvent) => { event.preventDefault(); setError(""); login.mutate(); };
+  return <main className="admin-auth-page"><Link to="/" className="admin-wordmark" data-testid="admin-login-home-link">SAFYRA <span>SECURE OPERATIONS</span></Link><section className="admin-auth-card"><ShieldCheck size={28} /><span className="eyebrow">Restricted access</span><h1>{mode === "login" ? "Administrator sign in" : "Verify administrator"}</h1><p>{mode === "login" ? "Catalog access is protected by an encrypted, httpOnly session." : "Answer the private recovery question to set a new password."}</p>{mode === "login" ? <form onSubmit={submitLogin} data-testid="admin-login-form"><label>Admin email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" required data-testid="admin-login-email" /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required data-testid="admin-login-password" /></label>{error && <div className="form-error" data-testid="admin-login-error">{error}</div>}<button className="button button-dark button-full" disabled={login.isPending} data-testid="admin-login-submit">Verify & enter <ArrowRight size={16} /></button><button type="button" className="text-link-button" onClick={() => { setMode("recover"); setError(""); }} data-testid="admin-forgot-password">Forgot admin password?</button></form> : <form onSubmit={(event) => { event.preventDefault(); question ? recover.mutate() : loadQuestion.mutate(); }} data-testid="admin-recovery-form"><label>Verified admin email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required disabled={Boolean(question)} data-testid="admin-recovery-email" /></label>{question && <><div className="recovery-question" data-testid="admin-recovery-question">{question}</div><label>Security answer<input value={answer} onChange={(event) => setAnswer(event.target.value)} required data-testid="admin-recovery-answer" /></label><label>New password<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required data-testid="admin-recovery-new-password" /><small>10+ characters with upper, lower, number and symbol.</small></label></>}{error && <div className="form-error" data-testid="admin-recovery-error">{error}</div>}<button className="button button-dark button-full" disabled={loadQuestion.isPending || recover.isPending} data-testid="admin-recovery-submit">{question ? "Reset password" : "Show recovery question"}</button><button type="button" className="text-link-button" onClick={() => { setMode("login"); setQuestion(""); setError(""); }} data-testid="admin-recovery-back">Back to sign in</button></form>}</section></main>;
+}

@@ -1,6 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { CartItem, Product } from "@/lib/shop";
+import type { AccountResponse } from "@/lib/auth";
+import { apiGet, apiPut } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 interface ShopContextValue {
   cart: CartItem[];
@@ -29,31 +33,63 @@ const readStored = <T,>(key: string, fallback: T): T => {
 const ShopContext = createContext<ShopContextValue | null>(null);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => readStored("safyra-cart", []));
   const [wishlistIds, setWishlistIds] = useState<string[]>(() => readStored("safyra-wishlist", []));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const previousUserId = useRef<string | null>(null);
+  const { data: account } = useQuery({
+    queryKey: ["account", user?.id],
+    queryFn: () => apiGet<AccountResponse>("/account"),
+    enabled: Boolean(user),
+    retry: false,
+  });
+  const saveState = useMutation({ mutationFn: (state: { wishlist_ids: string[]; cart: CartItem[] }) => apiPut<void>("/account/state", state) });
 
   useEffect(() => window.localStorage.setItem("safyra-cart", JSON.stringify(cart)), [cart]);
   useEffect(() => window.localStorage.setItem("safyra-wishlist", JSON.stringify(wishlistIds)), [wishlistIds]);
+  useEffect(() => {
+    if (account && user) {
+      setCart(account.cart);
+      setWishlistIds(account.wishlist_ids);
+      previousUserId.current = user.id;
+    } else if (!user && previousUserId.current) {
+      setCart([]);
+      setWishlistIds([]);
+      previousUserId.current = null;
+    }
+  }, [account, user]);
 
   const value = useMemo<ShopContextValue>(() => {
     const addToCart = (product: Product, size = product.sizes[0] ?? "Custom", color = product.colors[0] ?? "As shown") => {
       const key = `${product.id}-${size}-${color}`;
       setCart((current) => {
         const existing = current.find((item) => item.key === key);
-        if (existing) return current.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item));
-        return [...current, { key, productId: product.id, title: product.title, imageUrl: product.image_url, price: product.price, size, color, quantity: 1 }];
+        const next = existing ? current.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)) : [...current, { key, productId: product.id, title: product.title, imageUrl: product.image_url, price: product.price, size, color, quantity: 1 }];
+        if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
+        return next;
       });
       setDrawerOpen(true);
       toast.success("Added to your bag", { description: product.title });
     };
     const updateQuantity = (key: string, quantity: number) => {
-      if (quantity < 1) setCart((current) => current.filter((item) => item.key !== key));
-      else setCart((current) => current.map((item) => (item.key === key ? { ...item, quantity } : item)));
+      setCart((current) => {
+        const next = quantity < 1 ? current.filter((item) => item.key !== key) : current.map((item) => (item.key === key ? { ...item, quantity } : item));
+        if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
+        return next;
+      });
     };
-    const removeFromCart = (key: string) => setCart((current) => current.filter((item) => item.key !== key));
+    const removeFromCart = (key: string) => setCart((current) => {
+      const next = current.filter((item) => item.key !== key);
+      if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
+      return next;
+    });
     const toggleWishlist = (productId: string) => {
-      setWishlistIds((current) => current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId]);
+      setWishlistIds((current) => {
+        const next = current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId];
+        if (user) saveState.mutate({ cart, wishlist_ids: next });
+        return next;
+      });
       toast(wishlistIds.includes(productId) ? "Removed from wishlist" : "Saved to wishlist");
     };
     return {
@@ -69,7 +105,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
       cartTotal: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
     };
-  }, [cart, wishlistIds, drawerOpen]);
+  }, [cart, wishlistIds, drawerOpen, user, saveState]);
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 }

@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lib.db import db
+from lib.security import require_admin
 from models.product import DEFAULT_PRODUCTS, Product, ProductCreate, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -59,14 +60,14 @@ async def get_product(product_id: str):
 
 
 @router.post("", response_model=Product, status_code=201)
-async def create_product(input: ProductCreate):
+async def create_product(input: ProductCreate, _: dict = Depends(require_admin)):
     product = Product(**input.model_dump())
     await db.products.insert_one(product.model_dump())
     return product
 
 
 @router.patch("/{product_id}", response_model=Product)
-async def update_product(product_id: str, input: ProductUpdate):
+async def update_product(product_id: str, input: ProductUpdate, _: dict = Depends(require_admin)):
     existing = await db.products.find_one({"id": product_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -78,7 +79,7 @@ async def update_product(product_id: str, input: ProductUpdate):
 
 
 @router.delete("/{product_id}", status_code=204)
-async def delete_product(product_id: str):
+async def delete_product(product_id: str, _: dict = Depends(require_admin)):
     result = await db.products.delete_one({"id": product_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")

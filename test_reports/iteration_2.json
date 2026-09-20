@@ -1,0 +1,95 @@
+{
+  "iteration": 2,
+  "summary": "All 8 acceptance criteria exercised: 2 backend test files (7 test functions) + 7 browser checks = 12 check artifacts, all passing. Fixed pre-existing admin catalog browser check/backend test to authenticate through the new admin auth requirement.",
+  "passed": 12,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Customer authentication supports signup, login, logout and guest shopping",
+      "name": "customer-auth-signup-login-logout",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Weak password rejected with customer-signup-error; valid signup lands on /account; sign out clears session and returns to '/'; /account while signed out redirects to /login; wrong password shows customer-login-error; correct password signs back in; continue-as-guest-link present on /login."
+    },
+    {
+      "criterion": "Customer account contains profile and persisted shopping state",
+      "name": "account-profile-wishlist-cart-persistence",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "New tscheck customer edits name/phone and saves; saves a wishlist product and adds a cart item; signs out; signs back in and account-profile-name/phone fields plus /wishlist and /cart both show the same saved state restored from the account."
+    },
+    {
+      "criterion": "Order history, invoice and tracking are available",
+      "name": "demo-order-invoice-and-tracking",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Demo customer's order card for SF-DEMO-1042 shows 'Demo order' label, status 'In transit', 4 tracking-step elements; Download invoice triggers a download named INV-DEMO-1042*; order-help link href contains wa.me and the order number, target=_blank."
+    },
+    {
+      "criterion": "Admin portal is hidden and server protected",
+      "name": "admin-hidden-and-protected",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "No a[href*=admin] anywhere on homepage (header/mobile menu/footer after scroll-to-bottom); body text has no visible 'admin' word; GET /admin while signed out redirects to /admin-login."
+    },
+    {
+      "criterion": "Admin portal is hidden and server protected (API)",
+      "name": "test_admin_can_create_update_and_delete_product",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/products unauthenticated -> 401; same route with a logged-in customer session -> 403 'Administrator access required', confirming write protection at the API layer."
+    },
+    {
+      "criterion": "Verified admin can manage the catalog",
+      "name": "admin-catalog-add-edit-delete-product",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Signed in at /admin-login with seeded admin; created tscheck-admin-ui-<ts> via the protected form (row showed '7 total stock'); edited stock to 15 (row updated); deleted the row (0 matching rows remain); signed out and landed back on /admin-login."
+    },
+    {
+      "criterion": "Verified admin can manage the catalog (API)",
+      "name": "test_admin_can_create_update_and_delete_product",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Admin-authenticated POST /api/products -> 201 for tscheck-admin-product-<hex>; GET /api/products includes it; PATCH -> 200 stock=12; GET single product confirms; DELETE -> 200/204; GET list afterward confirms removal."
+    },
+    {
+      "criterion": "Admin password controls and recovery are available",
+      "name": "admin-password-change-and-recovery-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Authenticated admin sees admin-change-password-form. Forgot-password flow loads the real security question; wrong answer shows admin-recovery-error; correct answer + policy-compliant new password succeeds and returns to sign-in; logged in with the temp password, then restored the documented seed password via the authenticated change-password form and re-verified login with it."
+    },
+    {
+      "criterion": "Admin password controls and recovery are available (API, incl. rate limiting)",
+      "name": "test_admin_recovery_question_and_verified_reset_roundtrip / test_admin_current_password_change_flow / test_admin_recovery_rate_limits_repeated_failures",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET recovery-question -> 200 with non-empty question; wrong answer -> 400; correct answer -> 204 and new password logs in, then restored via PUT /auth/password; authenticated password change invalidates the session (subsequent /auth/me -> null) then is restored too; 6 rapid failed recovery attempts against a synthetic email -> 429 on the 6th, confirming rate limiting, without touching the real admin's attempt counter."
+    },
+    {
+      "criterion": "Sessions are isolated and safe across roles",
+      "name": "customer-session-cannot-access-admin-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "GET /api/auth/me returns null while signed out; after customer login, GET /admin redirects to /admin-login; after logout, /account redirects to /login and /api/auth/me returns null again."
+    },
+    {
+      "criterion": "Sessions are isolated and safe across roles (API)",
+      "name": "test_tscheck_session_isolation",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /auth/me -> 200 null with no cookie; signup sets cookie, /auth/me reflects the new user, POST /auth/logout -> 204, then /auth/me -> null again (server-side invalidation); customer-authenticated POST /products -> 403 (role enforced, not just hidden)."
+    },
+    {
+      "criterion": "Public mobile experience remains healthy",
+      "name": "public-deployment-health",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Run against https://lucknowi-craft.preview.emergentagent.com at 390x844: home -> /shop -> /product/{id} navigation, plus /login, /signup, /account (redirects to /login when signed out) and /admin-login all render with zero HTTP>=400 responses observed across the whole flow."
+    }
+  ]
+}

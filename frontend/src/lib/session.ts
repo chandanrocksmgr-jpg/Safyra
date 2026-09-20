@@ -2,10 +2,14 @@
 // duty is wiping the react-query cache so one account's data never renders for the next.
 import { queryClient } from "./queryClient";
 import { apiPost } from "./api";
+import type { User } from "./auth";
+
+export const sessionQueryKey = ["session"] as const;
 
 // Call after every successful login/signup.
-export function beginSession(): void {
-  queryClient.clear();
+export function beginSession(user: User): void {
+  queryClient.setQueryData(sessionQueryKey, user);
+  queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "session" });
 }
 
 // Call from every sign-out control; the hard redirect resets all in-memory state.

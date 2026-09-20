@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, Heart, Menu, MessageCircle, Search, ShoppingBag, X } from "lucide-react";
+import { ChevronDown, Heart, Menu, MessageCircle, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { useShop } from "@/components/ShopProvider";
 import { whatsappUrl } from "@/lib/shop";
+import { useAuth } from "@/components/AuthProvider";
 
 const menuGroups = [
   { title: "Collections", items: ["Safyra Luxury", "Nazakat", "Vaaya Kota Doria", "Everyday Edit"] },
@@ -14,6 +15,7 @@ export default function BrandHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartCount, wishlistIds, openDrawer } = useShop();
+  const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState(new URLSearchParams(location.search).get("search") ?? "");
@@ -36,10 +38,10 @@ export default function BrandHeader() {
             <Link to="/shop?category=Anarkali%20Sets" className="nav-link" data-testid="header-nav-link-anarkalis">Anarkalis</Link>
             <Link to="/shop?category=Angrakha%20Suits" className="nav-link" data-testid="header-nav-link-angrakhas">Angrakhas</Link>
             <Link to="/shop?category=Straight%20Kurtis" className="nav-link" data-testid="header-nav-link-everyday">Everyday edit</Link>
-            <Link to="/admin" className="nav-link admin-link" data-testid="header-nav-link-admin">Admin</Link>
           </nav>
           <div className="header-actions">
             <button className="icon-button" onClick={() => setSearchOpen((open) => !open)} aria-label="Search SAFYRA" data-testid="header-search-button"><Search size={19} /></button>
+            <Link to={user ? "/account" : "/login"} className="icon-button" aria-label={user ? "My account" : "Sign in"} data-testid="header-account-link"><UserRound size={19} /></Link>
             <Link to="/wishlist" className="icon-button with-count" aria-label="Wishlist" data-testid="header-wishlist-link"><Heart size={19} /><span>{wishlistIds.length}</span></Link>
             <button className="icon-button with-count" onClick={openDrawer} aria-label="Open shopping bag" data-testid="cart-drawer-trigger"><ShoppingBag size={19} /><span>{cartCount}</span></button>
           </div>
