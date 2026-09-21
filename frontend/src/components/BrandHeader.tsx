@@ -23,7 +23,7 @@ export default function BrandHeader() {
 
   return (
     <>
-      <div className="announcement" data-testid="announcement-bar">Lucknowi Chikankari <span>·</span> Worldwide shipping assistance available</div>
+      <div className="announcement" data-testid="announcement-bar">FREE SHIPPING ON ORDERS ABOVE ₹1,299</div>
       <header className="site-header" data-testid="site-header">
         <div className="header-inner">
           <button className="icon-button mobile-only" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu" data-testid="mobile-menu-toggle"><Menu size={20} /></button>
