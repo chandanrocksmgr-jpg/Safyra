@@ -22,6 +22,12 @@ export interface Product {
   care: string;
   dispatch_days: string;
   availability: string;
+  customisation: string;
+  origin: string;
+  occasion: string[];
+  style_keywords: string[];
+  size_guide_image: string;
+  complete_look_ids: string[];
   tags: string[];
   featured: boolean;
   best_seller: boolean;
@@ -30,9 +36,23 @@ export interface Product {
   updated_at: string;
 }
 
+export interface ProductFacets {
+  categories: string[];
+  collections: string[];
+  sizes: string[];
+  colors: string[];
+  fabrics: string[];
+  crafts: string[];
+  availabilities: string[];
+  price_min: number;
+  price_max: number;
+  has_best_sellers: boolean;
+}
+
 export interface CartItem {
   key: string;
   productId: string;
+  slug?: string;
   title: string;
   imageUrl: string;
   price: number;
@@ -62,6 +82,3 @@ export const cartWhatsappUrl = (items: CartItem[], total: number) =>
       .map((item) => `${item.title} (${item.size}, ${item.color}) x${item.quantity}`)
       .join(", ")}. Estimated total: ${formatPrice(total)}.`,
   );
-
-export const discountPercent = (product: Product) =>
-  product.mrp && product.mrp > product.price ? Math.round((1 - product.price / product.mrp) * 100) : 0;

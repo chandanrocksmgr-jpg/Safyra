@@ -1,0 +1,26 @@
+{
+  "iteration": 5,
+  "mode": "retest",
+  "passed": 2,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Protected admin data quality workflow",
+      "name": "tests/test_tscheck_catalog_integrity.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "pytest -q tests/test_tscheck_catalog_integrity.py -> 2 passed in 0.91s. Test creates a tscheck-prefixed product via admin_client (secure-cookie rebinding fixture), confirms it is absent from GET /api/products (public), present in authenticated admin GET /api/products and GET /api/products/{id}, then DELETEs it (204) and re-confirms public catalog returns exactly 4 approved products."
+    },
+    {
+      "criterion": "Protected admin data quality workflow (UI cross-check)",
+      "name": "admin-hidden-and-protected",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check by name only (mode: reran-persisted). PASSED - no admin link/surface exposed on public homepage; screenshot captured at admin-hidden-and-protected-homepage-no-admin-link.png. No console errors reported as failures."
+    }
+  ],
+  "summary": "Retest of previously reported fix: 2/2 checks passed (backend + browser), 0 failed, 0 flaky, 0 blocked, 0 test_error. Admin catalog data-quality workflow (create tscheck product as admin, hidden from public, visible+manageable to admin, deleted cleanly, public catalog restored to 4 products) is confirmed working via direct backend HTTP assertions and via the persisted browser check. No regressions found; no action items."
+}

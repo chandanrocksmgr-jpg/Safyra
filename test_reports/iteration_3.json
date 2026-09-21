@@ -1,0 +1,94 @@
+{
+  "iteration": 3,
+  "summary": "Re-derived acceptance matrix (8 criteria, new briefing) covered with 8 browser checks + 3 backend test files (10 test functions). 17 of 18 check artifacts passed; 1 backend test documents a real bug: the public catalog's QA-name title filter (tscheck/test/debug/placeholder) is applied unconditionally in routers/products.py, so it also hides an admin's own just-created QA-named product from admin-authenticated GET /products and GET /products/{id}.",
+  "passed": 17,
+  "failed": 1,
+  "bugs": [
+    {
+      "severity": "medium",
+      "criterion": "Protected admin data quality workflow",
+      "title": "Admin cannot see/manage their own product if its title starts with tscheck/test/debug/placeholder",
+      "description": "routers/products.py applies the public QA-name exclusion filter (title regex ^(tscheck|test|debug|placeholder)) to GET /products and GET /products/{id} for EVERY caller, including an authenticated admin. An admin can POST-create such a product (201, returned in the response body) but it then vanishes from their own admin-authenticated product list and single-product fetch (404), so the admin UI (which lists via the same GET /products call) cannot display, edit, or verify it. DELETE by id still works since it is not filtered, so cleanup is possible only if the id is already known. Correctly hiding such titles from the *unauthenticated/public* catalog is the intended behavior; applying the same filter to admin-authenticated requests is the defect.",
+      "evidence": "Backend test tests/test_tscheck_catalog_integrity.py::test_admin_cannot_see_own_qa_named_product: admin_client.post('/products', title='tscheck-catalog-visibility-<hex>') -> 201; client.get('/products') (public) correctly excludes it (pass); admin_client.get('/products') -> 200 but list of 4 ids does not include the new id; admin_client.get('/products/{id}') -> 404 'Product not found'. Cross-checked live via curl with an authenticated admin session cookie with the same result (count 4, has probe: False, single GET 404)."
+    }
+  ],
+  "action_items": [
+    {
+      "type": "bug_fix_needed",
+      "detail": "Scope the QA-name title filter in routers/products.py (list_products and get_product) to unauthenticated/customer requests only, or add a separate admin-authenticated listing path that is never filtered, so admins can see, edit and delete their own QA/test-named products through the Admin UI before suite completion."
+    }
+  ],
+  "retest_needed": true,
+  "checks": [
+    {
+      "criterion": "Public catalog accuracy and visual integrity",
+      "name": "public-catalog-accuracy-and-integrity",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "/shop shows exactly 4 product cards matching the 4 approved titles, none matching tscheck/test/debug/placeholder; no '% off' badge text, no star-rating or urgency/stock-count phrases in body text; all grid images resolve to safyra.co/cdn.shopify.com; Sang-e-Mar-Mar PDP shows 'Currently unavailable', zero size options and a disabled Add to Bag button."
+    },
+    {
+      "criterion": "Public catalog accuracy and visual integrity (API)",
+      "name": "test_public_catalog_is_exactly_the_four_approved_products",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /products -> 200 with title set exactly {Luxury Nazakat Collection, Aira Pure Kota Doria Angrakha, Vaaya Pure Kota Doria Anarkali, Sang-e-Mar-Mar — Rose Edition}; no title matches the banned QA prefixes; every stored mrp >= price; Sang-e-Mar-Mar has availability 'Currently unavailable' and sizes=[]."
+    },
+    {
+      "criterion": "Premium navigation and search",
+      "name": "navigation-search-and-suggestions",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Mobile header: hamburger/logo/search/wishlist/cart all visible with zero pairwise bounding-box overlap. Desktop: New Arrivals, Shop (opens mega-menu), Collections, SAFYRA Luxury, Extended Sizes, About all visible. Search for 'white chikankari kurta' returns product suggestions; 'zzzznoresultsxyz' shows zero-result recovery with Kota Doria/Anarkali/Chikankari shortcuts that route to /shop with results."
+    },
+    {
+      "criterion": "Collection filtering and sorting",
+      "name": "mobile-filter-drawer-multi-filter-sort",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Mobile filter drawer opens via mobile-filter-button; Size M (open by default), Fabric 'Pure Kota Doria' and Colour 'Vanilla' accordions opened and checked simultaneously; active-filter chips for all three remain visible after closing the drawer; shop-product-count stays rendered through the refetch; sort=price-low request confirmed via waitForResponse; Clear all restores the full 4-product grid."
+    },
+    {
+      "criterion": "Product purchase experience",
+      "name": "pdp-purchase-experience-and-unavailable-guard",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "/product/aira-pure-kota-doria-angrakha slug URL renders title/price/mobile swipe gallery; Add to Bag & Buy Now disabled with 'Select a size to continue' helper until size M is chosen, then both enable and the mobile sticky bar mirrors state; size guide modal opens/closes; WhatsApp href contains wa.me; detail accordions render; desktop viewport zoom modal opens via product-image-zoom and thumbnail selection works. Sang-e-Mar-Mar: Add to Bag disabled with 'unavailable' text, Buy Now disabled, no mobile sticky bar rendered."
+    },
+    {
+      "criterion": "Recommendations, wishlist and cart",
+      "name": "recommendations-wishlist-and-cart-journey",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Complete the Look section (recommendation-approved-pairings) has zero count on all PDPs (no admin-approved ids exist). 'More from this fabric' renders on Aira (shares fabric with Vaaya) while 'More from this collection' correctly does not (Aira's collection is unique); 'More from this collection' renders on Nazakat (shares collection with Sang-e-Mar-Mar). Wishlist add persists to /wishlist and remove empties it; shop quick-add size selection adds to cart (badge shows 1); cart page quantity increase updates to 2; save-to-wishlist empties the cart and the item reappears on /wishlist."
+    },
+    {
+      "criterion": "Checkout preparation and account UX",
+      "name": "guest-checkout-and-account-ux",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Guest checkout: empty-field submit is blocked by native required validation (stays on address form); full address/contact fills and submits to review step showing checkout-item rows; India/international shipping radios both present and selectable; checkout-payment-handoff href contains wa.me; no bounding-box overlap between the floating WhatsApp link and the review card. Login: password-visibility toggle switches input type to text, wrong password shows customer-login-error, correct password lands on /account."
+    },
+    {
+      "criterion": "Protected admin data quality workflow",
+      "name": "admin-catalog-full-edit-workflow",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "No a[href*=admin] on the homepage; GET /admin while signed out redirects to /admin-login; admin login succeeds; created a compliant-named QA product with facts/image/stock/availability/featured flag, verified row appears; edited stock, availability to 'Currently unavailable' and toggled best-seller, row updated; deleted the row (0 matching rows remain) before suite completion; signed out returns to /admin-login."
+    },
+    {
+      "criterion": "Protected admin data quality workflow (API, incl. defect)",
+      "name": "test_admin_can_create_update_and_delete_product / test_admin_cannot_see_own_qa_named_product",
+      "lane": "backend",
+      "status": "failed",
+      "evidence": "test_admin_can_create_update_and_delete_product (compliant title 'safyra-admin-crud-<hex>'): unauthenticated POST -> 401; admin POST -> 201; GET /products (public) includes it; customer-authenticated PATCH -> 403; admin PATCH -> 200 stock=12; admin DELETE -> 204; passes. test_admin_cannot_see_own_qa_named_product (title 'tscheck-catalog-visibility-<hex>'): admin POST -> 201; public GET correctly excludes it; admin GET /products list excludes it and admin GET /products/{id} -> 404 -- FAILS the assertion that an admin should see their own product, confirming the bug filed above. Cleanup DELETE still succeeds in a finally block; live catalog verified back at 4 products afterward."
+    },
+    {
+      "criterion": "Responsive quality and accessibility",
+      "name": "mobile-responsive-no-overflow-and-a11y",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "document.documentElement scrollWidth<=clientWidth+2px on home, search overlay, shop, filter drawer, PDP, cart, checkout and login at 390x844; zero <img> without an alt attribute; mobile sticky-add-to-cart bar has tappable height; every #root input/textarea on checkout has a label/wrapping-label/aria-label; guest visiting /account redirects to /login without overflow."
+    }
+  ]
+}

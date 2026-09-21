@@ -46,8 +46,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   });
   const saveState = useMutation({ mutationFn: (state: { wishlist_ids: string[]; cart: CartItem[] }) => apiPut<void>("/account/state", state) });
 
-  useEffect(() => window.localStorage.setItem("safyra-cart", JSON.stringify(cart)), [cart]);
-  useEffect(() => window.localStorage.setItem("safyra-wishlist", JSON.stringify(wishlistIds)), [wishlistIds]);
+  useEffect(() => { window.localStorage.setItem("safyra-cart", JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { window.localStorage.setItem("safyra-wishlist", JSON.stringify(wishlistIds)); }, [wishlistIds]);
   useEffect(() => {
     if (account && user) {
       setCart(account.cart);
@@ -65,7 +65,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       const key = `${product.id}-${size}-${color}`;
       setCart((current) => {
         const existing = current.find((item) => item.key === key);
-        const next = existing ? current.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)) : [...current, { key, productId: product.id, title: product.title, imageUrl: product.image_url, price: product.price, size, color, quantity: 1 }];
+        const next = existing ? current.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)) : [...current, { key, productId: product.id, slug: product.slug, title: product.title, imageUrl: product.image_url, price: product.price, size, color, quantity: 1 }];
         if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
         return next;
       });

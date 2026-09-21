@@ -28,6 +28,12 @@ class ProductFields(BaseModel):
     care: str
     dispatch_days: str
     availability: str = "Made to order"
+    customisation: str = ""
+    origin: str = ""
+    occasion: list[str] = Field(default_factory=list)
+    style_keywords: list[str] = Field(default_factory=list)
+    size_guide_image: str = ""
+    complete_look_ids: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     featured: bool = False
     best_seller: bool = False
@@ -61,6 +67,12 @@ class ProductUpdate(BaseModel):
     care: Optional[str] = None
     dispatch_days: Optional[str] = None
     availability: Optional[str] = None
+    customisation: Optional[str] = None
+    origin: Optional[str] = None
+    occasion: Optional[list[str]] = None
+    style_keywords: Optional[list[str]] = None
+    size_guide_image: Optional[str] = None
+    complete_look_ids: Optional[list[str]] = None
     tags: Optional[list[str]] = None
     featured: Optional[bool] = None
     best_seller: Optional[bool] = None
@@ -92,16 +104,17 @@ DEFAULT_PRODUCTS: list[Product] = [
         image_url="https://safyra.co/cdn/shop/files/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg?v=1767270653&width=1200",
         image_urls=["https://safyra.co/cdn/shop/files/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg?v=1767270653&width=1200", "https://safyra.co/cdn/shop/files/B774FE4A-8E49-49F8-9DB7-3B1A69457A93.jpg?v=1767270653&width=1200"],
         description="A quiet celebration of pure viscose, fluid drape and delicate handcrafted Resham silk Chikankari. The coordinated set is finished with a soft shimmer of Mukaish and Badla work.",
-        fit="Fluid, easy A-line silhouette",
-        measurements="Model wears M; length and fit vary by selected size. Ask our Lucknow stylist for a custom fit conversation.",
-        transparency="Lightweight textile with a soft, graceful fall",
-        lining="Please confirm lining and set composition with the stylist before ordering",
-        care="Dry clean only",
+        fit="",
+        measurements="",
+        transparency="",
+        lining="",
+        care="",
         dispatch_days="25–29 days",
         availability="Made to order",
         tags=["Luxury", "Mukaish", "Badla"],
+        style_keywords=["Anarkali", "Occasionwear"],
+        size_guide_image="https://cdn.shopify.com/s/files/1/0853/1325/7781/files/IMG_3734.jpg?v=1775517874",
         featured=True,
-        best_seller=True,
     ),
     Product(
         title="Aira Pure Kota Doria Angrakha",
@@ -126,7 +139,11 @@ DEFAULT_PRODUCTS: list[Product] = [
         care="Dry clean only",
         dispatch_days="12–15 business days",
         availability="Made to order",
+        customisation="Custom dyeing is available through WhatsApp assistance",
         tags=["Kota Doria", "Angrakha"],
+        origin="India",
+        style_keywords=["Angrakha", "A-line"],
+        size_guide_image="https://cdn.shopify.com/s/files/1/0853/1325/7781/files/IMG_3734.jpg?v=1775517874",
         featured=True,
         new_arrival=True,
     ),
@@ -154,6 +171,10 @@ DEFAULT_PRODUCTS: list[Product] = [
         dispatch_days="12–15 business days",
         availability="Made to order",
         tags=["Kota Doria", "French Knot"],
+        customisation="Custom dyeing is available through WhatsApp assistance",
+        origin="India",
+        style_keywords=["Anarkali", "Flowy"],
+        size_guide_image="https://cdn.shopify.com/s/files/1/0853/1325/7781/files/IMG_3734.jpg?v=1775517874",
         featured=True,
         new_arrival=True,
     ),
@@ -162,8 +183,8 @@ DEFAULT_PRODUCTS: list[Product] = [
         slug="sang-e-mar-mar-rose-edition",
         category="Straight Kurtis",
         collection="Safyra Luxury",
-        fabric="Natural textile blend",
-        craft="Handcrafted Chikankari",
+        fabric="",
+        craft="",
         price=6650,
         mrp=7600,
         stock=0,
@@ -172,67 +193,15 @@ DEFAULT_PRODUCTS: list[Product] = [
         colors=["Rose"],
         image_url="https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=1200",
         image_urls=["https://safyra.co/cdn/shop/files/preview_images/60cd79dc58734a6597c9712ff4d66366.thumbnail.0000000000.jpg?v=1766183317&width=1200", "https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=1200"],
-        description="A limited rose edition from SAFYRA’s luxury edit. Connect with the team to enquire about the next made-to-order window.",
-        fit="Please enquire for fit and measurements",
-        measurements="Please enquire for current size availability",
-        transparency="Please enquire for fabric and lining details",
-        lining="Please enquire before ordering",
-        care="Dry clean only",
-        dispatch_days="Please enquire",
+        description="",
+        fit="",
+        measurements="",
+        transparency="",
+        lining="",
+        care="",
+        dispatch_days="",
         availability="Currently unavailable",
         tags=["Rose Edition", "Luxury"],
         featured=True,
-    ),
-    Product(
-        title="Mehar Handcrafted Muslin Kurti",
-        slug="mehar-handcrafted-muslin-kurti",
-        category="Straight Kurtis",
-        collection="Everyday Edit",
-        fabric="Pure Muslin",
-        craft="Resham threadwork Chikankari",
-        price=2999,
-        mrp=3600,
-        stock=0,
-        stock_by_size={},
-        sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["Ivory", "Sage green"],
-        image_url="https://images.unsplash.com/photo-1667665970124-2273c6ef3489?crop=entropy&cs=srgb&fm=jpg&q=85",
-        image_urls=["https://images.unsplash.com/photo-1667665970124-2273c6ef3489?crop=entropy&cs=srgb&fm=jpg&q=85"],
-        description="A considered everyday layer in soft muslin, designed to let the handwork do the talking.",
-        fit="Relaxed straight fit",
-        measurements="Select your size for the available size range",
-        transparency="Soft, breathable muslin with a light drape",
-        lining="Please confirm lining with the stylist",
-        care="Gentle hand wash or dry clean",
-        dispatch_days="7–10 business days",
-        availability="Made to order",
-        tags=["Muslin", "Everyday"],
-        best_seller=True,
-    ),
-    Product(
-        title="Noor Mul Chanderi Kurti Set",
-        slug="noor-mul-chanderi-kurti-set",
-        category="Kurti Sets",
-        collection="Everyday Edit",
-        fabric="Mul Chanderi",
-        craft="Handcrafted Chikankari",
-        price=4299,
-        mrp=5200,
-        stock=0,
-        stock_by_size={},
-        sizes=["S", "M", "L", "XL", "2XL", "3XL"],
-        colors=["Powder blue", "Mint", "Ivory"],
-        image_url="https://images.pexels.com/photos/16324981/pexels-photo-16324981.jpeg?auto=compress&cs=tinysrgb&w=1200",
-        image_urls=["https://images.pexels.com/photos/16324981/pexels-photo-16324981.jpeg?auto=compress&cs=tinysrgb&w=1200"],
-        description="A breathable Mul Chanderi set with a quiet sheen and handcrafted detail, made for generous, graceful movement.",
-        fit="Easy straight kurti set",
-        measurements="Select your size for the available size range",
-        transparency="Lightweight Chanderi; opacity varies by colour",
-        lining="Please confirm lining and set composition with the stylist",
-        care="Dry clean only",
-        dispatch_days="12–15 business days",
-        availability="Made to order",
-        tags=["Chanderi", "Kurti Set"],
-        new_arrival=True,
     ),
 ]

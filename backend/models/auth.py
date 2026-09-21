@@ -52,6 +52,7 @@ class ProfileUpdate(BaseModel):
 class SavedCartItem(BaseModel):
     key: str
     productId: str
+    slug: str = ""
     title: str
     imageUrl: str
     price: int

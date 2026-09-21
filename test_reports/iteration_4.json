@@ -1,0 +1,87 @@
+{
+  "iteration": 4,
+  "summary": "Retest of iteration 3 artifacts. Re-ran the 3 backend test files and all 8 named browser checks unchanged. 8/8 browser checks passed. Backend: 8 of 9 test functions passed; the previously filed bug is STILL PRESENT and unfixed: test_admin_cannot_see_own_qa_named_product fails because routers/products.py still applies the public QA-name title filter to admin-authenticated GET /products and GET /products/{id}. Public catalog remains exactly the 4 approved products after all checks.",
+  "passed": 8,
+  "failed": 1,
+  "bugs": [
+    {
+      "severity": "medium",
+      "criterion": "Protected admin data quality workflow",
+      "title": "Admin cannot see/manage their own product if its title starts with tscheck/test/debug/placeholder (still unfixed, regression-checked)",
+      "description": "routers/products.py still applies the public QA-name exclusion filter (title regex ^(tscheck|test|debug|placeholder)) to GET /products and GET /products/{id} for EVERY caller including an authenticated admin. Admin POST-create succeeds (201) but the created product is absent from the admin's own authenticated GET /products list and returns 404 on GET /products/{id}, so the admin UI cannot list, view, edit, or verify it (only blind DELETE-by-known-id works). This directly contradicts the spec_deviation clarifying QA-named products must be visible to authenticated administrators for cleanup/management. Unaffected: public/customer-facing catalog correctly excludes QA-named titles, and the approved 4-product public catalog is intact.",
+      "evidence": "cd /app/backend && python -m pytest -q tests/test_tscheck_catalog_integrity.py -> 1 failed, 8 passed. Failing assertion: admin_client.post('/products', title='tscheck-catalog-visibility-dbaf7257') -> 201 (id=518bf930-...); client.get('/products') (public, unauthenticated) correctly excludes id (pass); admin_client.get('/products') -> 200 but returned id list [be39b679.., 4803bc76.., 31194083.., f60a8278..] does NOT contain the new id; admin_client.get('/products/518bf930-...') -> 404 'Product not found'. Live curl confirms public GET /products still returns exactly the 4 approved titles (Luxury Nazakat Collection, Aira Pure Kota Doria Angrakha, Vaaya Pure Kota Doria Anarkali, Sang-e-Mar-Mar — Rose Edition)."
+    }
+  ],
+  "action_items": [
+    {
+      "type": "bug_fix_needed",
+      "detail": "Scope the QA-name title filter in routers/products.py (list_products and get_product) to unauthenticated/customer requests only, or add a dedicated admin-authenticated listing path that is never filtered, so admins can see, edit and delete their own QA/test-named products through the Admin UI. This is a carry-over from iteration 3, still unresolved."
+    }
+  ],
+  "retest_needed": true,
+  "checks": [
+    {
+      "criterion": "Public catalog accuracy and visual integrity",
+      "name": "public-catalog-accuracy-and-integrity",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): /shop shows exactly 4 product cards matching the approved titles; no QA-prefixed titles; Sang-e-Mar-Mar PDP shows 'Currently unavailable' with disabled Add to Bag."
+    },
+    {
+      "criterion": "Premium navigation and search",
+      "name": "navigation-search-and-suggestions",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): mobile header controls render without overlap; desktop mega-menu opens; search suggestions and zero-result recovery shortcuts work."
+    },
+    {
+      "criterion": "Collection filtering and sorting",
+      "name": "mobile-filter-drawer-multi-filter-sort",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): mobile filter drawer multi-select (size/fabric/colour) + sort by price-low + Clear all all function correctly."
+    },
+    {
+      "criterion": "Product purchase experience",
+      "name": "pdp-purchase-experience-and-unavailable-guard",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): size-gated Add to Bag/Buy Now, mobile sticky bar, size guide modal, and unavailable-product guard all confirmed again."
+    },
+    {
+      "criterion": "Recommendations, wishlist and cart",
+      "name": "recommendations-wishlist-and-cart-journey",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): fabric/collection recommendation rails, wishlist persistence, quick-add to cart, quantity update, and save-to-wishlist-from-cart all confirmed again."
+    },
+    {
+      "criterion": "Checkout preparation and account UX",
+      "name": "guest-checkout-and-account-ux",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): guest checkout validation/review/WhatsApp handoff and login password-toggle/error-state flows confirmed again. One benign 401 console error from the wrong-password login-error test case (expected)."
+    },
+    {
+      "criterion": "Protected admin data quality workflow",
+      "name": "admin-catalog-full-edit-workflow",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): admin creates a compliant-named product, edits stock/availability/best-seller, deletes it, confirming full CRUD works via the UI for non-QA-named titles."
+    },
+    {
+      "criterion": "Responsive quality and accessibility",
+      "name": "mobile-responsive-no-overflow-and-a11y",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run (persisted): no horizontal overflow across home/shop/PDP/checkout/login at 390x844; all images have alt text; form inputs are labelled."
+    },
+    {
+      "criterion": "Protected admin data quality workflow (API, incl. defect)",
+      "name": "test_admin_can_create_update_and_delete_product / test_admin_cannot_see_own_qa_named_product",
+      "lane": "backend",
+      "status": "failed",
+      "evidence": "pytest tests/test_tscheck_catalog_integrity.py + tests/test_tscheck_admin_catalog_crud.py: compliant-title admin CRUD (create 201/list-include/patch 200/delete 204, customer PATCH 403) passes. QA-named product test fails: admin POST -> 201, but admin GET /products excludes it and admin GET /products/{id} -> 404, confirming the carried-over bug above is still unfixed."
+    }
+  ]
+}

@@ -9,6 +9,10 @@ from models.product import DEFAULT_PRODUCTS
 
 async def seed() -> None:
     await ensure_indexes()
+    await db.products.delete_many({"$or": [
+        {"title": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}},
+        {"slug": {"$in": ["mehar-handcrafted-muslin-kurti", "noor-mul-chanderi-kurti-set"]}},
+    ]})
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([product.model_dump() for product in DEFAULT_PRODUCTS])
     await db.users.update_one(

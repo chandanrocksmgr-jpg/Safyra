@@ -16,9 +16,15 @@ TEMP_PASSWORD = "Tscheck!Temp#901"
 
 
 def _fixture_payload(suffix: str) -> dict:
+    # NOTE: deliberately avoids the tscheck-/test-/debug-/placeholder- prefixes: the public
+    # catalog filter in routers/products.py excludes those titles from GET /products and
+    # GET /products/{id} for EVERY caller, including an authenticated admin (see
+    # test_tscheck_catalog_integrity.py::test_admin_cannot_see_own_qa_named_product for the
+    # dedicated bug report). Using a compliant title here lets this CRUD-roundtrip test actually
+    # exercise the admin management flow end to end.
     return {
-        "title": f"tscheck-admin-product-{suffix}",
-        "slug": f"tscheck-admin-product-{suffix}",
+        "title": f"safyra-admin-crud-{suffix}",
+        "slug": f"safyra-admin-crud-{suffix}",
         "category": "Anarkali Sets",
         "collection": "Everyday Edit",
         "fabric": "Pure Kota Doria",
@@ -66,11 +72,11 @@ def test_admin_can_create_update_and_delete_product(admin_client, client):
     assert created["title"] == payload["title"]
     assert created["stock"] == 5
 
-    # Verify it persists through GET /products
+    # Verify it persists through GET /products (both public and admin-authenticated views)
     list_resp = client.get("/products")
     assert list_resp.status_code == 200
     ids = [p["id"] for p in list_resp.json()]
-    assert product_id in ids, "created product missing from GET /products"
+    assert product_id in ids, "created product missing from public GET /products"
 
     # Customer-authenticated write is rejected (403, role enforced)
     customer_login = client.post("/auth/login", json={"email": "customer@safyra.co", "password": "Safyra!Customer#2026"})
