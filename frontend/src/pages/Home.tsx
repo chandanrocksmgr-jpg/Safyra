@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Instagram, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import BrandHeader from "@/components/BrandHeader";
+import CustomerLove from "@/components/CustomerLove";
 import ProductCard from "@/components/ProductCard";
 import Seo from "@/components/Seo";
 import { apiGet } from "@/lib/api";
@@ -52,6 +53,8 @@ export default function Home() {
     <section className="fit-service"><div><span className="eyebrow">Extended sizes</span><h2>Find the size that works for you.</h2><p>Selected SAFYRA silhouettes are listed from XS to 3XL. Product pages show the approved size range and size guide where available.</p><Link to="/shop?size=3XL" className="underlined-link" data-testid="extended-sizes-shop-link">Shop extended sizes <ArrowRight size={15} /></Link></div><img src="https://safyra.co/cdn/shop/files/rn-image_picker_lib_temp_b45b8222-b248-4367-890e-33fce779156b.png?v=1768253915&width=1200" alt="SAFYRA Aira Pure Kota Doria Angrakha" loading="lazy" /></section>
 
     <section className="story-section compact-story"><div className="story-images"><img src="https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=1200" alt="SAFYRA Aira Angrakha styled in Lucknowi Chikankari" loading="lazy" /></div><div className="story-copy"><span className="eyebrow">SAFYRA, Lucknow</span><h2>A focused Chikankari wardrobe.</h2><p>SAFYRA works with Lucknowi Chikankari across Indian silhouettes and verified fabrics. Each product page brings the textile, embroidery description, fit and making information together in one place.</p><Link to="/information#craft" className="button button-dark" data-testid="craft-story-shop-button">About the craft <ArrowRight size={16} /></Link></div></section>
+
+    <CustomerLove />
 
     <section className="section seen-section"><div className="section-heading"><div><span className="eyebrow">From SAFYRA</span><h2>The product journal</h2></div><a href="https://instagram.com/safyrachikankari" target="_blank" rel="noreferrer" className="underlined-link" data-testid="instagram-journal-link">Follow on Instagram <Instagram size={15} /></a></div><div className="seen-grid">{["https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=900", "https://safyra.co/cdn/shop/files/B774FE4A-8E49-49F8-9DB7-3B1A69457A93.jpg?v=1767270653&width=900", "https://safyra.co/cdn/shop/files/F849CF0B-33AC-4B28-9058-B737D786C43F.png?v=1780243912&width=900"].map((image, index) => <a href="https://instagram.com/safyrachikankari" target="_blank" rel="noreferrer" key={image} data-testid={`safyra-journal-image-${index + 1}`}><img src={image} alt={`SAFYRA Chikankari product journal ${index + 1}`} loading="lazy" /></a>)}</div></section>
 
