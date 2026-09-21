@@ -73,7 +73,7 @@ export const whatsappUrl = (message: string) =>
 
 export const productWhatsappUrl = (product: Product) =>
   whatsappUrl(
-    `Hello SAFYRA, I would like help with ${product.title}. Please advise on sizing, customization and dispatch timing.`,
+    `Hello SAFYRA, I would like help with ${product.title}. Please advise on sizing, customisation and dispatch. Product: https://safyra.co/product/${product.slug}`,
   );
 
 export const cartWhatsappUrl = (items: CartItem[], total: number) =>

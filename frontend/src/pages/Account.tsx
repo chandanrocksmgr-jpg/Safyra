@@ -11,7 +11,7 @@ import { endSession } from "@/lib/session";
 import { formatPrice } from "@/lib/shop";
 
 function downloadInvoice(order: Order) {
-  const lines = ["SAFYRA CHIKANKARI", `Invoice: ${order.invoice_number}`, `Order: ${order.order_number}`, `Status: ${order.status}`, "", ...order.items.map((item) => `${item.product_name} · ${item.size} · ${item.color} · Qty ${item.quantity} · ${formatPrice(item.price)}`), "", `Total: ${formatPrice(order.total)}`, order.is_demo ? "DEMO INVOICE — not a commercial document" : "Thank you for choosing handcrafted work."];
+  const lines = ["SAFYRA CHIKANKARI", `Invoice: ${order.invoice_number}`, `Order: ${order.order_number}`, `Status: ${order.status}`, "", ...order.items.map((item) => `${item.product_name} · ${item.size} · ${item.color} · Qty ${item.quantity} · ${formatPrice(item.price)}`), "", `Total: ${formatPrice(order.total)}`, order.is_demo ? "DEMO INVOICE — not a commercial document" : "Thank you for choosing SAFYRA CHIKANKARI."];
   const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain" }));
   const anchor = document.createElement("a");
   anchor.href = url;

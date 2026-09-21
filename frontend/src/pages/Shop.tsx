@@ -3,6 +3,7 @@ import { ChevronDown, Filter, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import BrandHeader from "@/components/BrandHeader";
 import ProductCard from "@/components/ProductCard";
+import Seo from "@/components/Seo";
 import { apiGet } from "@/lib/api";
 import type { Product, ProductFacets } from "@/lib/shop";
 
@@ -54,10 +55,16 @@ export default function Shop() {
   const closeFilters = () => updateParams((next) => next.delete("filters"));
   const clearFilters = () => setParams(new URLSearchParams());
 
-  const sortSelect = (testId: string) => <select value={sort} onChange={(event) => updateParams((next) => next.set("sort", event.target.value))} data-testid={testId}><option value="featured">Featured</option><option value="newest">Newest</option>{facets?.has_best_sellers && <option value="best-selling">Best Selling</option>}<option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option></select>;
+  const sortSelect = (testId: string) => <select value={sort} onChange={(event) => updateParams((next) => next.set("sort", event.target.value))} data-testid={testId}><option value="featured">Recommended</option><option value="newest">Newest</option>{facets?.has_best_sellers && <option value="best-selling">Best Selling</option>}<option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option></select>;
+  const shopDescription = search ? `Search SAFYRA for ${search}. Refine real catalogue results by fabric, category, size, colour and Chikankari work.` : `Shop ${heading} by SAFYRA CHIKANKARI with verified fabric, embroidery, size, availability and dispatch details.`;
+  const collectionStructuredData = { "@context": "https://schema.org", "@type": "ItemList", name: heading, itemListElement: products.map((product, index) => ({ "@type": "ListItem", position: index + 1, name: product.title, url: `https://safyra.co/product/${product.slug}` })) };
+  const canonicalParams = new URLSearchParams(params);
+  canonicalParams.delete("filters");
+  canonicalParams.delete("sort");
+  const canonicalPath = `/shop${canonicalParams.toString() ? `?${canonicalParams.toString()}` : ""}`;
 
-  return <div className="page-shell"><BrandHeader /><main className="shop-page">
-    <div className="shop-heading"><div><span className="eyebrow">Handcrafted, considered</span><h1>{heading}</h1><p data-testid="shop-product-count">{productCountLabel}</p></div></div>
+  return <div className="page-shell"><Seo title={`${heading} | SAFYRA CHIKANKARI`} description={shopDescription} canonicalPath={canonicalPath} structuredData={collectionStructuredData} /><BrandHeader /><main className="shop-page">
+    <div className="shop-heading"><div><span className="eyebrow">Lucknowi Chikankari</span><h1>{heading}</h1><p data-testid="shop-product-count">{productCountLabel}</p></div></div>
     <div className="shop-toolbar">
       <button className="filter-trigger" onClick={() => updateParams((next) => next.set("filters", "open"))} data-testid="filter-trigger"><Filter size={16} /> Filters {activeFilters > 0 && <span>{activeFilters}</span>}</button>
       <div className="mobile-shop-controls"><button onClick={() => updateParams((next) => next.set("filters", "open"))} data-testid="mobile-filter-button"><SlidersHorizontal size={16} /> Filter {activeFilters > 0 && `(${activeFilters})`}</button><label>Sort{sortSelect("mobile-sort-select")}</label></div>

@@ -4,9 +4,11 @@
 Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Chikankari. The build is independent of Shopify and uses a Mongo-backed approved catalog that SAFYRA staff can maintain through `/admin`.
 
 ## Core flows
-- Home: editorial hero, category discovery, new arrivals, featured pieces, SAFYRA Luxury, verified fabrics, extended sizes, craft story, honest customer-care statement, brand journal and founder philosophy.
+- Home: product-led hero, immediate new arrivals, category and fabric discovery, conditional verified bestsellers, current selections, Chikankari work discovery, SAFYRA Luxury, collections, factual service points, extended sizes, concise Lucknow story, product journal and WhatsApp care.
 - Shop: instant search suggestions and recent searches; combinable category, collection, size, colour, fabric, craft, availability and price filters; supported sorting; zero-result recovery.
 - Product: real product-only galleries with zoom/swipe, required size selection, verified-only expandable details, add to bag, Buy Now to checkout preparation, contextual WhatsApp, admin-approved Complete the Look, relevant recommendation groups and mobile sticky add.
+- Product detail pages also include a genuine-image “A closer look” section, above-fold fabric/work/dispatch facts, clean breadcrumb URLs, dynamic titles/meta/canonical links and Product structured data.
+- Shop and collection states publish dynamic titles, descriptions, canonical links and ItemList structured data; home publishes WebSite search structured data.
 - Wishlist and cart: guest state persists in browser local storage; signed-in customer state persists to the account in Mongo. Cart drawer and full cart page include quantities and contextual WhatsApp order handoff.
 - Customer account: email/password signup and login, profile editing, saved wishlist/cart continuity, prior order history, text invoice download and milestone tracking. A clearly labelled demo order exists only on the demo customer.
 - Admin: hidden from storefront navigation, server-protected by the admin role, and available only after separate admin authentication. Admins can add/edit/delete products, change passwords while verified, or recover with the private security question and rate-limited answer check.

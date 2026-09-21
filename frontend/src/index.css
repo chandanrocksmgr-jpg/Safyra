@@ -421,6 +421,83 @@ h1, h2, h3 { font-family: 'Playfair Display Variable', Georgia, serif; font-weig
   .wordmark { align-items: center; }
 }
 
+/* SAFYRA master refinement: tighter product-led merchandising */
+.home-page .hero-section { min-height: min(820px, calc(100svh - 100px)); }
+.home-page .hero-copy { padding-bottom: 5rem; }
+.home-page .hero-copy h1 { max-width: 900px; font-size: clamp(3rem, 7vw, 6.35rem); }
+.home-page .section { padding-top: 5rem; padding-bottom: 5rem; }
+.home-page .home-product-section { padding-top: 4.5rem; padding-bottom: 4.5rem; }
+.product-grid-compact { max-width: 680px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.home-page .category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 390px; }
+.home-page .category-tile { min-height: 0; }
+.home-page .category-tile-1 { grid-row: auto; }
+.craft-commerce-section { display: grid; background: #f2ebdc; }
+.craft-commerce-images { min-height: 520px; display: grid; grid-template-columns: 1.2fr .8fr; gap: .5rem; }
+.craft-commerce-images img { width: 100%; height: 100%; object-fit: cover; }
+.craft-commerce-copy { padding: 4rem 7vw; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.craft-commerce-copy h2 { margin: .7rem 0 1rem; font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1; }
+.craft-commerce-copy > p { max-width: 520px; color: #715b52; line-height: 1.7; }
+.craft-links { width: 100%; margin-top: 1.5rem; border-top: 1px solid #d6c7b2; }
+.craft-links a { padding: .95rem 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #d6c7b2; font-size: .78rem; }
+.home-page .luxury-copy h2 { font-size: clamp(2.35rem, 4.5vw, 4.5rem); }
+.collection-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.collection-card { position: relative; min-height: 410px; overflow: hidden; background: #2c1a14; color: #fff; }
+.collection-card > img { width: 100%; height: 100%; object-fit: cover; transition: transform 350ms ease; }
+.collection-card:hover > img { transform: scale(1.02); }
+.collection-card > div { position: absolute; inset: auto 0 0; padding: 1.5rem; background: linear-gradient(transparent, rgba(26,15,11,.86)); }
+.collection-card span { font-family: 'JetBrains Mono Variable', monospace; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; }
+.collection-card h3 { margin: .45rem 0; font-size: 1.65rem; }
+.collection-card small { display: inline-flex; align-items: center; gap: .4rem; }
+.fit-service { display: grid; grid-template-columns: .92fr 1.08fr; background: #4a3c34; color: #fff; }
+.fit-service > div { padding: 4rem 7vw; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.fit-service h2 { margin: .7rem 0 1rem; font-size: clamp(2.4rem, 4vw, 4rem); line-height: 1; }
+.fit-service p { max-width: 520px; color: #ded2ca; line-height: 1.7; }
+.fit-service .underlined-link { color: #fff; }
+.fit-service > img { width: 100%; min-height: 440px; height: 100%; object-fit: cover; }
+.compact-story { padding-top: 5rem; padding-bottom: 5rem; }
+.compact-story .story-images { min-height: 440px; }
+.compact-story .story-images img:first-child,
+.compact-story .story-images img:last-child { position: static; width: 100%; height: 440px; border: 0; object-fit: cover; }
+.home-page .reasons-section h2 { font-size: clamp(2.35rem, 4.5vw, 4rem); }
+.home-page .whatsapp-section { padding-top: 4rem; padding-bottom: 4rem; }
+.product-key-details { margin: -.25rem 0 .85rem; display: flex; flex-wrap: wrap; gap: .4rem .9rem; color: #9e7b3b; font-family: 'JetBrains Mono Variable', monospace; font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; }
+.dispatch-line { margin-top: .55rem; padding: .65rem .75rem; border-left: 2px solid #b49861; background: #f9f6f0; color: #5c463d; font-size: .72rem; }
+.product-detail-visual { margin: 5rem calc(-1 * 4vw); padding: 4rem 4vw; display: grid; gap: 2rem; background: #f2ebdc; }
+.product-detail-visual h2 { margin: .6rem 0; max-width: 720px; font-size: clamp(2.4rem, 4vw, 4rem); line-height: 1; }
+.product-detail-visual > div:first-child p { color: #715b52; }
+.detail-image-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.detail-image-grid button { min-height: 420px; padding: 0; border: 0; overflow: hidden; background: #e6dec8; }
+.detail-image-grid img, .detail-image-grid .image-fallback { width: 100%; height: 100%; object-fit: cover; transition: transform 350ms ease; }
+.detail-image-grid button:hover img { transform: scale(1.015); }
+
+@media (min-width: 768px) {
+  .craft-commerce-section { grid-template-columns: 1.08fr .92fr; }
+  .product-detail-visual { grid-template-columns: .7fr 1.3fr; align-items: center; }
+}
+
+@media (max-width: 767px) {
+  .home-page .hero-section { min-height: 68svh; }
+  .home-page .hero-copy { padding: 3.5rem 1.2rem 3.25rem; }
+  .home-page .hero-copy h1 { font-size: 2.9rem; }
+  .home-page .section { padding-top: 3.25rem; padding-bottom: 3.25rem; }
+  .home-page .home-product-section { padding-top: 3rem; padding-bottom: 3rem; }
+  .product-grid-compact { max-width: none; }
+  .home-page .category-grid { margin-inline: -1rem; padding-inline: 1rem; display: grid; grid-auto-flow: column; grid-auto-columns: 78%; grid-template-columns: none; grid-template-rows: 360px; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .home-page .category-tile { scroll-snap-align: start; }
+  .craft-commerce-images { min-height: 360px; grid-template-columns: 1.15fr .85fr; }
+  .craft-commerce-copy { padding: 3.25rem 1.2rem; }
+  .collection-grid { margin-inline: -1rem; padding-inline: 1rem; grid-auto-flow: column; grid-auto-columns: 78%; grid-template-columns: none; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .collection-card { min-height: 360px; scroll-snap-align: start; }
+  .fit-service { grid-template-columns: 1fr; }
+  .fit-service > div { padding: 3.25rem 1.2rem; }
+  .fit-service > img { min-height: 360px; max-height: 480px; }
+  .compact-story { padding-top: 3.5rem; padding-bottom: 3.5rem; }
+  .compact-story .story-images, .compact-story .story-images img:first-child, .compact-story .story-images img:last-child { min-height: 0; height: 380px; }
+  .product-detail-visual { margin: 4rem -1rem; padding: 3rem 1rem; }
+  .detail-image-grid { grid-auto-flow: column; grid-auto-columns: 86%; grid-template-columns: none; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .detail-image-grid button { min-height: 420px; scroll-snap-align: start; }
+}
+
 .route-loading { min-height: 70vh; display: grid; place-items: center; color: #715b52; }
 .auth-page { min-height: calc(100vh - 100px); display: grid; background: #f9f6f0; }
 .auth-visual { position: relative; min-height: 420px; overflow: hidden; color: #fff; }
