@@ -9,7 +9,6 @@ import SearchExperience from "@/components/SearchExperience";
 const menuGroups = [
   { title: "Collections", items: ["Safyra Luxury", "Vaaya Kota Doria", "Everyday Edit"] },
   { title: "Categories", items: ["Anarkali Sets", "Angrakha Suits", "Straight Kurtis", "Sarees", "Kurta & Pant Sets", "Dupattas", "Unstitched Suits"] },
-  { title: "The craft", items: ["Pure Kota Doria", "Mukaish", "Badla", "French Knot"] },
 ];
 
 export default function BrandHeader() {
