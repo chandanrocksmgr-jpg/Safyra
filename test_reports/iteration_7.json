@@ -1,0 +1,40 @@
+{
+  "iteration": 7,
+  "mode": "generate",
+  "passed": 3,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Homepage hero copy",
+      "name": "homepage-hero-copy-and-removed-sections",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Navigated to https://lucknowi-craft.preview.emergentagent.com (390x844 mobile). Hero heading text (normalized) contains 'Chikankari, made to be remembered.' and supporting line 'Handcrafted Chikankari, created by skilled artisans in Lucknow.' is retained. Screenshot hero.png confirms visual rendering."
+    },
+    {
+      "criterion": "Removed named homepage sections",
+      "name": "homepage-hero-copy-and-removed-sections",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Same check as above: full-body innerText scanned for 'Pieces with a Point of View', 'A Note from Safyra', 'Real Words Only' — none present anywhere on the homepage."
+    },
+    {
+      "criterion": "Customer story carousel",
+      "name": "customer-carousel-navigation-and-autoadvance",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Section 'WORN. LOVED. RETURNED TO.' visible. Counter starts at '1 / 5' (screenshot initial-1-of-5.png). Clicking Next control changed counter to '2 / 5' and body text changed (screenshot after-next-2-of-5.png). Clicking Previous returned counter to '1 / 5' (screenshot after-prev-back-1-of-5.png). Waited 6s with no interaction after returning to 1/5; counter auto-advanced to '2 / 5' confirming ~5.5s auto-advance (screenshot after-autoadvance-2-of-5.png)."
+    },
+    {
+      "criterion": "Why SAFYRA numbering removal",
+      "name": "why-safyra-numbering-removed",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Nearest <section> ancestor of 'WHY SHOP SAFYRA' heading innerText captured: 'WHY SHOP SAFYRA / Clear details. Personal service. / Product-level information ... / Size & customisation help ... / A focused catalogue ...'. All three reasons ('Product-level information', 'Size & customisation help', 'A focused catalogue') visible with no standalone 01/02/03 numbering tokens found in the section text."
+    }
+  ],
+  "summary": "4/4 acceptance criteria covered via 3 browser checks (hero copy and removed-sections share one check as they're verified from the same page text scan): 4 passed, 0 failed, 0 flaky, 0 blocked, 0 test_error. No backend/API surface applies to these criteria (pure homepage content/UI), so no backend test files were needed. No bugs found, no action items, no retest needed."
+}

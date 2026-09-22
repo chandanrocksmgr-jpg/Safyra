@@ -701,20 +701,22 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .customer-love-heading { max-width: 720px; margin-bottom: 2.5rem; }
 .customer-love-heading h2 { margin: 0; color: #2c1a14; font-size: clamp(2.5rem, 5vw, 4.8rem); line-height: .95; }
 .customer-love-heading p { margin: .85rem 0 0; color: #715b52; font-size: .9rem; }
-.customer-love-grid { display: grid; gap: 1rem; }
+.customer-love-carousel { display: grid; gap: 1rem; }
 .customer-love-card { min-height: 390px; overflow: hidden; border: 1px solid #d6c7b2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #fdfbf7; }
-.customer-love-card:nth-child(even) .customer-love-image { order: 2; }
 .customer-love-image { position: relative; min-height: 390px; overflow: hidden; background: #e6dec8; }
 .customer-love-image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
-.customer-love-card:nth-child(1) .customer-love-image img,
-.customer-love-card:nth-child(3) .customer-love-image img { width: 130%; max-width: none; height: auto; right: auto; }
-.customer-love-card:nth-child(2) .customer-love-image img { object-position: center 42%; }
-.customer-love-card:nth-child(4) .customer-love-image img { object-position: center 25%; }
+.customer-love-card-1 .customer-love-image img,
+.customer-love-card-3 .customer-love-image img { width: 130%; max-width: none; height: auto; right: auto; }
+.customer-love-card-2 .customer-love-image img { object-position: center 42%; }
+.customer-love-card-4 .customer-love-image img { object-position: center 25%; }
 .customer-love-copy { padding: 2rem; display: flex; flex-direction: column; justify-content: center; }
 .customer-love-copy blockquote { margin: 0; color: #4a3c34; font-family: 'Playfair Display Variable', serif; font-size: 1.05rem; line-height: 1.6; white-space: pre-line; }
 .customer-love-copy > p { margin: 1.4rem 0 0; padding-top: 1rem; border-top: 1px solid #e6dec8; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .customer-love-copy strong { color: #2c1a14; font-family: 'Playfair Display Variable', serif; font-size: 1.15rem; }
 .customer-love-copy span { color: #8c746a; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
+.customer-love-controls { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; }
+.customer-love-controls button { width: 40px; height: 40px; border: 1px solid #d6c7b2; display: grid; place-items: center; background: #fdfbf7; color: #2c1a14; }
+.customer-love-controls span { min-width: 42px; color: #715b52; font-size: .72rem; text-align: center; }
 .admin-relations { padding: 1rem; border: 1px solid #d6c7b2; }
 .admin-relations legend { color: #2c1a14; font-weight: 700; }
 .admin-relations p { color: #8c746a; font-size: .72rem; text-transform: none; }
@@ -733,12 +735,10 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 
 @media (max-width: 767px) {
   .customer-love-heading { margin-bottom: 1.8rem; }
-  .customer-love-grid { grid-template-columns: 1fr; gap: 1rem; }
   .customer-love-card { min-height: 0; grid-template-columns: 1fr; }
-  .customer-love-card:nth-child(even) .customer-love-image { order: 0; }
   .customer-love-image { min-height: 280px; height: 280px; }
-  .customer-love-card:nth-child(1) .customer-love-image img,
-  .customer-love-card:nth-child(3) .customer-love-image img { width: 130%; height: auto; }
+  .customer-love-card-1 .customer-love-image img,
+  .customer-love-card-3 .customer-love-image img { width: 130%; height: auto; }
   .customer-love-copy { padding: 1.2rem; }
   .account-action { display: none; }
   .search-results-panel { padding-inline: 1rem; }
