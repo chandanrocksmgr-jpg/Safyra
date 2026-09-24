@@ -1,0 +1,33 @@
+{
+  "iteration": 8,
+  "mode": "generate",
+  "passed": 3,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Customer stories section is visible on mobile",
+      "name": "customer-stories-visible-no-counter",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On 390x844 mobile viewport, 'WORN. LOVED. RETURNED TO.' section renders directly after WHY SHOP SAFYRA (index check whyIdx<wornIdx<extIdx confirmed) and before EXTENDED SIZES. A customer photo (<img> visible), quote text ('Hey Afira! I'm here flaunting...'), first name 'Rashmi', and city 'HIMACHAL PRADESH' are all visible (not blank). No numerical counter (regex /\\d\\s*\\/\\s*5/) found in section text. Screenshots initial-story.png, quote-name-city.png."
+    },
+    {
+      "criterion": "Customer story remains visible after auto-rotation",
+      "name": "customer-story-auto-rotates",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Captured section snapshot showing Rashmi/HIMACHAL PRADESH story, then waited (page.waitForFunction, up to 8s) for section innerText to change without any interaction. Section auto-advanced to 'Dr Manaswini / ODISHA' story (a genuine different customer, confirming ~5.5-6s auto-rotation works). Customer <img> remained visible after rotation. Screenshots before-rotation.png, after-rotation.png."
+    },
+    {
+      "criterion": "Stable single-panel carousel",
+      "name": "customer-carousel-stable-single-panel",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Section contains exactly 1 <img> at a time (imgCount=1, not a multi-item strip). Clicking data-testid='customer-love-next' changed the story (verified innerText diff); clicking data-testid='customer-love-previous' returned to the original story text exactly. Section height measured before/after (1064px -> 1064px, diff=0, well under 40px threshold) confirming no layout jump. No '/ n' numerical counter present in any state. Screenshots panel-before-next.png, panel-after-next.png, panel-after-prev.png."
+    }
+  ],
+  "summary": "3/3 acceptance criteria covered via 3 new browser checks (customer-stories-visible-no-counter, customer-story-auto-rotates, customer-carousel-stable-single-panel), all run against the live preview URL on a 390x844 mobile viewport: 3 passed, 0 failed, 0 flaky, 0 blocked, 0 test_error. No pure-API surface for these criteria (client-side rendering/rotation logic), so no backend test files were required. Prior check 'customer-carousel-navigation-and-autoadvance' (iteration 7) referenced a '1 / 5' style counter that has since been intentionally removed per this briefing's third criterion; it is left in place as a historical artifact but is superseded by the new checks and no longer represents current expected behavior. No bugs found, no action items, no retest needed."
+}
