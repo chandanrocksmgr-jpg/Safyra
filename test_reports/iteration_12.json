@@ -1,0 +1,33 @@
+{
+  "iteration": 12,
+  "mode": "generate",
+  "passed": 3,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Short customer stories use natural height (Dr Manaswini, Kritika end shortly after name/city, arrows sit naturally below)",
+      "name": "carousel-short-story-natural-height",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "At 390x900 mobile viewport on public preview URL: Dr Manaswini and Kritika cards both measured sectionHeight=824.25px (vs ~1173.6px for long-story cards), gap between last text (city) bottom and arrow-row top = 38.5px for both (>0 and <80px threshold, no giant blank area), arrows sit immediately below the name/city block. Screenshots dr-manaswini.png, kritika.png confirm visually."
+    },
+    {
+      "criterion": "Long customer stories remain complete (Rashmi, Supriya show full quote/name/city, no clipping/truncation/scroll)",
+      "name": "carousel-long-story-no-clipping",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "DOM scan of the carousel section for Rashmi and Supriya found zero non-image elements with overflow:hidden AND scrollHeight>clientHeight (clippedElements=[] for both, after correctly excluding the intentional photo-crop container which legitimately crops the image, not text). Full innerText contains complete quote endings ('Keep creating magic' / 'little gift of my own'), full name, and city for both. Screenshots rashmi-full.png, supriya-full.png."
+    },
+    {
+      "criterion": "Only shared-height behavior changed - images/crops, order, wording, names, cities, heading/subheading, placement, arrows, no-counter state, and 5-6s auto-rotation remain unchanged",
+      "name": "carousel-unchanged-behavior-regression",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Cycled all 5 stories confirming order Rashmi->Dr Manaswini->Kritika->Pranjal->Supriya unchanged; no /\\d+\\s*\\/\\s*\\d+/ counter pattern in any story; section placement confirmed via text index WHY SHOP SAFYRA(1319) < WORN. LOVED.(1729) < EXTENDED SIZES(2219); auto-rotate observed changing from Rashmi to Dr Manaswini within a 7s unattended window; Dr Manaswini collage image container still renders (imgCount>=1, structural crop div confirmed intact) after cycling with arrows. Screenshot final-drmanaswini.png."
+    }
+  ],
+  "summary": "Generated 3 new browser checks for the carousel shared-height fix acceptance matrix (mobile, 390x900) against the public preview URL. All 3 criteria verified: short stories (Dr Manaswini, Kritika) now use natural/shrunk card height with arrows immediately below content and no large blank area; long stories (Rashmi, Supriya) render their complete quote/name/city with no clipping, truncation, or internal scroll; and a regression check confirms story order, absence of a numeric counter, section placement relative to WHY SHOP SAFYRA/EXTENDED SIZES, auto-rotation behavior, and photo/collage rendering are all unchanged. Results: 3 passed, 0 failed, 0 flaky, 0 blocked, 0 test_error. No pure-API surface for this client-side layout criterion set, so no backend test files were added. Removed 3 ad-hoc DOM-inspection scratch checks used only for exploration before writing the final named checks. No bugs found, no action items, no retest needed."
+}
