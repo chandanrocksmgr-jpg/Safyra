@@ -4,7 +4,8 @@
 Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Chikankari. The build is independent of Shopify and uses a Mongo-backed approved catalog that SAFYRA staff can maintain through `/admin`.
 
 ## Core flows
-- Home: product-led hero, immediate new arrivals, category discovery, conditional verified bestsellers, current selections, SAFYRA Luxury, collections, factual service points, a five-story verified customer carousel, extended sizes, concise Lucknow story, product journal and WhatsApp care.
+- Home: product-led hero, immediate new arrivals, five-card category discovery without number overlays, conditional verified bestsellers, current selections, SAFYRA Luxury, collections, factual service points, a five-story verified customer carousel, extended sizes, concise Lucknow story, product journal and WhatsApp care.
+- Navigation: Shop by Category and Shop the Edit groups route to future-ready catalogue URLs without creating or modifying catalogue data.
 - Shop: instant search suggestions and recent searches; combinable category, collection, size, colour, fabric, craft, availability and price filters; supported sorting; zero-result recovery.
 - Product: real product-only galleries with zoom/swipe, required size selection, verified-only expandable details, add to bag, Buy Now to checkout preparation, contextual WhatsApp, admin-approved Complete the Look, relevant recommendation groups and mobile sticky add.
 - Product detail pages also include a genuine-image “A closer look” section, above-fold fabric/work/dispatch facts, clean breadcrumb URLs, dynamic titles/meta/canonical links and Product structured data.

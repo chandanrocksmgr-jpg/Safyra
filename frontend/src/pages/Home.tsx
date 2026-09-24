@@ -10,9 +10,11 @@ import type { Product } from "@/lib/shop";
 import { productWhatsappUrl, whatsappUrl } from "@/lib/shop";
 
 const categories = [
-  { name: "Anarkali sets", image: "https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=900", query: "Anarkali Sets" },
-  { name: "Angrakha suits", image: "https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=900", query: "Angrakha Suits" },
-  { name: "Straight kurtis", image: "https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=900", query: "Straight Kurtis" },
+  { name: "Anarkali Sets", image: "https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=900", query: "Anarkali Sets" },
+  { name: "Angrakha Suits", image: "https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=900", query: "Angrakha Suits" },
+  { name: "Straight Kurtis", image: "https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=900", query: "Straight Kurtis" },
+  { name: "Kurta & Pant Sets", query: "Kurta & Pant Sets" },
+  { name: "Sarees", query: "Sarees" },
 ];
 
 export default function Home() {
@@ -32,7 +34,7 @@ export default function Home() {
 
     {newArrivals.length > 0 && <section className="section product-section home-product-section"><div className="section-heading"><div><span className="eyebrow">Just added</span><h2>Shop new arrivals</h2></div><Link to="/shop?new=true&sort=newest" className="underlined-link" data-testid="new-arrivals-link">View new arrivals <ArrowRight size={15} /></Link></div>{isError ? <div className="data-note" data-testid="catalog-error-note">The catalogue is reconnecting. Please try again shortly.</div> : <div className={`product-grid ${newArrivals.length < 4 ? "product-grid-compact" : ""}`}>{newArrivals.map((product, index) => <ProductCard key={product.id} product={product} index={index} />)}</div>}</section>}
 
-    <section className="section category-section home-category-section"><div className="section-heading"><div><span className="eyebrow">Choose a silhouette</span><h2>Shop by category</h2></div><Link to="/shop" className="underlined-link" data-testid="shop-by-category-link">Shop all <ArrowRight size={15} /></Link></div><div className="category-grid">{categories.map((category, index) => <Link to={`/shop?category=${encodeURIComponent(category.query)}`} className={`category-tile category-tile-${index + 1}`} key={category.name} data-testid={`category-tile-${index + 1}`}><img src={category.image} alt={`Shop SAFYRA ${category.name}`} loading="lazy" /><div className="category-tile-copy"><span>0{index + 1}</span><h3>{category.name}</h3><ArrowRight size={18} /></div></Link>)}</div></section>
+    <section className="section category-section home-category-section"><div className="section-heading"><div><span className="eyebrow">Choose a silhouette</span><h2>Shop by category</h2></div><Link to="/shop" className="underlined-link" data-testid="shop-by-category-link">Shop all <ArrowRight size={15} /></Link></div><div className="category-grid">{categories.map((category, index) => { const image = category.image ?? products.find((product) => product.category === category.query)?.image_url; return <Link to={`/shop?category=${encodeURIComponent(category.query)}`} className={`category-tile category-tile-${index + 1}`} key={category.name} data-testid={`category-tile-${index + 1}`}>{image && <img src={image} alt={`Shop SAFYRA ${category.name}`} loading="lazy" />}<div className="category-tile-copy"><h3>{category.name}</h3><ArrowRight size={18} /></div></Link>; })}</div></section>
 
     {bestSellers.length > 0 && <section className="section product-section home-product-section"><div className="section-heading"><div><span className="eyebrow">Customer favourites</span><h2>Bestsellers</h2></div><Link to="/shop?sort=best-selling" className="underlined-link" data-testid="best-sellers-link">Shop bestsellers <ArrowRight size={15} /></Link></div><div className="product-grid">{bestSellers.map((product, index) => <ProductCard key={product.id} product={product} index={index + 10} />)}</div></section>}
 

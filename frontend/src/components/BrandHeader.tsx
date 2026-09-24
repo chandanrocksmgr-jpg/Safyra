@@ -7,8 +7,24 @@ import { useAuth } from "@/components/AuthProvider";
 import SearchExperience from "@/components/SearchExperience";
 
 const menuGroups = [
-  { title: "Collections", items: ["Safyra Luxury", "Vaaya Kota Doria", "Everyday Edit"] },
-  { title: "Categories", items: ["Anarkali Sets", "Angrakha Suits", "Straight Kurtis", "Sarees", "Kurta & Pant Sets", "Dupattas", "Unstitched Suits"] },
+  { title: "Shop by category", items: [
+    { label: "Anarkalis", to: "/shop?category=Anarkali%20Sets" },
+    { label: "Angrakhas", to: "/shop?category=Angrakha%20Suits" },
+    { label: "Kurtas", to: "/shop?category=Straight%20Kurtis" },
+    { label: "Stitched Sets", to: "/shop?category=Stitched%20Sets" },
+    { label: "Sarees", to: "/shop?category=Sarees" },
+    { label: "Dupattas", to: "/shop?category=Dupattas" },
+    { label: "Chikankari Bottoms", to: "/shop?category=Chikankari%20Bottoms" },
+    { label: "Unstitched Sets", to: "/shop?category=Unstitched%20Sets" },
+  ] },
+  { title: "Shop the edit", items: [
+    { label: "New Arrivals", to: "/shop?new=true&sort=newest" },
+    { label: "Best Sellers", to: "/shop?sort=best-selling" },
+    { label: "Safyra Luxury", to: "/shop?collection=Safyra%20Luxury" },
+    { label: "Everyday Edit", to: "/shop?collection=Everyday%20Edit" },
+    { label: "Celebrity Corner", to: "/shop?collection=Celebrity%20Corner" },
+    { label: "Extended Sizes", to: "/shop?size=3XL" },
+  ] },
 ];
 
 export default function BrandHeader() {
@@ -43,7 +59,7 @@ export default function BrandHeader() {
           </div>
         </div>
         {searchOpen && <SearchExperience initialQuery={currentQuery} onClose={() => setSearchOpen(false)} />}
-        {menuOpen && <div className="mega-menu" data-testid="mega-menu"><div className="mega-menu-inner"><div className="mega-menu-heading"><span className="eyebrow">Shop SAFYRA</span><h2>Silhouette, fabric<br />or Chikankari detail.</h2><p>Start with what matters to you, then refine by colour, size and availability.</p><Link to="/shop" onClick={() => setMenuOpen(false)} className="underlined-link" data-testid="mega-menu-shop-link">Shop all pieces →</Link><Link to={user ? "/account" : "/login"} onClick={() => setMenuOpen(false)} className="mobile-account-link" data-testid="mobile-account-link">{user ? "My account" : "Sign in / Create account"}</Link></div>{menuGroups.map((group) => <div key={group.title} className="mega-group"><span className="eyebrow">{group.title}</span>{group.items.map((item) => <Link key={item} to={`/shop?search=${encodeURIComponent(item)}`} onClick={() => setMenuOpen(false)} data-testid={`mega-menu-link-${item.toLowerCase().replaceAll(" ", "-")}`}>{item}</Link>)}</div>)}<button className="mega-close" onClick={() => setMenuOpen(false)} aria-label="Close menu" data-testid="mega-menu-close"><X size={20} /></button></div></div>}
+        {menuOpen && <div className="mega-menu" data-testid="mega-menu"><div className="mega-menu-inner"><div className="mega-menu-heading"><span className="eyebrow">Shop SAFYRA</span><h2>Silhouette, fabric<br />or Chikankari detail.</h2><p>Start with what matters to you, then refine by colour, size and availability.</p><Link to="/shop" onClick={() => setMenuOpen(false)} className="underlined-link" data-testid="mega-menu-shop-link">Shop all pieces →</Link><Link to={user ? "/account" : "/login"} onClick={() => setMenuOpen(false)} className="mobile-account-link" data-testid="mobile-account-link">{user ? "My account" : "Sign in / Create account"}</Link></div>{menuGroups.map((group) => <div key={group.title} className="mega-group"><span className="eyebrow">{group.title}</span>{group.items.map((item) => <Link key={item.label} to={item.to} onClick={() => setMenuOpen(false)} data-testid={`mega-menu-link-${item.label.toLowerCase().replaceAll(" ", "-")}`}>{item.label}</Link>)}</div>)}<button className="mega-close" onClick={() => setMenuOpen(false)} aria-label="Close menu" data-testid="mega-menu-close"><X size={20} /></button></div></div>}
       </header>
       {showWhatsapp && <a className="whatsapp-float" href={whatsappUrl("Hello SAFYRA, I would like help choosing a Chikankari piece.")} target="_blank" rel="noreferrer" data-testid="floating-whatsapp-link"><MessageCircle size={16} /><span>Stylist help</span></a>}
     </>
