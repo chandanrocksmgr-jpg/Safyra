@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, Heart, Menu, MessageCircle, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { useShop } from "@/components/ShopProvider";
@@ -27,18 +27,29 @@ const menuGroups = [
   ] },
 ];
 
+const announcements = [
+  "FREE SHIPPING ON ORDERS ABOVE ₹1,299",
+  "A LITTLE SOMETHING FROM SAFYRA - WITH YOUR FIRST ORDER",
+];
+
 export default function BrandHeader() {
   const location = useLocation();
   const { cartCount, wishlistIds, openDrawer } = useShop();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
   const currentQuery = new URLSearchParams(location.search).get("search") ?? "";
   const showWhatsapp = !["/login", "/signup", "/account", "/checkout"].includes(location.pathname) && !location.pathname.startsWith("/product/");
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setAnnouncementIndex((current) => (current + 1) % announcements.length), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <>
-      <div className="announcement" data-testid="announcement-bar">FREE SHIPPING ON ORDERS ABOVE ₹1,299</div>
+      <div className="announcement" data-testid="announcement-bar"><span className="announcement-message" key={announcementIndex} data-testid="announcement-message">{announcements[announcementIndex]}</span></div>
       <header className="site-header" data-testid="site-header">
         <div className="header-inner">
           <button className="icon-button mobile-only" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu" data-testid="mobile-menu-toggle"><Menu size={20} /></button>
