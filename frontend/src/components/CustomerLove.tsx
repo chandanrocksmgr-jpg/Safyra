@@ -36,8 +36,6 @@ const customerStories = [
 
 export default function CustomerLove() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const story = customerStories[activeIndex];
-
   useEffect(() => {
     const timer = window.setInterval(() => setActiveIndex((current) => (current + 1) % customerStories.length), 5500);
     return () => window.clearInterval(timer);
@@ -52,16 +50,17 @@ export default function CustomerLove() {
       <p data-testid="customer-love-subheading">Real women. Real SAFYRA. Real words.</p>
     </div>
     <div className="customer-love-carousel">
-      <article className={`customer-love-card customer-love-card-${activeIndex + 1}`} key={story.name} data-testid="customer-love-card">
-        <div className="customer-love-image"><img src={story.image} alt={`${story.name} wearing SAFYRA`} loading="lazy" /></div>
-        <div className="customer-love-copy">
-          <blockquote data-testid="customer-love-quote">{story.quote}</blockquote>
-          <p data-testid="customer-love-customer"><strong>{story.name}</strong><span>{story.city}</span></p>
-        </div>
-      </article>
+      <div className="customer-love-stage">
+        {customerStories.map((story, index) => <article className={`customer-love-card customer-love-card-${index + 1}${activeIndex === index ? " is-active" : ""}`} key={story.name} aria-hidden={activeIndex !== index} data-testid={`customer-love-card-${index + 1}`}>
+          <div className="customer-love-image"><img src={story.image} alt={`${story.name} wearing SAFYRA`} loading="lazy" /></div>
+          <div className="customer-love-copy">
+            <blockquote data-testid={`customer-love-quote-${index + 1}`}>{story.quote}</blockquote>
+            <p data-testid={`customer-love-customer-${index + 1}`}><strong>{story.name}</strong><span>{story.city}</span></p>
+          </div>
+        </article>)}
+      </div>
       <div className="customer-love-controls">
         <button type="button" onClick={previous} aria-label="Previous customer story" data-testid="customer-love-previous"><ChevronLeft size={18} /></button>
-        <span data-testid="customer-love-counter">{activeIndex + 1} / {customerStories.length}</span>
         <button type="button" onClick={next} aria-label="Next customer story" data-testid="customer-love-next"><ChevronRight size={18} /></button>
       </div>
     </div>
