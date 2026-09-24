@@ -1,0 +1,40 @@
+{
+  "iteration": 10,
+  "mode": "retest",
+  "passed": 4,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Reported mobile blank-gap issue - photo visible, quote directly beneath, name/city visible below quote",
+      "name": "customer-love-quote-follows-photo",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run on 390x844 against public preview URL: photo container visible (y=82.5, h=280), quote starts at y=381.9 (gap 19.4px, no large blank area), customer name+city ('Rashmi'/'HIMACHAL PRADESH') follow quote with 22.4px gap. Screenshot customer-love-layout.png."
+    },
+    {
+      "criterion": "Customer carousel regression - section position (after WHY SHOP SAFYRA, before EXTENDED SIZES), no numerical counter",
+      "name": "customer-stories-visible-no-counter",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run: bodyText indices confirm WHY SHOP SAFYRA < WORN. LOVED. RETURNED TO. < EXTENDED SIZES ordering intact; no /\\d\\s*\\/\\s*5/ counter pattern found in section text; quote+name+city text visible in section snapshot. Screenshots initial-story.png, quote-name-city.png."
+    },
+    {
+      "criterion": "Customer carousel regression - single complete story shown at a time, previous/next arrows work",
+      "name": "customer-carousel-stable-single-panel",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run: exactly 1 <img> rendered at a time (imgCount=1); next/previous arrows change and correctly restore story text; section height stable (1064px before/after, diff=0). Screenshots panel-before-next.png, panel-after-next.png, panel-after-prev.png."
+    },
+    {
+      "criterion": "Customer carousel regression - auto-rotates in about 5-6 seconds",
+      "name": "customer-story-auto-rotates",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-run: without interaction, section auto-advanced from Rashmi/HIMACHAL PRADESH story to Dr Manaswini/ODISHA story within the ~5-6s waitForFunction window (<=8s). Screenshots before-rotation.png, after-rotation.png."
+    }
+  ],
+  "summary": "2/2 acceptance criteria from the briefing re-verified by re-running 4 existing persisted browser checks (name-only re-run, no script changes) against the live public preview URL at 390x844 mobile viewport, since this iteration's briefing matches the criteria already fixed and covered in iteration 9. Results: 4 passed, 0 failed, 0 flaky, 0 blocked, 0 test_error. Mobile blank-gap fix remains verified (quote begins ~19px beneath photo, no large blank area; name/city follow quote). Carousel regression fully intact: section stays between WHY SHOP SAFYRA and EXTENDED SIZES, one story shown at a time, prev/next arrows functional, auto-rotation within ~5-6s window, and no numerical counter present. No pure-API surface for these client-rendering criteria, so no new backend test files were needed (existing backend suite untouched). No bugs found, no action items, no retest needed."
+}

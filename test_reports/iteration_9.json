@@ -1,0 +1,33 @@
+{
+  "iteration": 9,
+  "mode": "generate",
+  "passed": 3,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Customer quote directly follows customer photo on mobile",
+      "name": "customer-love-quote-follows-photo",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On 390x844 mobile viewport against the public preview URL, measured bounding boxes inside customer-love-card: the visible photo container (div.customer-love-image, y=82.5 h=280) is followed by customer-love-quote starting at y=381.9 -> gap of 19.4px (well under the 60px 'large blank gap' threshold, and non-negative confirming no overlap). customer-love-customer (name 'Rashmi' + city 'HIMACHAL PRADESH') follows the quote with a 22.4px gap. Both quote and customer text are non-empty. Note: the raw <img> tag itself has an oversized/absolute box (711px) that overflows past the quote - the actual clipped visible photo area is its parent container, which was used for the measurement (confirmed via DOM tree inspection). Screenshot customer-love-layout.png."
+    },
+    {
+      "criterion": "Existing carousel behavior remains intact (single panel)",
+      "name": "customer-carousel-stable-single-panel",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check from prior iteration: exactly 1 <img> rendered at a time (imgCount=1); next arrow (data-testid=customer-love-next) changes story, previous arrow (customer-love-previous) returns to the exact original story text; section height stable before/after (1064px -> 1064px, diff=0); no '/ n' numerical counter present. Screenshots panel-before-next.png, panel-after-next.png, panel-after-prev.png."
+    },
+    {
+      "criterion": "Existing carousel behavior remains intact (auto-rotation ~5-6s)",
+      "name": "customer-story-auto-rotates",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: without any interaction, the section auto-advanced from the Rashmi/HIMACHAL PRADESH story to a different genuine story (Dr Manaswini/ODISHA) within the expected ~5-6s window (page.waitForFunction up to 8s). Screenshots before-rotation.png, after-rotation.png."
+    }
+  ],
+  "summary": "2/2 acceptance criteria covered (3 check artifacts: 1 new for the layout fix, 2 re-run existing checks for carousel behavior regression coverage). All 3 browser checks passed on the live preview URL at 390x844 mobile viewport: 3 passed, 0 failed, 0 flaky, 0 blocked, 0 test_error. Layout fix verified: quote now begins ~19px beneath the photo (no large ivory gap), and the name/city follows the quote with a similarly small gap. Carousel behavior (single panel, arrows, auto-rotation, no counter) confirmed still intact via re-run of prior iteration's checks. No pure-API surface for these client-side rendering criteria, so no backend test files were required. No bugs found, no action items, no retest needed. A leftover diagnostic check (customer-love-dom-inspect) created only to inspect the DOM structure during investigation was removed before finishing, per fixture/scratch-file discipline."
+}

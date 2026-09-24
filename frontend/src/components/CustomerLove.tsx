@@ -60,7 +60,7 @@ export default function CustomerLove() {
     <div className="customer-love-carousel">
       <div className="customer-love-stage">
         <article className={`customer-love-card customer-love-card-${activeIndex + 1}`} key={story.name} data-testid="customer-love-card">
-          <div className="customer-love-image"><img src={story.image} alt={`${story.name} wearing SAFYRA`} loading="eager" /></div>
+          <div className="customer-love-image"><div className="customer-love-crop"><img src={story.image} alt={`${story.name} wearing SAFYRA`} loading="eager" /></div></div>
           <div className="customer-love-copy">
             <blockquote data-testid="customer-love-quote">{story.quote}</blockquote>
             <p data-testid="customer-love-customer"><strong>{story.name}</strong><span>{story.city}</span></p>
