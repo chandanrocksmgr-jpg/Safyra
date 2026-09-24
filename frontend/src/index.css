@@ -87,7 +87,7 @@
 
 @keyframes soft-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes announcement-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes announcement-fade { from { opacity: .7; } to { opacity: 1; } }
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; background: #fdfbf7; color: #2c1a14; -webkit-font-smoothing: antialiased; }

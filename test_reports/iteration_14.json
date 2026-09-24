@@ -1,0 +1,26 @@
+{
+  "iteration": 14,
+  "mode": "generate",
+  "passed": 2,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Announcement bar never enters a blank state",
+      "name": "announcement-bar-opacity-never-blank",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On mobile viewport (390x844) against public preview URL, sampled the .announcement-message span's computed opacity + text every ~120ms for 11s (covers 2+ rotation/fade cycles). Confirmed CSS: 'announcement-fade' keyframe now animates opacity from .7 to 1 (index.css:90), verified minObservedOpacity >= 0.65 (never 0/blank) and text content was always non-empty, containing either 'FREE SHIPPING ON ORDERS ABOVE' or 'A LITTLE SOMETHING FROM SAFYRA' throughout. Fixed selector to target data-testid=announcement-message directly (initial attempt using generic span/div/p query over-matched and mis-detected blank); rerun passed cleanly."
+    },
+    {
+      "criterion": "Announcement behavior and styling remain unchanged",
+      "name": "announcement-bar-rotation",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran existing persisted check (from prior iteration) on mobile viewport against public preview URL: announcement bar shows 'FREE SHIPPING ON ORDERS ABOVE ₹1,299' initially, rotates to 'A LITTLE SOMETHING FROM SAFYRA - WITH YOUR FIRST ORDER' after ~5s (interval + 300ms fade honored). Computed style (color, fontSize, fontWeight) and bar bounding box (height/y) identical before/after swap, confirming stable presentation. Result: PASSED on rerun."
+    }
+  ],
+  "summary": "Both acceptance criteria for the announcement bar opacity fix verified on mobile viewport against the public preview URL. Source confirms the fix: index.css announcement-fade keyframe now goes 'from { opacity: .7 }' (previously 0) 'to { opacity: 1 }', so the bar text is never fully transparent during the 300ms fade / 5000ms rotation swap. New check announcement-bar-opacity-never-blank added and passed; existing announcement-bar-rotation re-run and passed, confirming no regression to rotation timing, fade style, or bar dimensions/typography. Result: 2 passed, 0 failed, 0 flaky, 0 blocked, 0 test_error. Pure client-side CSS/timing criteria with no API surface, so no backend test file was needed. No bugs found, no action items, no retest needed."
+}
