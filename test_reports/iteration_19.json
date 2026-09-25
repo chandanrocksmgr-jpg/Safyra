@@ -1,0 +1,32 @@
+{
+  "iteration": 19,
+  "summary": "Verified SAFYRA wordmark typography update (weight 500, Cormorant Garamond, Deep Espresso rgb(38,28,25)) and unchanged CHIKANKARI hierarchy (weight 400) via a mobile browser check. Backend regression suite also re-run clean.",
+  "passed": 3,
+  "failed": 0,
+  "checks": [
+    {
+      "criterion": "Header SAFYRA wordmark has stronger recognition",
+      "name": "wordmark-safyra-typography",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Mobile viewport (390x844) /: getComputedStyle(span.SAFYRA) => fontWeight=500, fontFamily contains 'cormorant', color=rgb(38, 28, 25); text 'SAFYRA' visible in header."
+    },
+    {
+      "criterion": "Reference hierarchy remains intact",
+      "name": "wordmark-safyra-typography",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Same check: getComputedStyle(small.CHIKANKARI) => fontWeight=400; both elements present inside data-testid=brand-home-link with original text/structure unchanged."
+    },
+    {
+      "criterion": "Backend regression (no app-code criteria touch API)",
+      "name": "pytest backend suite",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "cd /app/backend && python -m pytest -q => '9 passed in 3.55s'"
+    }
+  ],
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false
+}
