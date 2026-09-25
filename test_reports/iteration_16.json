@@ -1,0 +1,26 @@
+{
+  "iteration": 16,
+  "mode": "retest",
+  "passed": 2,
+  "failed": 0,
+  "checks": [
+    {
+      "criterion": "Announcement bar always contains readable text",
+      "name": "announcement-bar-opacity-never-blank",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check against mobile homepage; data-testid=announcement-message stayed non-blank with opacity 1 across sampled swaps between the two exact strings."
+    },
+    {
+      "criterion": "Announcement rotation remains five seconds without visual changes",
+      "name": "announcement-bar-rotation",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check; message rotated ~5s interval between exact strings while bar height, background, typography, alignment unchanged (initial + after-rotation screenshots)."
+    }
+  ],
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "notes": "Both criteria previously reported as fixed (stale mobile CSS rule '.announcement span { display:none; }' removed) confirmed stable on retest via persisted checks, no script changes needed."
+}

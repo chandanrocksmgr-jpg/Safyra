@@ -1,0 +1,70 @@
+{
+  "iteration": 17,
+  "mode": "generate",
+  "passed": 6,
+  "failed": 1,
+  "checks": [
+    {
+      "criterion": "Finalized SAFYRA palette",
+      "name": "brand-palette-tokens-active",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "CSS vars --safyra-ivory=#F7F3EB, --safyra-espresso=#261C19, --safyra-aubergine=#49343D confirmed on document root; body background-color computed as rgb(247,243,235) (Warm Ivory canvas) on homepage."
+    },
+    {
+      "criterion": "Finalized SAFYRA typography",
+      "name": "brand-typography-fonts-active",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Hero <h1> font-family matched /Cormorant Garamond/i; nav link 'New Arrivals' and homepage product name 'Aira Pure Kota Doria Angrakha' matched /Manrope/i; no element on the page reported Playfair Display, Outfit, or JetBrains Mono in computed font-family."
+    },
+    {
+      "criterion": "Dark-surface readability",
+      "name": "dark-surface-espresso-readable",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "'Customer care' section and <footer> both computed background-color rgb(38,28,25) (Deep Espresso); heading text on that section computed rgb(247,243,235) (Warm Ivory); footer 'Shop all' link text channels all >150 confirming light, readable text on the dark surface."
+    },
+    {
+      "criterion": "Functional colours preserved",
+      "name": "functional-colors-whatsapp-preserved",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Stylist-help floating widget background resolved to rgb(47,94,70) - green channel dominant over red and blue, confirming WhatsApp green remains distinct from the espresso/aubergine brand palette."
+    },
+    {
+      "criterion": "Locked storefront structure preserved",
+      "name": "homepage-editorial-sections-visible",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Updated stale selectors (two testids from an earlier build no longer exist: craft-heritage-bar, shop-fabric-link) to match current Home.tsx; re-verified hero, new-arrivals link, shop-by-category link, category-tile-1..5, extended-sizes link, craft-story button, Instagram journal link and home WhatsApp button all visible on mobile viewport with no fabricated ratings/urgency copy."
+    },
+    {
+      "criterion": "Locked storefront structure preserved",
+      "name": "public-catalog-accuracy-and-integrity",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check; shop grid and Sang-e-Mar-Mar PDP screenshots confirm the four approved products, imagery and data remain intact and unchanged."
+    },
+    {
+      "criterion": "Pre-existing regression suite (not in current acceptance matrix)",
+      "name": "backend pytest suite (test_tscheck_admin_catalog_crud.py, test_tscheck_catalog_integrity.py, test_tscheck_session_isolation.py)",
+      "lane": "backend",
+      "status": "failed",
+      "evidence": "Full-suite run: 8 passed, 1 failed. test_admin_cannot_see_own_qa_named_product fails consistently across repeated full-suite runs (isolated single-file run passes): admin-authenticated GET /products list and GET /products/{id} hide the admin's own freshly-created product 'tscheck-catalog-visibility-*' because its title matches the public QA-name filter (list_status=200 contains_id=False; single_get_status=404). Admin login itself succeeded via direct curl to /api/auth/admin/login (200, returns admin user object), so the earlier single failed httpx-client login inside the suite was a rerun-confirmed flake, not a credentials issue."
+    }
+  ],
+  "bugs": [
+    {
+      "severity": "medium",
+      "criterion": "Pre-existing regression suite (not in current acceptance matrix)",
+      "description": "Backend applies the public QA-name exclusion filter (titles starting with 'tscheck-') to admin-authenticated product list/detail endpoints, so admins cannot see their own freshly created QA-prefixed products in /api/products or /api/products/{id}. This filter should only apply to the public/unauthenticated catalog surface.",
+      "evidence": "pytest tests/test_tscheck_catalog_integrity.py::test_admin_cannot_see_own_qa_named_product — AssertionError, list_status=200 contains_id=False single_get_status=404 for product id b24ac88e-5768-4906-8390-cd2bbd02eff3 (title 'tscheck-catalog-visibility-e0532de3'), reproduced twice in full-suite runs, passes when the file is run in isolation."
+    }
+  ],
+  "action_items": [
+    "Backend bug above is unrelated to the five current SAFYRA palette/typography acceptance criteria (which all passed) but is a real, reproducible defect surfaced by the existing regression suite; recommend main agent scope a fix to the admin product visibility filter."
+  ],
+  "retest_needed": true,
+  "notes": "Current briefing's 5 acceptance criteria (palette, typography, dark-surface readability, functional colours, locked structure) all passed via new/updated browser checks. Also re-ran the pre-existing full backend pytest suite per method step 2; one pre-existing test (catalog integrity, unrelated to this iteration's matrix) fails reproducibly outside isolation and is reported as a bug for the record. homepage-editorial-sections-visible check was updated in place (its two testid selectors referenced markup removed in a prior refactor) rather than left failing on stale expectations."
+}

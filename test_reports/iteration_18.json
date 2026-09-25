@@ -1,0 +1,61 @@
+{
+  "iteration": 18,
+  "mode": "retest",
+  "passed": 7,
+  "failed": 0,
+  "checks": [
+    {
+      "criterion": "Finalized SAFYRA palette",
+      "name": "brand-palette-tokens-active",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check (name-only): CSS vars --safyra-ivory=#F7F3EB, --safyra-espresso=#261C19, --safyra-aubergine=#49343D confirmed on document root; body background rgb(247,243,235) (Warm Ivory canvas) on homepage."
+    },
+    {
+      "criterion": "Finalized SAFYRA typography",
+      "name": "brand-typography-fonts-active",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: Hero <h1> font-family matches /Cormorant Garamond/i; nav link and product name match /Manrope/i; no legacy font (Playfair Display/Outfit/JetBrains Mono) found on page."
+    },
+    {
+      "criterion": "Dark-surface readability",
+      "name": "dark-surface-espresso-readable",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: 'Customer care' section and footer both rgb(38,28,25) (Deep Espresso) with Warm Ivory rgb(247,243,235) heading text; footer link text channels all >150 confirming readable contrast."
+    },
+    {
+      "criterion": "Functional colours preserved",
+      "name": "functional-colors-whatsapp-preserved",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: stylist-help floating widget background rgb(47,94,70), green channel dominant, distinct from espresso/aubergine palette."
+    },
+    {
+      "criterion": "Locked storefront structure preserved",
+      "name": "homepage-editorial-sections-visible",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: hero, new-arrivals link, category tiles 1-5, extended-sizes link, craft-story button, Instagram journal link, and WhatsApp button all visible; no fabricated ratings/urgency copy."
+    },
+    {
+      "criterion": "Locked storefront structure preserved",
+      "name": "public-catalog-accuracy-and-integrity",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: shop grid and Sang-e-Mar-Mar PDP screenshots confirm the four approved products, imagery and data remain intact and unchanged."
+    },
+    {
+      "criterion": "Pre-existing regression suite (not in current acceptance matrix)",
+      "name": "backend pytest suite (test_tscheck_admin_catalog_crud.py, test_tscheck_catalog_integrity.py, test_tscheck_session_isolation.py)",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "cd /app/backend && python -m pytest -q -p no:cacheprovider (fixed -n2 --dist loadscope): 9 passed, run 3 consecutive times with no failures (previously the full-suite run failed test_admin_cannot_see_own_qa_named_product intermittently). Fixed test isolation: added a cross-worker filelock-backed `admin_account_lock` fixture in conftest.py, applied to the shared `admin_client` fixture and to the raw-client admin-password-reset test in test_tscheck_admin_catalog_crud.py, so any test that logs in as or mutates the single seeded admin account now serializes across xdist workers and can no longer invalidate another worker's in-flight admin session. Also confirmed via code inspection that routers/products.py (lines 55, 131-132) already exempts authenticated admins from the public QA-title regex, so the underlying visibility behavior needed no application change; updated stale 'BUG'-framed docstrings/messages in the two test files to reflect the fixed state."
+    }
+  ],
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "notes": "All 5 current SAFYRA brand acceptance criteria re-verified passing via re-run of the 6 persisted browser checks from iteration 17 (no script changes needed). Per seed_facts/spec_deviations, root-caused and fixed the previously reported full-suite-only backend failure as a test-isolation race (not an app defect): test_tscheck_admin_catalog_crud.py mutates/invalidates the shared seeded admin's sessions while test_tscheck_catalog_integrity.py's admin_client fixture (running concurrently on another pytest-xdist worker under --dist loadscope) could get caught mid-invalidation. Added a filelock-backed admin_account_lock fixture in conftest.py used by admin_client and the raw admin-password-reset test to serialize all shared-admin-account access across workers, without touching pytest.ini addopts or any application code. Verified 3 consecutive full-suite runs: 9/9 passed each time. Removed a stray functional-colors-whatsapp-preserved.mjs.backup file left in the checks directory."
+}

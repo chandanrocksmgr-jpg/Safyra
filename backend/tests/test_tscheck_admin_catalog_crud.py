@@ -16,12 +16,10 @@ TEMP_PASSWORD = "Tscheck!Temp#901"
 
 
 def _fixture_payload(suffix: str) -> dict:
-    # NOTE: deliberately avoids the tscheck-/test-/debug-/placeholder- prefixes: the public
-    # catalog filter in routers/products.py excludes those titles from GET /products and
-    # GET /products/{id} for EVERY caller, including an authenticated admin (see
-    # test_tscheck_catalog_integrity.py::test_admin_cannot_see_own_qa_named_product for the
-    # dedicated bug report). Using a compliant title here lets this CRUD-roundtrip test actually
-    # exercise the admin management flow end to end.
+    # Uses a compliant (non tscheck-/test-/debug-/placeholder-) title so this CRUD-roundtrip test
+    # also exercises the product's presence in the PUBLIC catalog listing (see assertion below).
+    # An admin-authenticated caller is exempt from that public-title filter (routers/products.py),
+    # so a QA-prefixed title would work too for the admin-only assertions in this test.
     return {
         "title": f"safyra-admin-crud-{suffix}",
         "slug": f"safyra-admin-crud-{suffix}",
@@ -109,7 +107,7 @@ def test_admin_can_create_update_and_delete_product(admin_client, client):
     assert product_id not in ids_after, "deleted product still present in GET /products"
 
 
-def test_admin_recovery_question_and_verified_reset_roundtrip(client):
+def test_admin_recovery_question_and_verified_reset_roundtrip(client, admin_account_lock):
     # Recovery question is available for the admin email
     question_resp = client.get("/auth/admin/recovery-question", params={"email": ADMIN_EMAIL})
     assert question_resp.status_code == 200, f"expected 200, got {question_resp.status_code}: {question_resp.text[:300]}"

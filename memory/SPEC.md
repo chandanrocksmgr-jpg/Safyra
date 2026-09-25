@@ -3,6 +3,11 @@
 ## Purpose
 Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Chikankari. The build is independent of Shopify and uses a Mongo-backed approved catalog that SAFYRA staff can maintain through `/admin`.
 
+## Brand system
+- Warm Ivory `#F7F3EB` is the dominant canvas, Deep Espresso `#261C19` is the primary UI dark, and Deep Aubergine `#49343D` is reserved for sparse editorial accents.
+- Cormorant Garamond is the display/editorial typeface; Manrope is used for body copy, navigation, commerce UI, product names, prices and controls.
+- Functional WhatsApp, success, warning and error colours remain intact for usability.
+
 ## Core flows
 - Home: rotating shipping and first-order announcements, product-led hero, immediate new arrivals, five-card category discovery without number overlays, conditional verified bestsellers, current selections, SAFYRA Luxury, collections, factual service points, a five-story verified customer carousel, extended sizes, concise Lucknow story, product journal and WhatsApp care.
 - Navigation: Shop by Category and Shop the Edit groups route to future-ready catalogue URLs without creating or modifying catalogue data.

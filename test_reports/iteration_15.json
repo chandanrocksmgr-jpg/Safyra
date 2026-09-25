@@ -1,0 +1,38 @@
+{
+  "iteration": 15,
+  "mode": "generate",
+  "passed": 0,
+  "failed": 2,
+  "bugs": [
+    {
+      "severity": "high",
+      "criterion": "Announcement bar always contains readable text",
+      "description": "On mobile viewport (390x844, matching form_factor=mobile), the persistent data-testid=announcement-message span is present in the DOM with correct text and opacity:1, but is fully hidden (display:none) due to a leftover CSS rule '.announcement span { display: none; }' inside the '@media (max-width: 767px)' block in frontend/src/index.css (line 394). This rule was written for the OLD implementation (before the keyed-remount/opacity-animation removal) and now blanks out the ONLY message span on all mobile widths, so the announcement bar shows no text at all on mobile — directly violating the criterion.",
+      "evidence": "Playwright getByTestId('announcement-message').toBeVisible() times out with 'Received: hidden'. Direct evaluate() on the element returns: {\"text\":\"FREE SHIPPING ON ORDERS ABOVE ₹1,299\",\"opacity\":\"1\",\"display\":\"none\",\"visibility\":\"visible\",\"rect\":{\"width\":0,\"height\":0,...}}. Screenshot (announcement-bar-opacity-never-blank-failure.png) shows the dark-brown bar at the top of the mobile homepage rendered with no visible text. Source: frontend/src/index.css:394 '.announcement span { display: none; }' inside '@media (max-width: 767px)' (lines 392-394), while BrandHeader.tsx:52 renders exactly one persistent '<span class=\"announcement-message\" data-testid=\"announcement-message\">' as described in the briefing — the CSS selector '.announcement span' still matches it and hides it."
+    }
+  ],
+  "action_items": [
+    {
+      "type": "bug_fix_needed",
+      "detail": "Remove or scope the stale '.announcement span { display: none; }' rule in frontend/src/index.css (~line 394, inside @media (max-width: 767px)) so the persistent .announcement-message span remains visible on mobile."
+    }
+  ],
+  "retest_needed": true,
+  "checks": [
+    {
+      "criterion": "Announcement bar always contains readable text",
+      "name": "announcement-bar-opacity-never-blank",
+      "lane": "browser",
+      "status": "failed",
+      "evidence": "Sampled data-testid=announcement-message on mobile viewport (390x844) against public preview URL; element never becomes visible (Playwright reports 'hidden') because computed display is 'none' via CSS media rule '.announcement span { display: none; }' (index.css:394), despite text content and opacity:1 being correct in the DOM."
+    },
+    {
+      "criterion": "Announcement rotation remains five seconds without visual changes",
+      "name": "announcement-bar-rotation",
+      "lane": "browser",
+      "status": "failed",
+      "evidence": "Same root cause: getByTestId('announcement-message').toBeVisible() times out ('Received: hidden') before rotation timing could even be measured on mobile viewport (390x844). The element is display:none the entire time due to index.css:394, so no visible rotation occurs on mobile."
+    }
+  ],
+  "summary": "2 failed, 0 passed, 0 flaky, 0 blocked, 0 test_error. Both mobile-viewport browser checks for the announcement bar fail: a stale CSS rule '.announcement span { display: none; }' inside the '@media (max-width: 767px)' block (frontend/src/index.css:394) hides the persistent data-testid=announcement-message span entirely on mobile, even though the component itself (BrandHeader.tsx) correctly renders one persistent span with opacity:1 and correct rotating text as described in the briefing. This is a real regression left over from before the keyed-remount/opacity-animation removal, and it directly contradicts both acceptance criteria on the mobile form_factor this app targets. No backend test file was needed (pure client-side CSS/timing criteria, no API surface)."
+}

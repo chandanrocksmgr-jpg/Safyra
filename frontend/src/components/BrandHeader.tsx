@@ -29,7 +29,7 @@ const menuGroups = [
 
 const announcements = [
   "FREE SHIPPING ON ORDERS ABOVE ₹1,299",
-  "A LITTLE SOMETHING FROM SAFYRA - WITH YOUR FIRST ORDER",
+  "A LITTLE SOMETHING FROM SAFYRA — WITH YOUR FIRST ORDER",
 ];
 
 export default function BrandHeader() {
@@ -49,7 +49,7 @@ export default function BrandHeader() {
 
   return (
     <>
-      <div className="announcement" data-testid="announcement-bar"><span className="announcement-message" key={announcementIndex} data-testid="announcement-message">{announcements[announcementIndex]}</span></div>
+      <div className="announcement" data-testid="announcement-bar"><span className="announcement-message" data-testid="announcement-message">{announcements[announcementIndex]}</span></div>
       <header className="site-header" data-testid="site-header">
         <div className="header-inner">
           <button className="icon-button mobile-only" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu" data-testid="mobile-menu-toggle"><Menu size={20} /></button>

@@ -6,10 +6,12 @@ file — add app-specific fixtures below the marker at the bottom.
 """
 
 import os
+import tempfile
 
 import httpx
 import pytest
 import pytest_asyncio
+from filelock import FileLock
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8001")
 API_URL = f"{BACKEND_URL}/api"
@@ -65,9 +67,29 @@ def rebind_session_cookie(c: "httpx.Client", login_response: "httpx.Response") -
     c.cookies.set(SESSION_COOKIE, token)
 
 
+ADMIN_ACCOUNT_LOCK_PATH = os.path.join(tempfile.gettempdir(), "tscheck_admin_account.lock")
+
+
 @pytest.fixture
-def admin_client():
-    """httpx client authenticated as the seeded admin (session cookie persisted across requests)."""
+def admin_account_lock():
+    """Serializes any test that reads or mutates the single seeded admin account's password/
+    sessions across pytest-xdist workers. Without this, a password-change/session-invalidation
+    test in one module (scheduled on one worker under --dist loadscope) can run concurrently with
+    an admin-authenticated request in a different module on another worker, invalidating that
+    other worker's freshly-issued session mid-request. Request this fixture (directly, or via
+    admin_client below) in any test that logs in as the seeded admin or changes its password."""
+    lock = FileLock(ADMIN_ACCOUNT_LOCK_PATH, timeout=60)
+    with lock:
+        yield
+
+
+@pytest.fixture
+def admin_client(admin_account_lock):
+    """httpx client authenticated as the seeded admin (session cookie persisted across requests).
+
+    Holds admin_account_lock for the fixture's lifetime (i.e. for the whole test), so this test's
+    admin session cannot be invalidated by a concurrent password-change test on another worker.
+    """
     with httpx.Client(base_url=API_URL, timeout=30.0) as c:
         resp = c.post("/auth/admin/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
         assert resp.status_code == 200, f"admin login failed: {resp.status_code} {resp.text[:300]}"

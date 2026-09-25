@@ -2,12 +2,10 @@
 no tscheck/test/debug/placeholder rows leak into the customer-facing listing, and every stored
 compare price (mrp) is genuinely higher than price (no fabricated "% off" data possible).
 
-Also documents a real defect found while probing this behaviour: the same title filter that
-correctly hides QA-named products from the PUBLIC catalog is applied unconditionally in
-routers/products.py, so it also hides an admin's own just-created QA product from the
-admin-authenticated GET /products list and GET /products/{id} - the admin cannot see or manage
-(edit/verify) a product they just created through the UI if its title starts with one of the
-banned prefixes, even though DELETE by id still works.
+Also regression-guards a previously reported defect: the QA-name title filter must only apply to
+the unauthenticated/public catalog surface. routers/products.py (list ~line 55, single ~lines
+131-132) now exempts an authenticated admin from that filter, so an admin can see/manage their own
+just-created QA-prefixed product via GET /products and GET /products/{id}.
 """
 import uuid
 
@@ -43,7 +41,8 @@ def test_public_catalog_is_exactly_the_four_approved_products(client):
 
 
 def test_admin_cannot_see_own_qa_named_product(admin_client, client):
-    """Bug report: admin-authenticated requests are filtered by the same public title regex."""
+    """Regression guard: admin-authenticated requests must be exempt from the public title
+    filter, so an admin can see/manage their own freshly-created QA-prefixed product."""
     suffix = uuid.uuid4().hex[:8]
     title = f"tscheck-catalog-visibility-{suffix}"
     payload = {
@@ -90,10 +89,9 @@ def test_admin_cannot_see_own_qa_named_product(admin_client, client):
         admin_ids = [p["id"] for p in admin_list]
         admin_get = admin_client.get(f"/products/{product_id}")
         assert product_id in admin_ids and admin_get.status_code == 200, (
-            "BUG: admin-authenticated GET /products (list) and/or GET /products/{id} hide the "
-            f"admin's own product '{title}' (id={product_id}) because its title matches the "
-            f"public QA-name filter. list_status=200 contains_id={product_id in admin_ids} "
-            f"single_get_status={admin_get.status_code}"
+            "admin-authenticated GET /products (list) and/or GET /products/{id} unexpectedly hide "
+            f"the admin's own product '{title}' (id={product_id}). list_status=200 "
+            f"contains_id={product_id in admin_ids} single_get_status={admin_get.status_code}"
         )
     finally:
         # Cleanup still works because DELETE is not filtered by title.
