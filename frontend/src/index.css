@@ -108,8 +108,8 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .header-inner { max-width: 1440px; height: 70px; margin: 0 auto; padding: 0 4vw; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .wordmark { display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .site-header .wordmark { color: #261C19; }
-.site-header .wordmark span { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-weight: 500; letter-spacing: .18em; }
-.site-header .wordmark small { font-family: 'Manrope Variable', sans-serif; font-weight: 400; letter-spacing: .4em; }
+.site-header .wordmark span { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.652rem; font-weight: 400; letter-spacing: .18em; }
+.site-header .wordmark small { margin-top: .448rem; font-family: 'Manrope Variable', sans-serif; font-size: .519rem; font-weight: 400; letter-spacing: .4em; }
 .wordmark span { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.4rem; letter-spacing: .18em; }
 .wordmark small { margin-top: .38rem; font-family: 'Manrope Variable', sans-serif; font-size: .44rem; letter-spacing: .4em; }
 .header-actions { justify-self: end; display: flex; align-items: center; }
@@ -399,6 +399,7 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 @media (max-width: 767px) {
   .announcement { font-size: .55rem; }
   .wordmark span { font-size: 1.18rem; }
+  .site-header .wordmark span { font-size: 1.392rem; }
   .header-actions .icon-button { width: 35px; }
   .mega-menu-inner { max-height: calc(100vh - 100px); overflow-y: auto; }
   .hero-copy { padding: 4rem 1.2rem 4.5rem; }
@@ -459,7 +460,8 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .fit-service h2 { margin: .7rem 0 1rem; font-size: clamp(2.4rem, 4vw, 4rem); line-height: 1; }
 .fit-service p { max-width: 520px; color: #ded2ca; line-height: 1.7; }
 .fit-service .underlined-link { color: #fff; }
-.fit-service > img { width: 100%; min-height: 440px; height: 100%; object-fit: cover; }
+.fit-service > img { width: 100%; min-height: 440px; height: 100%; object-fit: cover; object-position: center top; }
+.fit-service .eyebrow { color: var(--safyra-ivory); }
 .compact-story { padding-top: 5rem; padding-bottom: 5rem; }
 .compact-story .story-images { min-height: 440px; }
 .compact-story .story-images img:first-child,
