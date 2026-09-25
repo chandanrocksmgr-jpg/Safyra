@@ -1,0 +1,39 @@
+{
+  "iteration": 21,
+  "summary": "Custom-dyeing product-page option verified end-to-end: eligible products (customisation mentions dye/dyeing) show 'Prefer another colour?' + correctly-prefilled wa.me link; ineligible products and checkout do not; generic WhatsApp assistance link unchanged.",
+  "passed": 4,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Eligible custom-dyeing product page option + product-specific WhatsApp message",
+      "name": "product-custom-dyeing-eligible",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On /product/aira-pure-kota-doria-angrakha: 'Prefer another colour?' and link text 'Ask about custom dyeing →' visible near colour swatches; href decodes to https://wa.me/918090164929?text=Hi SAFYRA, I’d like to enquire about custom dyeing for Aira Pure Kota Doria Angrakha. (exact match, real product title)."
+    },
+    {
+      "criterion": "Eligibility and placement boundaries (absent when customisation doesn't mention dye)",
+      "name": "product-custom-dyeing-ineligible-absent",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On /product/luxury-nazakat-collection (customisation=''): custom-dyeing-option testid count=0, 'Prefer another colour' count=0; generic whatsapp-inquiry-button still visible with valid wa.me href, confirming existing generic assistance unchanged."
+    },
+    {
+      "criterion": "Eligibility and placement boundaries (absent from checkout)",
+      "name": "checkout-no-custom-dyeing-option",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Selected size S on eligible product, clicked Buy now, navigated to /checkout; custom-dyeing-option testid count=0 and 'Ask about custom dyeing' text count=0 on checkout page."
+    },
+    {
+      "criterion": "Customisation field is the sole eligibility source (data contract)",
+      "name": "test_tscheck_custom_dyeing_eligibility.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /api/products 200: Aira Pure Kota Doria Angrakha & Vaaya Pure Kota Doria Anarkali customisation fields match /\\bdye(?:d|ing)?\\b/i ('Custom dyeing is available through WhatsApp assistance'); Luxury Nazakat Collection & Sang-e-Mar-Mar — Rose Edition customisation='' do not match. Full backend suite: 10 passed."
+    }
+  ]
+}

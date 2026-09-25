@@ -187,7 +187,7 @@ export default function Checkout() {
                 <FieldError field="postalCode" message={errors.postalCode} />
               </label>
               <label className="field-wide">A note for SAFYRA
-                <textarea value={form.note} onChange={(event) => setField("note", event.target.value)} placeholder="Anything you'd like us to know about your order?" data-testid="checkout-order-note" />
+                <textarea value={form.note} onChange={(event) => setField("note", event.target.value)} placeholder="Any special instructions for your order?" data-testid="checkout-order-note" />
               </label>
             </div>
             <fieldset className="shipping-options">
