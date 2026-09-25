@@ -9,7 +9,7 @@ Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Ch
 - Functional WhatsApp, success, warning and error colours remain intact for usability.
 
 ## Core flows
-- Home: rotating announcement messages, product-led hero, immediate new arrivals, five-card category discovery without number overlays, conditional verified bestsellers, SAFYRA Luxury, collections, a five-story verified customer carousel, extended sizes, concise Lucknow story and WhatsApp care.
+- Home: rotating announcement messages, product-led hero, immediate new arrivals, five-card category discovery without number overlays, conditional verified bestsellers, SAFYRA Luxury, collections, a five-story verified customer carousel, concise Lucknow story and WhatsApp care.
 - Navigation: Shop by Category and Shop the Edit groups route to future-ready catalogue URLs without creating or modifying catalogue data.
 - Shop: instant search suggestions and recent searches; combinable category, collection, size, colour, fabric, craft, availability and price filters; supported sorting; zero-result recovery.
 - Product: real product-only galleries with zoom/swipe, required size selection, verified-only expandable details, add to bag, Buy Now to checkout preparation, contextual WhatsApp, admin-approved Complete the Look, relevant recommendation groups and mobile sticky add.
