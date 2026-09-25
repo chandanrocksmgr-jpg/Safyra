@@ -39,6 +39,11 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("email", ASCENDING), ("created_at", DESCENDING)], name="email_created"),
         IndexModel([("created_at", ASCENDING)], name="created_at_ttl", expireAfterSeconds=86400),
     ],
+    "order_requests": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("request_number", ASCENDING)], name="request_number", unique=True),
+        IndexModel([("customer_id", ASCENDING), ("received_at", DESCENDING)], name="customer_received"),
+    ],
 }
 
 

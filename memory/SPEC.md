@@ -18,10 +18,12 @@ Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Ch
 - Wishlist and cart: guest state persists in browser local storage; signed-in customer state persists to the account in Mongo. Cart drawer and full cart page include quantities and contextual WhatsApp order handoff.
 - Customer account: email/password signup and login, profile editing, saved wishlist/cart continuity, prior order history, text invoice download and milestone tracking. A clearly labelled demo order exists only on the demo customer.
 - Admin: hidden from storefront navigation, server-protected by the admin role, and available only after separate admin authentication. Admins can add/edit/delete products, change passwords while verified, or recover with the private security question and rate-limited answer check.
-- Checkout preparation: guest-friendly address capture, India/international shipping selection, order review and contextual WhatsApp request for a confirmed secure payment link. No payment processor is connected.
+- Checkout preparation: guest-friendly validated international address capture with searchable country/state/city suggestions, country-aware phone/postal validation, India/international shipping selection, saved unpaid order requests, review, completion guidance and contextual WhatsApp follow-up. No payment processor is connected and no order is confirmed until payment is completed.
 
 ## Data model
 `Product`: id, title, slug, category, collection, fabric, craft, price, optional verified mrp, stock, stock_by_size, approved sizes/colours/images, optional verified description/specifications, origin, occasion/style search terms, size-guide image, availability, merchandising flags and admin-approved complete-look product IDs.
+
+`OrderRequest`: id, request_number, received_at, optional customer_id, validated contact/delivery fields, shipping selection, customer note, server-priced product items and subtotal. It represents an unpaid request, not a confirmed order.
 
 ## Trust and accuracy
 The public catalog contains only the four products captured from the approved prior SAFYRA data pull: Nazakat, Aira, Vaaya and Sang-e-Mar-Mar. Test/debug and unapproved placeholder products are removed. Product names, public prices, genuine compare-at prices, known fabrics, craft details and dispatch windows are grounded in the stored approved data. Empty or unverified fields are omitted. No percentage discounts, ratings, review quotes, customer counts, urgency timers or invented public stock claims are shown.

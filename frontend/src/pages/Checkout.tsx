@@ -1,19 +1,232 @@
 import { useState, type FormEvent } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { City, Country, State } from "country-state-city";
+import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
+import { getCountryByCode, validatePostalCode } from "postal-code-checker";
 import { ArrowLeft, Check, MessageCircle, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import BrandHeader from "@/components/BrandHeader";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, whatsappUrl } from "@/lib/shop";
+import { apiPost } from "@/lib/api";
+import type { OrderRequestCreate, OrderRequestResponse } from "@/lib/checkout";
+
+type CheckoutStep = "details" | "review" | "complete";
+type CheckoutField = "name" | "email" | "phone" | "address" | "city" | "state" | "postalCode" | "country";
+type CheckoutErrors = Partial<Record<CheckoutField, string>>;
+
+interface CheckoutFormState {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  note: string;
+}
+
+const countries = Country.getAllCountries().sort((left, right) => left.name.localeCompare(right.name));
+const NO_STATE_REGION = "Not applicable";
+const normalize = (value: string) => value.trim().toLocaleLowerCase();
+const exactMatch = <T extends { name: string }>(items: T[], value: string) => items.find((item) => normalize(item.name) === normalize(value));
+
+function FieldError({ field, message }: { field: CheckoutField; message?: string }) {
+  return message ? <small className="checkout-field-error" aria-live="polite" data-testid={`checkout-${field}-error`}>{message}</small> : null;
+}
 
 export default function Checkout() {
   const { cart, cartTotal } = useShop();
-  const [step, setStep] = useState<"details" | "review">("details");
+  const [step, setStep] = useState<CheckoutStep>("details");
   const [shipping, setShipping] = useState("india");
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India" });
-  const continueToReview = (event: FormEvent) => { event.preventDefault(); setStep("review"); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const [form, setForm] = useState<CheckoutFormState>({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India", note: "" });
+  const [errors, setErrors] = useState<CheckoutErrors>({});
+  const [request, setRequest] = useState<OrderRequestResponse | null>(null);
+  const selectedCountry = exactMatch(countries, form.country);
+  const postalCountry = selectedCountry ? getCountryByCode(selectedCountry.isoCode) : undefined;
+  const countryUsesPostalCodes = Boolean(postalCountry?.postalCodePatterns.length);
+  const states = selectedCountry ? State.getStatesOfCountry(selectedCountry.isoCode) : [];
+  const selectedState = exactMatch(states, form.state);
+  const cityRecords = selectedCountry && (!states.length || selectedState)
+    ? selectedState
+      ? City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode)
+      : City.getCitiesOfCountry(selectedCountry.isoCode) ?? []
+    : [];
+  const cities = [...new Set(cityRecords.map((city) => city.name))].sort((left, right) => left.localeCompare(right));
+
+  const submitRequest = useMutation({
+    mutationFn: (payload: OrderRequestCreate) => apiPost<OrderRequestResponse>("/order-requests", payload),
+    onSuccess: (response) => {
+      setRequest(response);
+      setStep("complete");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+  });
+
+  const validateForm = (): CheckoutErrors => {
+    const next: CheckoutErrors = {};
+    if (form.name.trim().length < 2 || !/[\p{L}]{2}/u.test(form.name)) next.name = "Enter your full name.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) next.email = "Enter a valid email address.";
+    if (!selectedCountry) next.country = "Select a country from the list.";
+    if (selectedCountry) {
+      try {
+        if (!isValidPhoneNumber(form.phone.trim(), selectedCountry.isoCode as CountryCode)) next.phone = "Enter a valid phone number for this country.";
+      } catch {
+        next.phone = "Enter a valid phone number for this country.";
+      }
+      if (countryUsesPostalCodes && !validatePostalCode(selectedCountry.isoCode, form.postalCode.trim())) next.postalCode = "Enter a valid postal code for this country.";
+      if (!countryUsesPostalCodes && form.postalCode !== NO_STATE_REGION) next.postalCode = "This country does not use postal codes; use the available option.";
+    } else {
+      if (!form.phone.trim()) next.phone = "Enter your phone number.";
+      if (!form.postalCode.trim()) next.postalCode = "Enter your postal code.";
+    }
+    if (form.address.trim().length < 5 || !/[\p{L}\p{N}]{3}/u.test(form.address)) next.address = "Enter a complete delivery address.";
+    if (states.length && !selectedState) next.state = "Select a state or region from the list.";
+    if (!states.length && selectedCountry && form.state !== NO_STATE_REGION) next.state = "Select the available region option.";
+    if (!selectedCountry || !cities.length) next.city = "City suggestions are unavailable for this destination. Please contact SAFYRA.";
+    else if (!cities.some((city) => normalize(city) === normalize(form.city))) next.city = "Select a city from the suggestions.";
+    return next;
+  };
+
+  const setField = (field: keyof CheckoutFormState, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    if (field !== "note") setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+  const setCountry = (value: string) => {
+    const country = exactMatch(countries, value);
+    const countryStates = country ? State.getStatesOfCountry(country.isoCode) : [];
+    const postalDetails = country ? getCountryByCode(country.isoCode) : undefined;
+    setForm((current) => ({ ...current, country: value, state: country && !countryStates.length ? NO_STATE_REGION : "", city: "", postalCode: country && !postalDetails?.postalCodePatterns.length ? NO_STATE_REGION : "" }));
+    setErrors((current) => ({ ...current, country: undefined, state: undefined, city: undefined, postalCode: undefined, phone: undefined }));
+  };
+  const setStateRegion = (value: string) => {
+    setForm((current) => ({ ...current, state: value, city: "" }));
+    setErrors((current) => ({ ...current, state: undefined, city: undefined }));
+  };
+  const showFieldError = (field: CheckoutField) => setErrors((current) => ({ ...current, [field]: validateForm()[field] }));
+  const continueToReview = (event: FormEvent) => {
+    event.preventDefault();
+    const next = validateForm();
+    setErrors(next);
+    if (Object.keys(next).length) return;
+    setStep("review");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const orderSummary = cart.map((item) => `${item.title} — Size ${item.size}, ${item.color}, Qty ${item.quantity}`).join("; ");
-  const handoff = whatsappUrl(`Hello SAFYRA, I have reviewed my order and would like a secure payment link. Items: ${orderSummary}. Total before shipping: ${formatPrice(cartTotal)}. Shipping: ${shipping === "india" ? "India delivery" : "International shipping quote"}. Deliver to: ${form.name}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.country}. Contact: ${form.phone}, ${form.email}.`);
+  const handoff = whatsappUrl(`Hello SAFYRA, my order request${request ? ` ${request.request_number}` : ""} is ready for review. Items: ${orderSummary}. Total before shipping: ${formatPrice(cartTotal)}. Shipping: ${shipping === "india" ? "India delivery" : "International shipping quote"}. Deliver to: ${form.name}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.country}. Contact: ${form.phone}, ${form.email}.${form.note.trim() ? ` Note: ${form.note.trim()}` : ""}`);
+  const noCityData = Boolean(selectedCountry && (!states.length || selectedState) && !cities.length);
+  const contactForLocation = whatsappUrl(`Hello SAFYRA, I need help entering my delivery city for ${form.country || "my country"}.`);
+  const submitOrderRequest = () => {
+    if (!selectedCountry) return;
+    submitRequest.mutate({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      address: form.address.trim(),
+      city: form.city.trim(),
+      state_region: form.state.trim(),
+      postal_code: form.postalCode.trim(),
+      country: selectedCountry.name,
+      country_code: selectedCountry.isoCode,
+      shipping: shipping as "india" | "international",
+      note: form.note.trim(),
+      items: cart.map((item) => ({ product_id: item.productId, size: item.size, color: item.color, quantity: item.quantity })),
+    });
+  };
   if (!cart.length) return <div className="page-shell"><BrandHeader /><main className="checkout-empty"><h1>Your bag is empty.</h1><Link to="/shop" className="button button-dark" data-testid="checkout-empty-shop">Return to shop</Link></main></div>;
-  return <div className="page-shell"><BrandHeader /><main className="checkout-page"><Link to="/cart" className="back-link" data-testid="checkout-back"><ArrowLeft size={15} /> Back to bag</Link><div className="checkout-heading"><span className="eyebrow">Checkout preparation</span><h1>{step === "details" ? "Where should your order go?" : "Review every detail."}</h1><p>No payment is taken on this page. SAFYRA confirms shipping and sends the secure payment handoff after review.</p></div><div className="checkout-layout"><section className="checkout-form-card">{step === "details" ? <form onSubmit={continueToReview} data-testid="checkout-address-form"><div className="checkout-step"><span>1</span><div><strong>Contact & delivery</strong><small>Required for shipping confirmation</small></div></div><div className="checkout-fields"><label>Full name<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} autoComplete="name" required data-testid="checkout-name" /></label><label>Email<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} autoComplete="email" required data-testid="checkout-email" /></label><label>Phone<input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} autoComplete="tel" required data-testid="checkout-phone" /></label><label className="field-wide">Address<textarea value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} autoComplete="street-address" required data-testid="checkout-address" /></label><label>City<input value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} autoComplete="address-level2" required data-testid="checkout-city" /></label><label>State / region<input value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value })} autoComplete="address-level1" required data-testid="checkout-state" /></label><label>Postal code<input value={form.postalCode} onChange={(event) => setForm({ ...form, postalCode: event.target.value })} autoComplete="postal-code" required data-testid="checkout-postal-code" /></label><label>Country<input value={form.country} onChange={(event) => setForm({ ...form, country: event.target.value })} autoComplete="country-name" required data-testid="checkout-country" /></label></div><fieldset className="shipping-options"><legend>Shipping selection</legend><label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} onChange={() => setShipping("india")} data-testid="shipping-india" /><span><strong>India delivery</strong><small>Charges and dispatch guidance confirmed before payment</small></span></label><label className={shipping === "international" ? "is-selected" : ""}><input type="radio" name="shipping" value="international" checked={shipping === "international"} onChange={() => setShipping("international")} data-testid="shipping-international" /><span><strong>International shipping</strong><small>SAFYRA will confirm the destination quote personally</small></span></label></fieldset><button className="button button-dark button-full" type="submit" data-testid="checkout-review-button">Review order</button></form> : <div className="checkout-review" data-testid="checkout-review"><div className="checkout-step"><span><Check size={15} /></span><div><strong>Delivery details</strong><small>{form.name} · {form.city}, {form.country}</small></div><button onClick={() => setStep("details")} data-testid="checkout-edit-address">Edit</button></div><div className="review-address"><p>{form.address}</p><p>{form.city}, {form.state} {form.postalCode}</p><p>{form.phone} · {form.email}</p></div><div className="handoff-note"><ShieldCheck size={20} /><p><strong>Secure payment handoff</strong>SAFYRA will verify product details and shipping before sharing the final payment step.</p></div><a href={handoff} target="_blank" rel="noreferrer" className="button button-dark button-full" data-testid="checkout-payment-handoff"><MessageCircle size={17} /> Request secure payment link</a><a href={handoff} target="_blank" rel="noreferrer" className="button button-outline button-full" data-testid="checkout-whatsapp-handoff">Continue order on WhatsApp</a></div>}</section><aside className="checkout-summary"><span className="eyebrow">Your order</span>{cart.map((item) => <div className="checkout-item" key={item.key} data-testid={`checkout-item-${item.productId}`}><SafeProductImage src={item.imageUrl} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><small>Size {item.size} · {item.color} · Qty {item.quantity}</small><span>{formatPrice(item.price * item.quantity)}</span></div></div>)}<div className="summary-line"><span>Subtotal</span><strong>{formatPrice(cartTotal)}</strong></div><small>Final shipping and payable total are confirmed before payment.</small></aside></div></main></div>;
+  return <div className="page-shell">
+    <BrandHeader />
+    <main className="checkout-page">
+      <Link to="/cart" className="back-link" data-testid="checkout-back"><ArrowLeft size={15} /> Back to bag</Link>
+      <div className="checkout-heading">
+        <span className="eyebrow">Checkout preparation</span>
+        <h1 data-testid="checkout-heading">{step === "details" ? "Where should your order go?" : step === "review" ? "Review every detail." : "YOUR SAFYRA ORDER REQUEST IS RECEIVED."}</h1>
+        <p data-testid="checkout-supporting-copy">{step === "complete" ? "Thank you. We’ve received your order details and will verify the product and shipping information before sending your secure payment link." : "No payment is taken on this page. SAFYRA confirms shipping before sending your secure payment link."}</p>
+      </div>
+      <div className="checkout-layout">
+        <section className="checkout-form-card">
+          {step === "details" && <form onSubmit={continueToReview} noValidate data-testid="checkout-address-form">
+            <div className="checkout-step"><span>1</span><div><strong>Contact & delivery</strong><small>Required for shipping confirmation</small></div></div>
+            <div className="checkout-fields">
+              <label>Full name
+                <input value={form.name} onChange={(event) => setField("name", event.target.value)} onBlur={() => showFieldError("name")} autoComplete="name" required aria-invalid={Boolean(errors.name)} data-testid="checkout-name" />
+                <FieldError field="name" message={errors.name} />
+              </label>
+              <label>Email
+                <input type="email" value={form.email} onChange={(event) => setField("email", event.target.value)} onBlur={() => showFieldError("email")} autoComplete="email" required aria-invalid={Boolean(errors.email)} data-testid="checkout-email" />
+                <FieldError field="email" message={errors.email} />
+              </label>
+              <label>Phone
+                <input value={form.phone} onChange={(event) => setField("phone", event.target.value)} onBlur={() => showFieldError("phone")} autoComplete="tel" required aria-invalid={Boolean(errors.phone)} data-testid="checkout-phone" />
+                <FieldError field="phone" message={errors.phone} />
+              </label>
+              <label className="field-wide">Address
+                <textarea value={form.address} onChange={(event) => setField("address", event.target.value)} onBlur={() => showFieldError("address")} autoComplete="street-address" required aria-invalid={Boolean(errors.address)} data-testid="checkout-address" />
+                <FieldError field="address" message={errors.address} />
+              </label>
+              <label>Country
+                <input list="checkout-country-options" value={form.country} onChange={(event) => setCountry(event.target.value)} onBlur={() => showFieldError("country")} autoComplete="country-name" required aria-invalid={Boolean(errors.country)} data-testid="checkout-country" />
+                <datalist id="checkout-country-options" data-testid="checkout-country-options">{countries.map((country) => <option key={country.isoCode} value={country.name} />)}</datalist>
+                <FieldError field="country" message={errors.country} />
+              </label>
+              <label>State / region
+                <input list="checkout-state-options" value={form.state} onChange={(event) => setStateRegion(event.target.value)} onBlur={() => showFieldError("state")} autoComplete="address-level1" required readOnly={Boolean(selectedCountry && !states.length)} disabled={!selectedCountry} aria-invalid={Boolean(errors.state)} data-testid="checkout-state" />
+                <datalist id="checkout-state-options" data-testid="checkout-state-options">{states.length ? states.map((state) => <option key={state.isoCode} value={state.name} />) : <option value={NO_STATE_REGION} />}</datalist>
+                <FieldError field="state" message={errors.state} />
+              </label>
+              <label>City
+                <input list="checkout-city-options" value={form.city} onChange={(event) => setField("city", event.target.value)} onBlur={() => showFieldError("city")} autoComplete="address-level2" required disabled={!selectedCountry || Boolean(states.length && !selectedState) || noCityData} aria-invalid={Boolean(errors.city)} data-testid="checkout-city" />
+                <datalist id="checkout-city-options" data-testid="checkout-city-options">{cities.map((city) => <option key={city} value={city} />)}</datalist>
+                <FieldError field="city" message={errors.city} />
+                {noCityData && <a href={contactForLocation} target="_blank" rel="noreferrer" className="checkout-location-help" data-testid="checkout-location-help">Chat with SAFYRA for address help</a>}
+              </label>
+              <label>Postal code
+                <input value={form.postalCode} onChange={(event) => setField("postalCode", event.target.value)} onBlur={() => showFieldError("postalCode")} autoComplete="postal-code" required readOnly={Boolean(selectedCountry && !countryUsesPostalCodes)} aria-invalid={Boolean(errors.postalCode)} data-testid="checkout-postal-code" />
+                <FieldError field="postalCode" message={errors.postalCode} />
+              </label>
+              <label className="field-wide">A note for SAFYRA
+                <textarea value={form.note} onChange={(event) => setField("note", event.target.value)} placeholder="Anything you'd like us to know about your order?" data-testid="checkout-order-note" />
+              </label>
+            </div>
+            <fieldset className="shipping-options">
+              <legend>Shipping selection</legend>
+              <label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} onChange={() => setShipping("india")} data-testid="shipping-india" /><span><strong>India delivery</strong><small>Charges and dispatch guidance confirmed before payment</small></span></label>
+              <label className={shipping === "international" ? "is-selected" : ""}><input type="radio" name="shipping" value="international" checked={shipping === "international"} onChange={() => setShipping("international")} data-testid="shipping-international" /><span><strong>International shipping</strong><small>SAFYRA will confirm the destination quote personally</small></span></label>
+            </fieldset>
+            <button className="button button-dark button-full" type="submit" data-testid="checkout-review-button">CONTINUE TO CHECKOUT</button>
+          </form>}
+
+          {step === "review" && <div className="checkout-review" data-testid="checkout-review">
+            <div className="checkout-step"><span><Check size={15} /></span><div><strong>Delivery details</strong><small>{form.name} · {form.city}, {form.country}</small></div><button onClick={() => setStep("details")} data-testid="checkout-edit-address">Edit</button></div>
+            <div className="review-address"><p>{form.address}</p><p>{form.city}, {form.state} {form.postalCode}</p><p>{form.phone} · {form.email}</p>{form.note && <p data-testid="checkout-review-note">{form.note}</p>}</div>
+            <div className="handoff-note"><ShieldCheck size={20} /><p><strong>Secure payment</strong>We’ll verify your order and shipping details before sending your secure payment link.</p></div>
+            {submitRequest.isError && <div className="form-error" data-testid="checkout-request-error">We couldn’t save your order request. No payment was taken. Please try again.</div>}
+            <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending} data-testid="checkout-submit-request">{submitRequest.isPending ? "Sending request…" : "Request secure payment link"}</button>
+            <a href={handoff} target="_blank" rel="noreferrer" className="button button-outline button-full" data-testid="checkout-whatsapp-handoff">Continue order on WhatsApp</a>
+          </div>}
+
+          {step === "complete" && request && <div className="checkout-complete" data-testid="checkout-complete">
+            <Check size={24} />
+            <p data-testid="checkout-request-reference">Request reference: <strong>{request.request_number}</strong></p>
+            <h2>WHAT HAPPENS NEXT</h2>
+            <ol data-testid="checkout-next-steps">
+              <li>SAFYRA verifies your order and shipping.</li>
+              <li>We send your secure payment link.</li>
+              <li>Your order is confirmed once payment is completed.</li>
+            </ol>
+            <a href={handoff} target="_blank" rel="noreferrer" className="button button-dark button-full" data-testid="checkout-chat-with-safyra"><MessageCircle size={17} /> CHAT WITH SAFYRA</a>
+          </div>}
+        </section>
+
+        <aside className="checkout-summary">
+          <span className="eyebrow">Your order</span>
+          {cart.map((item) => <div className="checkout-item" key={item.key} data-testid={`checkout-item-${item.productId}`}><SafeProductImage src={item.imageUrl} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><small>Size {item.size} · {item.color} · Qty {item.quantity}</small><span>{formatPrice(item.price * item.quantity)}</span></div></div>)}
+          <div className="summary-line"><span>Subtotal</span><strong>{formatPrice(cartTotal)}</strong></div>
+          <small>Final shipping and payable total are confirmed before payment.</small>
+        </aside>
+      </div>
+    </main>
+  </div>;
 }

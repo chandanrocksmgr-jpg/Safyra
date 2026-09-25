@@ -675,6 +675,9 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .checkout-fields label { display: grid; gap: .4rem; color: #5c463d; font-size: .7rem; font-weight: 600; }
 .checkout-fields input, .checkout-fields textarea { width: 100%; min-height: 46px; padding: .7rem; border: 1px solid #d6c7b2; background: #fdfbf7; }
 .checkout-fields textarea { min-height: 84px; resize: vertical; }
+.checkout-fields [aria-invalid="true"] { border-color: #8b261d; }
+.checkout-field-error { color: #8b261d; font-size: .66rem; font-weight: 500; line-height: 1.4; text-transform: none; }
+.checkout-location-help { color: var(--safyra-aubergine); font-size: .68rem; font-weight: 600; text-decoration: underline; text-underline-offset: .2rem; }
 .shipping-options { margin: 1.5rem 0; padding: 0; border: 0; }
 .shipping-options legend { margin-bottom: .7rem; font-size: .75rem; font-weight: 700; }
 .shipping-options > label { margin-bottom: .6rem; padding: .9rem; border: 1px solid #d6c7b2; display: flex; gap: .7rem; cursor: pointer; }
@@ -693,6 +696,11 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .handoff-note { margin: 1rem 0; padding: 1rem; display: flex; gap: .75rem; background: #edf4ed; color: #325b43; }
 .handoff-note p { margin: 0; display: flex; flex-direction: column; gap: .25rem; line-height: 1.5; }
 .checkout-review .button + .button { margin-top: .7rem; }
+.checkout-complete { display: grid; gap: 1.2rem; }
+.checkout-complete > svg { color: var(--safyra-aubergine); }
+.checkout-complete p, .checkout-complete h2 { margin: 0; }
+.checkout-complete h2 { margin-top: .6rem; font-family: 'Manrope Variable', sans-serif; font-size: .78rem; font-weight: 700; letter-spacing: .12em; }
+.checkout-complete ol { margin: 0; padding-left: 1.25rem; display: grid; gap: .7rem; color: var(--safyra-espresso-soft); line-height: 1.5; }
 .checkout-empty { min-height: 70vh; display: grid; place-content: center; gap: 1rem; text-align: center; }
 .information-page { max-width: 1120px; margin: 0 auto; padding: 5rem 5vw 8rem; }
 .information-page > header { max-width: 820px; }
