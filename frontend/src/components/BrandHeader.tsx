@@ -30,6 +30,7 @@ const menuGroups = [
 const announcements = [
   "FREE SHIPPING ON ORDERS ABOVE ₹1,299",
   "A LITTLE SOMETHING FROM SAFYRA — WITH YOUR FIRST ORDER",
+  "95% OF OUR CUSTOMERS CHOOSE SAFYRA AGAIN",
 ];
 
 export default function BrandHeader() {
