@@ -333,7 +333,8 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .cart-page-item-copy p { margin: 0; color: #8c746a; font-size: .75rem; }
 .cart-page-item > .remove-item { position: absolute; right: 0; bottom: 1rem; border: 0; background: transparent; }
 .cart-summary { padding: 1.5rem; align-self: start; background: #f2ebdc; }
-.cart-summary textarea { width: 100%; min-height: 95px; margin: 1rem 0; padding: .8rem; border: 1px solid #d6c7b2; background: #fdfbf7; }
+.cart-order-note { margin: 1rem 0; display: grid; gap: .4rem; color: var(--safyra-espresso); font-size: .7rem; font-weight: 600; }
+.cart-summary .cart-order-note textarea { width: 100%; min-height: 95px; margin: 0; padding: .8rem; border: 1px solid #d6c7b2; background: #fdfbf7; }
 .cart-summary .button + .button { margin-top: .65rem; }
 .cart-summary > small { margin-top: 1rem; display: block; color: #8c746a; }
 .large-empty { min-height: 400px; }
