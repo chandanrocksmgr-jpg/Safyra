@@ -43,6 +43,14 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("request_number", ASCENDING)], name="request_number", unique=True),
         IndexModel([("customer_id", ASCENDING), ("received_at", DESCENDING)], name="customer_received"),
+        IndexModel([("received_at", DESCENDING)], name="received_at"),
+        IndexModel([("payment_status", ASCENDING), ("fulfilment_status", ASCENDING), ("received_at", DESCENDING)], name="status_received"),
+    ],
+    "orders": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("order_number", ASCENDING)], name="order_number", unique=True),
+        IndexModel([("source_request_id", ASCENDING)], name="source_request_id", unique=True),
+        IndexModel([("customer_id", ASCENDING), ("converted_at", DESCENDING)], name="customer_converted"),
     ],
 }
 

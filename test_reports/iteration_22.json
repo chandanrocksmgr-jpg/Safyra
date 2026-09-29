@@ -1,0 +1,123 @@
+{
+  "iteration": 22,
+  "summary": "Admin order-request workspace (/admin/orders) fully verified end-to-end: access control, payment/fulfilment state guard, shipping/internal-notes persistence and privacy, duplicate-resistant conversion, admin-only cancellation, exceptional refund tracking, and manual WhatsApp preview. Existing checkout/catalog regression re-verified; one stale existing browser check (guest-checkout-and-account-ux) was repaired (field fill order + renamed testid) and now passes.",
+  "passed": 16,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Protected Admin order-request workspace",
+      "name": "test_tscheck_admin_orders_access.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /api/order-requests unauth -> 401; as customer -> 403. As admin: GET /order-requests?q=<request_number> returns created row; GET /order-requests/{request_number} 200 with full name/address/note/items/quantity matching create payload."
+    },
+    {
+      "criterion": "Protected Admin order-request workspace",
+      "name": "admin-orders-access-denied-and-workspace",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Unauthenticated /admin/orders redirects to /admin-login; admin login lands on /admin/orders; search by request_number and payment filter both surface the created tscheck row; clicking it shows full customer name, address and note plus item Qty in admin-order-customer/admin-order-items."
+    },
+    {
+      "criterion": "Guarded payment and fulfilment states",
+      "name": "test_tscheck_payment_fulfilment_guard.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "PATCH fulfilment_status=Confirmed while Unpaid -> 409. PATCH payment_status=Paid without payment_verified -> 422; with payment_verified=true -> 200 + payment_verified_at set. Fulfilment then advances Confirmed->Shipped (200 each). PATCH payment_status=Unpaid after Paid -> 409 (no reversal)."
+    },
+    {
+      "criterion": "Guarded payment and fulfilment states",
+      "name": "admin-order-payment-fulfilment-guard-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "UI: advancing fulfilment while unpaid triggers admin-order-error (409 in console). Setting Paid without checking admin-order-payment-verified triggers error (422). Checking the box + save succeeds, status shows Paid, then fulfilment advances to Confirmed and detail reflects it."
+    },
+    {
+      "criterion": "Shipping and internal management",
+      "name": "test_tscheck_shipping_and_notes_privacy.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "PATCH courier/shipping_details/tracking_number/tracking_link/internal_notes persists on re-GET. Separately: converted order's /account/orders snapshot for the owning customer contains no 'internal_notes' key and the secret note text does not appear anywhere in the snapshot JSON."
+    },
+    {
+      "criterion": "Shipping and internal management",
+      "name": "admin-order-shipping-and-notes-persist-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Filled courier/tracking number/link/shipping details/internal notes, saved, full page reload + re-search + reopen shows all five values still populated in their inputs."
+    },
+    {
+      "criterion": "Duplicate-resistant order conversion",
+      "name": "test_tscheck_order_conversion_dedupe.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Convert on unpaid/unconfirmed request -> 409. After Paid+Confirmed: first convert 200 order_number==request_number; second convert 200 returns identical order_id; history contains exactly one 'converted' event."
+    },
+    {
+      "criterion": "Duplicate-resistant order conversion",
+      "name": "admin-order-convert-no-duplicate-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Convert button disabled while unpaid/unconfirmed; after Paid+Confirmed it enables, click flips label to 'Order already created' and disables; direct API re-convert call returns the same converted_order_id captured from the detail view."
+    },
+    {
+      "criterion": "Admin-only cancellation",
+      "name": "test_tscheck_admin_only_cancellation.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Cancel with reason 'bad' (3 chars) -> 422. Customer session cancel attempt -> 403. Admin cancel with valid reason -> 200, cancelled=true, history has 'cancelled' event; subsequent PATCH -> 409. Full paid progression to Delivered then cancel -> 409."
+    },
+    {
+      "criterion": "Admin-only cancellation",
+      "name": "admin-order-cancellation-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Cancel button stays disabled for a 3-char reason, enables at 5+ chars; after cancelling, admin-order-cancelled-reason shows the reason, payment/fulfilment selects and save button become disabled, and admin-order-history contains a cancellation entry."
+    },
+    {
+      "criterion": "Exceptional refund tracking",
+      "name": "test_tscheck_refund_tracking.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "refund_status=Processing on unpaid request -> 409. On paid request: missing reason -> 422, amount=0 -> 422; valid reason+amount -> 200. refund_status=Refunded without refund_confirmed -> 422; with refund_confirmed=true -> 200, refund_confirmed_at set, refund_reference stored. Further refund_status change after Refunded -> 409."
+    },
+    {
+      "criterion": "Exceptional refund tracking",
+      "name": "admin-order-refund-tracking-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Refund on unpaid order rejected (admin-order-error). After marking Paid, Processing with reason+amount saves; selecting Refunded without checking admin-order-refund-confirmed is rejected; checking it and saving records a refund entry in admin-order-history."
+    },
+    {
+      "criterion": "Manual WhatsApp notifications only",
+      "name": "admin-order-whatsapp-preview-ui",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "'No message is sent automatically' copy visible; admin-order-whatsapp-preview textarea contains the request_number; admin-order-whatsapp-link href starts with https://wa.me/ and encodes the request_number; adding tracking number updates both the preview text and the link to include it, confirming no auto-send and manual review only."
+    },
+    {
+      "criterion": "Existing checkout/catalog preserved",
+      "name": "test_tscheck_checkout_creates_unpaid_request.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/order-requests (guest) -> 201 with SAF-REQ-* request_number; admin GET on it shows payment_status=Unpaid, fulfilment_status='Request received', cancelled=false. GET /api/products still returns exactly 4 products."
+    },
+    {
+      "criterion": "Existing checkout/catalog preserved",
+      "name": "public-catalog-accuracy-and-integrity",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: shop grid shows the 4 approved products with correct pricing/availability integrity."
+    },
+    {
+      "criterion": "Existing checkout/catalog preserved",
+      "name": "guest-checkout-and-account-ux",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Repaired persisted check (fill order country->state->city to match cascading-select disabled-state logic, and renamed stale testid checkout-payment-handoff -> checkout-whatsapp-handoff to match current markup) then reran: guest checkout builds cart, fills validated address, reaches review with WhatsApp handoff link containing wa.me, and customer login/logout flows still work."
+    }
+  ]
+}

@@ -65,7 +65,7 @@ export default function BrandHeader() {
           </nav>
           <div className="header-actions">
             <button className="icon-button" onClick={() => setSearchOpen((open) => !open)} aria-label="Search SAFYRA" data-testid="header-search-button"><Search size={19} /></button>
-            <Link to={user?.role === "admin" ? "/admin" : user ? "/account" : "/login"} className="icon-button account-action" aria-label={user ? "My account" : "Sign in"} data-testid="header-account-link"><UserRound size={19} /></Link>
+            <Link to={user?.role === "admin" ? "/admin/orders" : user ? "/account" : "/login"} className="icon-button account-action" aria-label={user ? "My account" : "Sign in"} data-testid="header-account-link"><UserRound size={19} /></Link>
             <Link to="/wishlist" className="icon-button with-count" aria-label="Wishlist" data-testid="header-wishlist-link"><Heart size={19} /><span>{wishlistIds.length}</span></Link>
             <button className="icon-button with-count" onClick={openDrawer} aria-label="Open shopping bag" data-testid="cart-drawer-trigger"><ShoppingBag size={19} /><span>{cartCount}</span></button>
           </div>

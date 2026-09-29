@@ -15,7 +15,7 @@ export default function AdminLogin() {
   const [newPassword, setNewPassword] = useState("");
   const [question, setQuestion] = useState("");
   const [error, setError] = useState("");
-  const login = useMutation({ mutationFn: () => apiPost<AuthResponse>("/auth/admin/login", { email, password }), onSuccess: ({ user }) => { beginSession(user); navigate("/admin"); }, onError: () => setError("Administrator credentials were not verified.") });
+  const login = useMutation({ mutationFn: () => apiPost<AuthResponse>("/auth/admin/login", { email, password }), onSuccess: ({ user }) => { beginSession(user); navigate("/admin/orders"); }, onError: () => setError("Administrator credentials were not verified.") });
   const loadQuestion = useMutation({ mutationFn: () => apiGet<RecoveryQuestionResponse>(`/auth/admin/recovery-question?email=${encodeURIComponent(email)}`), onSuccess: (data) => { setQuestion(data.question); setError(""); }, onError: () => setError("No verified recovery profile was found.") });
   const recover = useMutation({ mutationFn: () => apiPost<void>("/auth/admin/recover", { email, answer, new_password: newPassword }), onSuccess: () => { setMode("login"); setPassword(""); setQuestion(""); setError("Password reset. Sign in with your new password."); }, onError: (reason) => setError(reason instanceof ApiError && reason.status === 429 ? "Too many attempts. Try again in 15 minutes." : "The recovery answer could not be verified.") });
   const submitLogin = (event: FormEvent) => { event.preventDefault(); setError(""); login.mutate(); };

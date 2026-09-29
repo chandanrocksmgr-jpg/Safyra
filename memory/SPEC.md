@@ -18,6 +18,7 @@ Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Ch
 - Wishlist and cart: guest state persists in browser local storage; signed-in customer state persists to the account in Mongo. Cart drawer and full cart page include quantities and contextual WhatsApp order handoff.
 - Customer account: email/password signup and login, profile editing, saved wishlist/cart continuity, prior order history, text invoice download and milestone tracking. A clearly labelled demo order exists only on the demo customer.
 - Admin: hidden from storefront navigation, server-protected by the admin role, and available only after separate admin authentication. Admins can add/edit/delete products, change passwords while verified, or recover with the private security question and rate-limited answer check.
+- Admin order management: protected `/admin/orders` lists/searches/filters unpaid requests, manages separately guarded payment and fulfilment states, shipping/tracking/internal notes, exceptional refund tracking, cancellation, duplicate-resistant conversion, manual WhatsApp previews and append-only internal history.
 - Checkout preparation: guest-friendly validated international address capture with searchable country/state/city suggestions, country-aware phone/postal validation, India/international shipping selection, saved unpaid order requests, review, completion guidance and contextual WhatsApp follow-up. No payment processor is connected and no order is confirmed until payment is completed.
 
 ## Data model

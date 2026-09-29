@@ -1,14 +1,120 @@
 from datetime import datetime, timezone
+import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
-from lib.security import get_optional_user
-from models.order_request import OrderRequestCreate, OrderRequestResponse
+from lib.security import get_optional_user, require_admin
+from models.order_request import (
+    OrderCancellationRequest,
+    OrderConversionResponse,
+    OrderHistoryEvent,
+    OrderRequestAdmin,
+    OrderRequestAdminUpdate,
+    OrderRequestCreate,
+    OrderRequestResponse,
+)
 
 
 router = APIRouter(prefix="/order-requests", tags=["order requests"])
+
+FULFILMENT_STEPS = ["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"]
+
+
+def _history_event(event: str, message: str, admin_id: str | None = None, created_at: datetime | None = None) -> dict:
+    return OrderHistoryEvent(
+        id=str(uuid.uuid4()), event=event, message=message,
+        created_at=created_at or datetime.now(timezone.utc), admin_id=admin_id,
+    ).model_dump()
+
+
+def _with_defaults(document: dict) -> dict:
+    cleaned = dict(document)
+    cleaned.pop("_id", None)
+    cleaned.setdefault("payment_status", "Unpaid")
+    cleaned.setdefault("payment_verified_at", None)
+    cleaned.setdefault("fulfilment_status", "Request received")
+    cleaned.setdefault("courier_name", "")
+    cleaned.setdefault("shipping_details", "")
+    cleaned.setdefault("tracking_number", "")
+    cleaned.setdefault("tracking_link", "")
+    cleaned.setdefault("internal_notes", "")
+    cleaned.setdefault("cancelled", False)
+    cleaned.setdefault("cancellation_reason", "")
+    cleaned.setdefault("cancelled_at", None)
+    cleaned.setdefault("refund_status", "Not initiated")
+    cleaned.setdefault("refund_reason", "")
+    cleaned.setdefault("refund_amount", 0)
+    cleaned.setdefault("refund_reference", "")
+    cleaned.setdefault("refund_confirmed_at", None)
+    cleaned.setdefault("converted_order_id", None)
+    cleaned.setdefault("history", [_history_event("request_received", "Order request received.", created_at=cleaned["received_at"])])
+    return cleaned
+
+
+async def _find_request(request_id: str) -> dict:
+    document = await db.order_requests.find_one({"$or": [{"id": request_id}, {"request_number": request_id}]})
+    if not document:
+        raise HTTPException(status_code=404, detail="Order request not found")
+    return _with_defaults(document)
+
+
+def _customer_order_snapshot(order: dict) -> dict:
+    current_step = FULFILMENT_STEPS.index(order["fulfilment_status"])
+    history = order.get("history", [])
+    tracking = []
+    for index, label in enumerate(FULFILMENT_STEPS[1:]):
+        event = next((item for item in reversed(history) if label in item.get("message", "")), None)
+        tracking.append({
+            "label": "Order confirmed" if label == "Confirmed" else label,
+            "completed": index + 1 <= current_step,
+            "date": event["created_at"].strftime("%d %b %Y") if event and hasattr(event.get("created_at"), "strftime") else "",
+        })
+    return {
+        "id": order["id"], "order_number": order["order_number"], "placed_at": order["converted_at"],
+        "status": "Cancelled" if order.get("cancelled") else order["fulfilment_status"],
+        "total": order["subtotal"], "invoice_number": f"INV-{order['order_number'].removeprefix('SAF-REQ-')}",
+        "is_demo": False,
+        "items": [{
+            "product_name": item["title"], "image_url": item["image_url"], "size": item["size"],
+            "color": item["color"], "quantity": item["quantity"], "price": item["price"],
+        } for item in order["items"]],
+        "tracking": tracking,
+    }
+
+
+async def _sync_customer_order(order: dict) -> None:
+    if not order.get("customer_id"):
+        return
+    snapshot = _customer_order_snapshot(order)
+    await db.users.update_one(
+        {"id": order["customer_id"]},
+        {"$pull": {"orders": {"id": order["id"]}}},
+    )
+    await db.users.update_one(
+        {"id": order["customer_id"]},
+        {"$push": {"orders": snapshot}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+    )
+
+
+async def _sync_converted_order(request_document: dict) -> None:
+    order_id = request_document.get("converted_order_id")
+    if not order_id:
+        return
+    sync_fields = {key: request_document[key] for key in [
+        "payment_status", "payment_verified_at", "fulfilment_status", "courier_name", "shipping_details",
+        "tracking_number", "tracking_link", "internal_notes", "cancelled", "cancellation_reason",
+        "cancelled_at", "refund_status", "refund_reason", "refund_amount", "refund_reference",
+        "refund_confirmed_at", "history",
+    ]}
+    sync_fields["updated_at"] = datetime.now(timezone.utc)
+    await db.orders.update_one({"id": order_id}, {"$set": sync_fields})
+    order = await db.orders.find_one({"id": order_id})
+    if order:
+        order.pop("_id", None)
+        await _sync_customer_order(order)
 
 
 @router.post("", response_model=OrderRequestResponse, status_code=status.HTTP_201_CREATED)
@@ -50,6 +156,174 @@ async def create_order_request(input: OrderRequestCreate, user: dict | None = De
         "customer_id": user.get("id") if user else None,
         "items": stored_items,
         "subtotal": subtotal,
+        "payment_status": "Unpaid",
+        "fulfilment_status": "Request received",
+        "refund_status": "Not initiated",
+        "cancelled": False,
+        "history": [_history_event("request_received", "Order request received.", created_at=received_at)],
     })
     await db.order_requests.insert_one(document)
     return OrderRequestResponse(request_number=request_number, received_at=received_at)
+
+
+@router.get("", response_model=list[OrderRequestAdmin])
+async def list_order_requests(
+    q: str = Query(default="", max_length=160),
+    payment_status: str | None = Query(default=None),
+    fulfilment_status: str | None = Query(default=None),
+    cancelled: bool | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=200),
+    _: dict = Depends(require_admin),
+):
+    conditions: list[dict] = []
+    if q.strip():
+        pattern = re.escape(q.strip())
+        conditions.append({"$or": [
+            {"request_number": {"$regex": pattern, "$options": "i"}},
+            {"name": {"$regex": pattern, "$options": "i"}},
+            {"email": {"$regex": pattern, "$options": "i"}},
+            {"phone": {"$regex": pattern, "$options": "i"}},
+            {"tracking_number": {"$regex": pattern, "$options": "i"}},
+            {"items.title": {"$regex": pattern, "$options": "i"}},
+        ]})
+    if payment_status:
+        conditions.append({"$or": [{"payment_status": payment_status}, {"payment_status": {"$exists": False}}]} if payment_status == "Unpaid" else {"payment_status": payment_status})
+    if fulfilment_status:
+        conditions.append({"$or": [{"fulfilment_status": fulfilment_status}, {"fulfilment_status": {"$exists": False}}]} if fulfilment_status == "Request received" else {"fulfilment_status": fulfilment_status})
+    if cancelled is not None:
+        conditions.append({"cancelled": cancelled})
+    filters = {"$and": conditions} if conditions else {}
+    documents = await db.order_requests.find(filters).sort("received_at", -1).to_list(limit)
+    return [OrderRequestAdmin(**_with_defaults(document)) for document in documents]
+
+
+@router.get("/{request_id}", response_model=OrderRequestAdmin)
+async def get_order_request(request_id: str, _: dict = Depends(require_admin)):
+    return OrderRequestAdmin(**await _find_request(request_id))
+
+
+@router.patch("/{request_id}", response_model=OrderRequestAdmin)
+async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, admin: dict = Depends(require_admin)):
+    existing = await _find_request(request_id)
+    if existing["cancelled"]:
+        raise HTTPException(status_code=409, detail="Cancelled orders cannot be updated")
+    now = datetime.now(timezone.utc)
+    changes: dict = {}
+    events: list[dict] = []
+
+    effective_payment = input.payment_status or existing["payment_status"]
+    if input.payment_status and input.payment_status != existing["payment_status"]:
+        if existing["payment_status"] == "Paid":
+            raise HTTPException(status_code=409, detail="A verified paid status cannot be reversed")
+        if input.payment_status == "Paid":
+            if not input.payment_verified:
+                raise HTTPException(status_code=422, detail="Explicit payment verification is required")
+            changes["payment_verified_at"] = now
+        changes["payment_status"] = input.payment_status
+        events.append(_history_event("payment_status", f"Payment status changed to {input.payment_status}.", admin["id"], now))
+
+    if input.fulfilment_status and input.fulfilment_status != existing["fulfilment_status"]:
+        if input.fulfilment_status != "Request received" and effective_payment != "Paid":
+            raise HTTPException(status_code=409, detail="Payment must be verified before fulfilment can proceed")
+        changes["fulfilment_status"] = input.fulfilment_status
+        events.append(_history_event("fulfilment_status", f"Fulfilment status changed to {input.fulfilment_status}.", admin["id"], now))
+
+    for field in ["courier_name", "shipping_details", "tracking_number", "tracking_link", "internal_notes"]:
+        value = getattr(input, field)
+        if value is not None and value != existing[field]:
+            changes[field] = value.strip()
+            events.append(_history_event(field, f"{field.replace('_', ' ').capitalize()} updated.", admin["id"], now))
+
+    effective_refund_status = input.refund_status or existing["refund_status"]
+    refund_reason = input.refund_reason if input.refund_reason is not None else existing["refund_reason"]
+    refund_amount = input.refund_amount if input.refund_amount is not None else existing["refund_amount"]
+    if input.refund_status and input.refund_status != existing["refund_status"]:
+        if existing["refund_status"] == "Refunded":
+            raise HTTPException(status_code=409, detail="A confirmed refund cannot be reversed")
+        if effective_payment != "Paid":
+            raise HTTPException(status_code=409, detail="Only paid orders can enter refund processing")
+        if effective_refund_status != "Not initiated" and (not refund_reason.strip() or refund_amount <= 0):
+            raise HTTPException(status_code=422, detail="Refund reason and amount are required")
+        if effective_refund_status == "Refunded":
+            if not input.refund_confirmed:
+                raise HTTPException(status_code=422, detail="Gateway or payment confirmation is required before marking Refunded")
+            changes["refund_confirmed_at"] = now
+        changes["refund_status"] = effective_refund_status
+        events.append(_history_event("refund_status", f"Refund status changed to {effective_refund_status}.", admin["id"], now))
+    for field in ["refund_reason", "refund_amount", "refund_reference"]:
+        value = getattr(input, field)
+        if value is not None:
+            changes[field] = value.strip() if isinstance(value, str) else value
+
+    if not changes:
+        return OrderRequestAdmin(**existing)
+    update: dict = {"$set": changes}
+    if events:
+        update["$push"] = {"history": {"$each": events}}
+    await db.order_requests.update_one({"id": existing["id"]}, update)
+    updated = await _find_request(existing["id"])
+    await _sync_converted_order(updated)
+    return OrderRequestAdmin(**updated)
+
+
+@router.post("/{request_id}/cancel", response_model=OrderRequestAdmin)
+async def cancel_order_request(request_id: str, input: OrderCancellationRequest, admin: dict = Depends(require_admin)):
+    existing = await _find_request(request_id)
+    if existing["cancelled"]:
+        return OrderRequestAdmin(**existing)
+    if existing["fulfilment_status"] == "Delivered":
+        raise HTTPException(status_code=409, detail="A delivered order cannot be cancelled")
+    now = datetime.now(timezone.utc)
+    event = _history_event("cancelled", "Order cancelled by SAFYRA. Reason recorded internally.", admin["id"], now)
+    await db.order_requests.update_one(
+        {"id": existing["id"]},
+        {"$set": {"cancelled": True, "cancellation_reason": input.reason.strip(), "cancelled_at": now}, "$push": {"history": event}},
+    )
+    updated = await _find_request(existing["id"])
+    await _sync_converted_order(updated)
+    return OrderRequestAdmin(**updated)
+
+
+@router.post("/{request_id}/convert", response_model=OrderConversionResponse)
+async def convert_order_request(request_id: str, admin: dict = Depends(require_admin)):
+    request_document = await _find_request(request_id)
+    if request_document["cancelled"]:
+        raise HTTPException(status_code=409, detail="Cancelled requests cannot be converted")
+    if request_document["payment_status"] != "Paid" or request_document["fulfilment_status"] == "Request received":
+        raise HTTPException(status_code=409, detail="Verify payment and confirm fulfilment before conversion")
+    if request_document.get("converted_order_id"):
+        order = await db.orders.find_one({"id": request_document["converted_order_id"]})
+        if order:
+            return OrderConversionResponse(order_id=order["id"], order_number=order["order_number"], converted_at=order["converted_at"])
+
+    now = datetime.now(timezone.utc)
+    order_id = str(uuid.uuid4())
+    conversion_event = _history_event("converted", "Order request converted to an order.", admin["id"], now)
+    order = {
+        **{key: request_document[key] for key in [
+            "request_number", "customer_id", "name", "email", "phone", "address", "city", "state_region",
+            "postal_code", "country", "country_code", "shipping", "note", "items", "subtotal", "payment_status",
+            "payment_verified_at", "fulfilment_status", "courier_name", "shipping_details", "tracking_number",
+            "tracking_link", "internal_notes", "cancelled", "cancellation_reason", "cancelled_at", "refund_status",
+            "refund_reason", "refund_amount", "refund_reference", "refund_confirmed_at",
+        ]},
+        "id": order_id, "order_number": request_document["request_number"], "source_request_id": request_document["id"],
+        "converted_at": now, "updated_at": now, "history": [*request_document["history"], conversion_event],
+    }
+    try:
+        await db.orders.insert_one(order)
+    except DuplicateKeyError:
+        order = await db.orders.find_one({"source_request_id": request_document["id"]})
+        if not order:
+            raise
+        order_id = order["id"]
+        now = order["converted_at"]
+    await db.order_requests.update_one(
+        {"id": request_document["id"]},
+        {"$set": {"converted_order_id": order_id}, "$push": {"history": conversion_event}},
+    )
+    order = await db.orders.find_one({"id": order_id})
+    if order:
+        order.pop("_id", None)
+        await _sync_customer_order(order)
+    return OrderConversionResponse(order_id=order_id, order_number=request_document["request_number"], converted_at=now)

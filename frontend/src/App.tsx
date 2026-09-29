@@ -6,6 +6,7 @@ import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
 import Wishlist from "@/pages/Wishlist";
 import Admin from "@/pages/Admin";
+import AdminOrders from "@/pages/AdminOrders";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Account from "@/pages/Account";
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/account" element={<CustomerRoute><Account /></CustomerRoute>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+          <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CartDrawer />
