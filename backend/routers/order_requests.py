@@ -21,6 +21,7 @@ from models.order_request import (
 router = APIRouter(prefix="/order-requests", tags=["order requests"])
 
 FULFILMENT_STEPS = ["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"]
+PUBLIC_PRODUCT_FILTER = {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}}
 
 
 def _history_event(event: str, message: str, admin_id: str | None = None, created_at: datetime | None = None) -> dict:
@@ -28,6 +29,14 @@ def _history_event(event: str, message: str, admin_id: str | None = None, create
         id=str(uuid.uuid4()), event=event, message=message,
         created_at=created_at or datetime.now(timezone.utc), admin_id=admin_id,
     ).model_dump()
+
+
+def _available_quantity(product: dict, size: str) -> int | None:
+    if product.get("availability") == "Currently unavailable" or not product.get("sizes"):
+        return 0
+    if product.get("availability", "").strip().lower() == "made to order":
+        return None
+    return max(0, product.get("stock_by_size", {}).get(size, product.get("stock", 0)))
 
 
 def _with_defaults(document: dict) -> dict:
@@ -120,7 +129,7 @@ async def _sync_converted_order(request_document: dict) -> None:
 @router.post("", response_model=OrderRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_order_request(input: OrderRequestCreate, user: dict | None = Depends(get_optional_user)):
     product_ids = list(dict.fromkeys(item.product_id for item in input.items))
-    products = await db.products.find({"id": {"$in": product_ids}}).to_list(len(product_ids))
+    products = await db.products.find({"$and": [{"id": {"$in": product_ids}}, PUBLIC_PRODUCT_FILTER]}).to_list(len(product_ids))
     product_map = {product["id"]: product for product in products}
     if len(product_map) != len(product_ids):
         raise HTTPException(status_code=422, detail="One or more products are no longer available")
@@ -133,6 +142,11 @@ async def create_order_request(input: OrderRequestCreate, user: dict | None = De
             raise HTTPException(status_code=422, detail=f"Invalid size for {product['title']}")
         if product.get("colors") and item.color not in product["colors"]:
             raise HTTPException(status_code=422, detail=f"Invalid colour for {product['title']}")
+        available = _available_quantity(product, item.size)
+        if available == 0:
+            raise HTTPException(status_code=409, detail=f"{product['title']} is currently unavailable")
+        if available is not None and item.quantity > available:
+            raise HTTPException(status_code=409, detail=f"Requested quantity is unavailable for {product['title']} in size {item.size}")
         line_total = product["price"] * item.quantity
         subtotal += line_total
         stored_items.append({

@@ -1,0 +1,88 @@
+{
+  "iteration": 23,
+  "summary": "Verified the new made-to-order stock/availability, country-aligned shipping, cart-note continuity, WhatsApp submission boundary, craft navigation and no-empty-discovery-link criteria. 12 of 13 artifacts passed. One real bug found: on the mobile form factor the header 'About' link (About -> /information#craft) lives only inside .desktop-nav, which is display:none on mobile, and the mobile hamburger mega-menu has no equivalent About/Craft entry -- so mobile users cannot reach the craft section via header navigation at all, even though the link itself is correctly wired for desktop. No order-request POST was submitted successfully and no DB rows were created during this run.",
+  "passed": 9,
+  "failed": 1,
+  "bugs": [
+    {
+      "criterion": "Craft navigation repair",
+      "severity": "medium",
+      "description": "On mobile viewport (390x844, this run's form factor) the header 'About' link is inert/unreachable: it is rendered only inside <nav class=\"desktop-nav\"> which has `display: none` below the desktop breakpoint (src/index.css line 120), and the mobile hamburger (mobile-menu-toggle) opens the same mega-menu which has no 'About'/'Craft' entry among its category/collection/edit groups (components/BrandHeader.tsx). Desktop viewport (1280x800) works correctly and lands on /information#craft with the craft section visible.",
+      "evidence": "browser check header-about-craft-navigation failed: expect(getByTestId('header-nav-about')).toBeVisible() -> 'hidden' at 390x844. Cross-check at 1280x800 (ad-hoc, not persisted) confirms the same link/route works fine there and lands on /information#craft with craft content, proving the backend/route itself is healthy and this is a mobile-only frontend visibility gap, not a data or API issue."
+    }
+  ],
+  "action_items": [],
+  "retest_needed": true,
+  "checks": [
+    {
+      "criterion": "Made-to-order-aware stock rules",
+      "name": "src/lib/tscheck_stock_rules.test.ts",
+      "lane": "unit",
+      "status": "passed",
+      "evidence": "npx vitest run: 8/8 passed. availableQuantity() returns Infinity for made-to-order regardless of stock=0; isProductUnavailable() true for 'Currently unavailable' regardless of stock numbers and for empty sizes[]; stock_by_size[size] (incl. an explicit 0) caps the limit ahead of global stock; missing per-size entry falls back to global stock; negative stored values never yield a negative limit; overall availability is false only when every size's computed quantity is <1."
+    },
+    {
+      "criterion": "Made-to-order-aware stock rules",
+      "name": "pdp-purchase-experience-and-unavailable-guard",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: made-to-order Aira PDP enables add-to-cart/buy-now only after size selection (not blocked by lack of on-hand stock); unavailable Sang-e-Mar-Mar PDP keeps add-to-cart/buy-now disabled with 'unavailable' label and no sticky add bar."
+    },
+    {
+      "criterion": "Submission availability boundary without creating an order",
+      "name": "test_tscheck_unavailable_submission_boundary.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/order-requests for the seeded 'Currently unavailable' product (Sang-e-Mar-Mar) with a plausible size/colour -> 422 Unprocessable Entity (confirmed via server log). Admin GET /order-requests?q=tscheck-unavailable-<suffix> returns zero matching rows, confirming no DB insertion occurred. No successful order-request POST was made in this run."
+    },
+    {
+      "criterion": "Country-aligned shipping",
+      "name": "checkout-country-aligned-shipping",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "At checkout details step: default country India has shipping-india checked and shipping-international disabled; switching country to United States auto-checks shipping-international and disables shipping-india; switching back to India re-checks shipping-india and disables shipping-international. (validateForm() also blocks review on any mismatch per Checkout.tsx.)"
+    },
+    {
+      "criterion": "Cart note continuity",
+      "name": "cart-note-continuity-to-checkout",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Typed a fixture note into cart-order-notes ('tscheck note: please gift-wrap...'), navigated to /checkout, and checkout-order-note textarea holds the identical text (ShopProvider.orderNote is shared state, wired into both fields and into the submitRequest payload's note field). Stopped before submission."
+    },
+    {
+      "criterion": "WhatsApp submission boundary",
+      "name": "checkout-review-whatsapp-boundary",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On checkout review step: checkout-support-whatsapp is visible with text 'Need checkout help?' and href containing wa.me (generic, no order reference). checkout-chat-with-safyra, checkout-request-reference and checkout-complete are all absent (count 0) at this step -- the order-specific handoff only renders after step becomes 'complete', which requires a successful submission that this run deliberately never triggers (checkout-submit-request was left unclicked)."
+    },
+    {
+      "criterion": "Craft navigation repair",
+      "name": "header-about-craft-navigation",
+      "lane": "browser",
+      "status": "failed",
+      "evidence": "At 390x844 (this run's form factor): getByTestId('header-nav-about') resolved but toBeVisible() reported 'hidden' (element is inside .desktop-nav, display:none at mobile widths) -- timeout after 5s. See bugs[] for root cause and the desktop cross-check confirming the route itself works."
+    },
+    {
+      "criterion": "No empty discovery links",
+      "name": "no-empty-discovery-links",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Live GET /api/products cross-checked against rendered homepage category-tile-* count (<= number of distinct categories with >=1 product) and first tile's /shop?category= destination shows product-card results; mobile mega-menu (via mobile-menu-toggle) link set is non-empty, first link's /shop?... destination shows results, and none of the catalog's currently-empty categories (categories with zero matching products) appear as mega-menu link text."
+    },
+    {
+      "criterion": "Existing customer journey preserved",
+      "name": "public-catalog-accuracy-and-integrity",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: the 4 approved products (Nazakat, Aira, Vaaya, Sang-e-Mar-Mar) remain unchanged and correctly priced/available in the shop grid and on the unavailable PDP."
+    },
+    {
+      "criterion": "Existing customer journey preserved",
+      "name": "pdp-purchase-experience-and-unavailable-guard",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check (same run captured above): made-to-order PDP/cart flow and unavailable-product purchase guard both still function correctly; no console/network errors surfaced during the run."
+    }
+  ]
+}

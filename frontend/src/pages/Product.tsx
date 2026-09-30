@@ -9,7 +9,7 @@ import SafeProductImage from "@/components/SafeProductImage";
 import Seo from "@/components/Seo";
 import { useShop } from "@/components/ShopProvider";
 import { apiGet } from "@/lib/api";
-import { formatPrice, productWhatsappUrl, whatsappUrl, type Product } from "@/lib/shop";
+import { availableQuantity, formatPrice, isProductUnavailable, productWhatsappUrl, whatsappUrl, type Product } from "@/lib/shop";
 
 function RecommendationSection({ eyebrow, title, products, offset, link }: { eyebrow: string; title: string; products: Product[]; offset: number; link?: string }) {
   if (!products.length) return null;
@@ -55,12 +55,12 @@ export default function ProductPage() {
   if (isError || !product) return <div className="page-shell"><BrandHeader /><div className="catalog-empty"><h1>We couldn’t find that piece.</h1><Link to="/shop" className="button button-dark" data-testid="product-not-found-shop-link">Return to the edit</Link></div></div>;
 
   const saved = wishlistIds.includes(product.id);
-  const unavailable = product.availability.toLowerCase().includes("unavailable") || product.sizes.length === 0;
+  const unavailable = isProductUnavailable(product);
   const images = product.image_urls.length ? product.image_urls : [product.image_url];
   const color = selectedColor || product.colors[0] || "";
   const supportsCustomDyeing = /\bdye(?:d|ing)?\b/i.test(product.customisation);
   const customDyeingUrl = whatsappUrl(`Hi SAFYRA, I’d like to enquire about custom dyeing for ${product.title}.`);
-  const selectedSizeUnavailable = selectedSize ? Object.hasOwn(product.stock_by_size, selectedSize) && product.stock_by_size[selectedSize] <= 0 : false;
+  const selectedSizeUnavailable = selectedSize ? availableQuantity(product, selectedSize) < 1 : false;
   const canPurchase = !unavailable && Boolean(selectedSize) && !selectedSizeUnavailable;
   const addProduct = (destination?: "/checkout") => {
     if (!selectedSize) { toast.error("Please select a size first"); return; }

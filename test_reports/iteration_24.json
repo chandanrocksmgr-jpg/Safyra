@@ -1,0 +1,30 @@
+{
+  "iteration": 24,
+  "mode": "retest",
+  "summary": "Retested the two persisted checks from iteration_23. no-empty-discovery-links passed unchanged. header-about-craft-navigation initially failed on rerun because the persisted script asserted the desktop-only header-nav-about link was visible while running at a 390x844 mobile viewport (form_factor: mobile) -- that link is legitimately hidden by responsive CSS at mobile width, this was a test/viewport mismatch, not an app defect. Verified via DOM inspection that the desktop link still exists with the correct href and that the mobile hamburger menu now exposes a visible 'mega-menu-link-the-craft' link (href /information#craft), confirming the reported fix is real. Updated the check to validate both surfaces at their respective viewports (mobile hamburger link -> craft destination, then desktop header link visibility) and it now passes.",
+  "passed": 2,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Craft navigation repair",
+      "name": "header-about-craft-navigation",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Rerun at mobile viewport (390x844) initially failed: expect(header-nav-about).toBeVisible() -> hidden, because that desktop nav link is CSS-hidden below the mobile breakpoint (test/viewport mismatch, confirmed not an app bug by locating the same href in DOM with isVisible()=false while mega-menu-link-the-craft had isVisible()=true). Updated check: opens mobile-menu-toggle, asserts mega-menu-link-the-craft visible with href containing /information#craft, clicks it, confirms URL contains #craft, confirms information-nav-craft testid present (count 1) and #craft anchor text contains 'chikankari'; then switches to 1440x900 desktop viewport and confirms header-nav-about is visible with the same href. All assertions passed post-update."
+    },
+    {
+      "criterion": "No empty discovery links",
+      "name": "no-empty-discovery-links",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Reran persisted check unchanged (mode: reran-persisted) -- PASSED. Confirmed homepage category tiles and mega-menu links only render when an approved matching product exists, while the static craft link remains visible regardless. 4 screenshots captured (homepage tiles, category tile destination populated, mega-menu open, mega-menu link destination populated)."
+    }
+  ],
+  "notes": [
+    "spec_deviations from briefing honored: no order submission attempted, no mutation performed against seeded data.",
+    "Only the two criteria in the acceptance_matrix were in scope for this retest; no new criteria introduced so no new backend tests were required."
+  ]
+}

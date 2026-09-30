@@ -4,10 +4,13 @@ import { toast } from "sonner";
 import type { CartItem, Product } from "@/lib/shop";
 import type { AccountResponse } from "@/lib/auth";
 import { apiGet, apiPut } from "@/lib/api";
+import { availableQuantity } from "@/lib/shop";
 import { useAuth } from "@/components/AuthProvider";
 
 interface ShopContextValue {
   cart: CartItem[];
+  orderNote: string;
+  setOrderNote: (note: string) => void;
   wishlistIds: string[];
   drawerOpen: boolean;
   addToCart: (product: Product, size?: string, color?: string) => void;
@@ -35,6 +38,7 @@ const ShopContext = createContext<ShopContextValue | null>(null);
 export function ShopProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => readStored("safyra-cart", []));
+  const [orderNote, setOrderNote] = useState(() => readStored("safyra-order-note", ""));
   const [wishlistIds, setWishlistIds] = useState<string[]>(() => readStored("safyra-wishlist", []));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const previousUserId = useRef<string | null>(null);
@@ -44,9 +48,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     enabled: Boolean(user),
     retry: false,
   });
+  const { data: products = [] } = useQuery({ queryKey: ["products", "cart-availability"], queryFn: () => apiGet<Product[]>("/products"), retry: false });
   const saveState = useMutation({ mutationFn: (state: { wishlist_ids: string[]; cart: CartItem[] }) => apiPut<void>("/account/state", state) });
 
   useEffect(() => { window.localStorage.setItem("safyra-cart", JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { window.localStorage.setItem("safyra-order-note", JSON.stringify(orderNote)); }, [orderNote]);
   useEffect(() => { window.localStorage.setItem("safyra-wishlist", JSON.stringify(wishlistIds)); }, [wishlistIds]);
   useEffect(() => {
     if (account && user) {
@@ -62,9 +68,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ShopContextValue>(() => {
     const addToCart = (product: Product, size = product.sizes[0] ?? "Custom", color = product.colors[0] ?? "As shown") => {
+      const limit = availableQuantity(product, size);
+      if (limit < 1) { toast.error("This selection is currently unavailable"); return; }
       const key = `${product.id}-${size}-${color}`;
       setCart((current) => {
         const existing = current.find((item) => item.key === key);
+        if (existing && existing.quantity >= limit) { toast.error(`Only ${limit} available in this size`); return current; }
         const next = existing ? current.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)) : [...current, { key, productId: product.id, slug: product.slug, title: product.title, imageUrl: product.image_url, price: product.price, size, color, quantity: 1 }];
         if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
         return next;
@@ -74,6 +83,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     };
     const updateQuantity = (key: string, quantity: number) => {
       setCart((current) => {
+        const item = current.find((entry) => entry.key === key);
+        const product = item ? products.find((entry) => entry.id === item.productId) : undefined;
+        const limit = item && product ? availableQuantity(product, item.size) : Number.POSITIVE_INFINITY;
+        if (quantity > limit) { toast.error(limit > 0 ? `Only ${limit} available in this size` : "This selection is currently unavailable"); return current; }
         const next = quantity < 1 ? current.filter((item) => item.key !== key) : current.map((item) => (item.key === key ? { ...item, quantity } : item));
         if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
         return next;
@@ -94,6 +107,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     };
     return {
       cart,
+      orderNote,
+      setOrderNote,
       wishlistIds,
       drawerOpen,
       addToCart,
@@ -105,7 +120,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
       cartTotal: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
     };
-  }, [cart, wishlistIds, drawerOpen, user, saveState]);
+  }, [cart, orderNote, wishlistIds, drawerOpen, user, saveState, products]);
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 }

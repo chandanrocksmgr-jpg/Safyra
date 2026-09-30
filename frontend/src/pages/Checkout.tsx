@@ -13,7 +13,7 @@ import { apiPost } from "@/lib/api";
 import type { OrderRequestCreate, OrderRequestResponse } from "@/lib/checkout";
 
 type CheckoutStep = "details" | "review" | "complete";
-type CheckoutField = "name" | "email" | "phone" | "address" | "city" | "state" | "postalCode" | "country";
+type CheckoutField = "name" | "email" | "phone" | "address" | "city" | "state" | "postalCode" | "country" | "shipping";
 type CheckoutErrors = Partial<Record<CheckoutField, string>>;
 
 interface CheckoutFormState {
@@ -38,10 +38,10 @@ function FieldError({ field, message }: { field: CheckoutField; message?: string
 }
 
 export default function Checkout() {
-  const { cart, cartTotal } = useShop();
+  const { cart, cartTotal, orderNote, setOrderNote } = useShop();
   const [step, setStep] = useState<CheckoutStep>("details");
   const [shipping, setShipping] = useState("india");
-  const [form, setForm] = useState<CheckoutFormState>({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India", note: "" });
+  const [form, setForm] = useState<CheckoutFormState>({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India", note: orderNote });
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [request, setRequest] = useState<OrderRequestResponse | null>(null);
   const selectedCountry = exactMatch(countries, form.country);
@@ -87,17 +87,20 @@ export default function Checkout() {
     if (!states.length && selectedCountry && form.state !== NO_STATE_REGION) next.state = "Select the available region option.";
     if (!selectedCountry || !cities.length) next.city = "City suggestions are unavailable for this destination. Please contact SAFYRA.";
     else if (!cities.some((city) => normalize(city) === normalize(form.city))) next.city = "Select a city from the suggestions.";
+    if (selectedCountry && ((selectedCountry.isoCode === "IN" && shipping !== "india") || (selectedCountry.isoCode !== "IN" && shipping !== "international"))) next.shipping = "Shipping selection must match the delivery country.";
     return next;
   };
 
   const setField = (field: keyof CheckoutFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+    if (field === "note") setOrderNote(value);
     if (field !== "note") setErrors((current) => ({ ...current, [field]: undefined }));
   };
   const setCountry = (value: string) => {
     const country = exactMatch(countries, value);
     const countryStates = country ? State.getStatesOfCountry(country.isoCode) : [];
     const postalDetails = country ? getCountryByCode(country.isoCode) : undefined;
+    if (country) setShipping(country.isoCode === "IN" ? "india" : "international");
     setForm((current) => ({ ...current, country: value, state: country && !countryStates.length ? NO_STATE_REGION : "", city: "", postalCode: country && !postalDetails?.postalCodePatterns.length ? NO_STATE_REGION : "" }));
     setErrors((current) => ({ ...current, country: undefined, state: undefined, city: undefined, postalCode: undefined, phone: undefined }));
   };
@@ -118,6 +121,7 @@ export default function Checkout() {
   const handoff = whatsappUrl(`Hello SAFYRA, my order request${request ? ` ${request.request_number}` : ""} is ready for review. Items: ${orderSummary}. Total before shipping: ${formatPrice(cartTotal)}. Shipping: ${shipping === "india" ? "India delivery" : "International shipping quote"}. Deliver to: ${form.name}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.country}. Contact: ${form.phone}, ${form.email}.${form.note.trim() ? ` Note: ${form.note.trim()}` : ""}`);
   const noCityData = Boolean(selectedCountry && (!states.length || selectedState) && !cities.length);
   const contactForLocation = whatsappUrl(`Hello SAFYRA, I need help entering my delivery city for ${form.country || "my country"}.`);
+  const checkoutHelpUrl = whatsappUrl("Hello SAFYRA, I need help before submitting my order request.");
   const submitOrderRequest = () => {
     if (!selectedCountry) return;
     submitRequest.mutate({
@@ -192,9 +196,10 @@ export default function Checkout() {
             </div>
             <fieldset className="shipping-options">
               <legend>Shipping selection</legend>
-              <label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} onChange={() => setShipping("india")} data-testid="shipping-india" /><span><strong>India delivery</strong><small>Charges and dispatch guidance confirmed before payment</small></span></label>
-              <label className={shipping === "international" ? "is-selected" : ""}><input type="radio" name="shipping" value="international" checked={shipping === "international"} onChange={() => setShipping("international")} data-testid="shipping-international" /><span><strong>International shipping</strong><small>SAFYRA will confirm the destination quote personally</small></span></label>
+              <label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} disabled={Boolean(selectedCountry && selectedCountry.isoCode !== "IN")} onChange={() => { setShipping("india"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-india" /><span><strong>India delivery</strong><small>Charges and dispatch guidance confirmed before payment</small></span></label>
+              <label className={shipping === "international" ? "is-selected" : ""}><input type="radio" name="shipping" value="international" checked={shipping === "international"} disabled={Boolean(selectedCountry && selectedCountry.isoCode === "IN")} onChange={() => { setShipping("international"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-international" /><span><strong>International shipping</strong><small>SAFYRA will confirm the destination quote personally</small></span></label>
             </fieldset>
+            <FieldError field="shipping" message={errors.shipping} />
             <button className="button button-dark button-full" type="submit" data-testid="checkout-review-button">CONTINUE TO CHECKOUT</button>
           </form>}
 
@@ -204,7 +209,7 @@ export default function Checkout() {
             <div className="handoff-note"><ShieldCheck size={20} /><p><strong>Secure payment</strong>We’ll verify your order and shipping details before sending your secure payment link.</p></div>
             {submitRequest.isError && <div className="form-error" data-testid="checkout-request-error">We couldn’t save your order request. No payment was taken. Please try again.</div>}
             <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending} data-testid="checkout-submit-request">{submitRequest.isPending ? "Sending request…" : "Request secure payment link"}</button>
-            <a href={handoff} target="_blank" rel="noreferrer" className="button button-outline button-full" data-testid="checkout-whatsapp-handoff">Continue order on WhatsApp</a>
+            <a href={checkoutHelpUrl} target="_blank" rel="noreferrer" className="button button-outline button-full" data-testid="checkout-support-whatsapp">Need checkout help?</a>
           </div>}
 
           {step === "complete" && request && <div className="checkout-complete" data-testid="checkout-complete">

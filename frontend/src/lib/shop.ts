@@ -61,6 +61,21 @@ export interface CartItem {
   quantity: number;
 }
 
+export const isMadeToOrder = (product: Pick<Product, "availability">) => product.availability.trim().toLowerCase() === "made to order";
+
+export const availableQuantity = (product: Pick<Product, "availability" | "sizes" | "stock" | "stock_by_size">, size: string) => {
+  if (product.availability === "Currently unavailable" || !product.sizes.length) return 0;
+  if (isMadeToOrder(product)) return Number.POSITIVE_INFINITY;
+  if (Object.hasOwn(product.stock_by_size, size)) return Math.max(0, product.stock_by_size[size]);
+  return Math.max(0, product.stock);
+};
+
+export const isProductUnavailable = (product: Pick<Product, "availability" | "sizes" | "stock" | "stock_by_size">) => {
+  if (product.availability === "Currently unavailable" || !product.sizes.length) return true;
+  if (isMadeToOrder(product)) return false;
+  return product.sizes.every((size) => availableQuantity(product, size) < 1);
+};
+
 export const formatPrice = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -78,7 +93,7 @@ export const productWhatsappUrl = (product: Product) =>
 
 export const cartWhatsappUrl = (items: CartItem[], total: number) =>
   whatsappUrl(
-    `Hello SAFYRA, I would like to enquire about ordering: ${items
+    `Hello SAFYRA, I need help before submitting my order request. My bag contains: ${items
       .map((item) => `${item.title} (${item.size}, ${item.color}) x${item.quantity}`)
       .join(", ")}. Estimated total: ${formatPrice(total)}.`,
   );
