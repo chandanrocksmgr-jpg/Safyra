@@ -14,6 +14,9 @@ from routers.products import router as products_router
 from routers.auth import router as auth_router
 from routers.account import router as account_router
 from routers.order_requests import router as order_requests_router
+from routers.catalog_groups import router as catalog_groups_router
+from routers.homepage import router as homepage_router
+from routers.media import router as media_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -68,6 +71,9 @@ api_router.include_router(products_router)
 api_router.include_router(auth_router)
 api_router.include_router(account_router)
 api_router.include_router(order_requests_router)
+api_router.include_router(catalog_groups_router)
+api_router.include_router(homepage_router)
+api_router.include_router(media_router)
 
 app.add_middleware(
     CORSMiddleware,

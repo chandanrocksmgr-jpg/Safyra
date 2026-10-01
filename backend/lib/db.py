@@ -24,7 +24,14 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("slug", ASCENDING)], name="slug", unique=True),
         IndexModel([("category", ASCENDING), ("created_at", DESCENDING)], name="category_created"),
         IndexModel([("fabric", ASCENDING)], name="fabric"),
+        IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
     ],
+    "catalog_groups": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("group_type", ASCENDING), ("slug", ASCENDING)], name="type_slug", unique=True),
+        IndexModel([("status", ASCENDING), ("sort_order", ASCENDING)], name="status_sort"),
+    ],
+    "site_content": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
     "users": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("email", ASCENDING)], name="email", unique=True),

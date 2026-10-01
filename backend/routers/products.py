@@ -4,6 +4,7 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
 from lib.security import get_optional_user, require_admin
@@ -52,7 +53,11 @@ async def list_products(
     user: Optional[dict] = Depends(get_optional_user),
 ):
     await _ensure_catalog()
-    filters: dict = {} if user and user.get("role") == "admin" else {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}}
+    is_admin = bool(user and user.get("role") == "admin")
+    filters: dict = {} if is_admin else {"$and": [
+        {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
+        {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
+    ]}
     if q:
         synonyms = {"white": "white|ivory|vanilla", "kurta": "kurta|kurti|anarkali|angrakha", "chikan": "chikan|chikankari"}
         token_groups = []
@@ -69,7 +74,7 @@ async def list_products(
                 {"occasion": {"$regex": pattern, "$options": "i"}},
                 {"style_keywords": {"$regex": pattern, "$options": "i"}},
             ]})
-        filters["$and"] = token_groups
+        filters.setdefault("$and", []).extend(token_groups)
     if category:
         filters["category"] = {"$in": category.split(",")}
     if collection:
@@ -106,7 +111,10 @@ async def list_products(
 @router.get("/facets", response_model=ProductFacets)
 async def product_facets():
     await _ensure_catalog()
-    public_filter = {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}}
+    public_filter = {"$and": [
+        {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
+        {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
+    ]}
     documents = await db.products.find(public_filter).to_list(1000)
     values = lambda field: sorted({value for document in documents for value in (document.get(field) if isinstance(document.get(field), list) else [document.get(field)]) if value})
     prices = [document["price"] for document in documents if document.get("price") is not None]
@@ -129,7 +137,10 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_option
     await _ensure_catalog()
     filters: dict = {"$or": [{"id": product_id}, {"slug": product_id}]}
     if not user or user.get("role") != "admin":
-        filters["title"] = {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}
+        filters["$and"] = [
+            {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
+            {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
+        ]
     document = await db.products.find_one(filters)
     if not document:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -139,7 +150,10 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_option
 @router.post("", response_model=Product, status_code=201)
 async def create_product(input: ProductCreate, _: dict = Depends(require_admin)):
     product = Product(**input.model_dump())
-    await db.products.insert_one(product.model_dump())
+    try:
+        await db.products.insert_one(product.model_dump())
+    except DuplicateKeyError as exc:
+        raise HTTPException(status_code=409, detail="A product with this slug already exists") from exc
     return product
 
 
@@ -148,9 +162,12 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
     existing = await db.products.find_one({"id": product_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
-    changes = input.model_dump(exclude_none=True)
+    changes = input.model_dump(exclude_unset=True)
     changes["updated_at"] = datetime.now(timezone.utc)
-    await db.products.update_one({"id": product_id}, {"$set": changes})
+    try:
+        await db.products.update_one({"id": product_id}, {"$set": changes})
+    except DuplicateKeyError as exc:
+        raise HTTPException(status_code=409, detail="A product with this slug already exists") from exc
     document = await db.products.find_one({"id": product_id})
     return _clean(document)
 

@@ -7,8 +7,12 @@ import { whatsappUrl, type Product } from "@/lib/shop";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import SearchExperience from "@/components/SearchExperience";
+import { defaultHomepage, type CatalogGroup, type HomepageSettings } from "@/lib/cms";
 
-const menuGroups = [
+interface MenuItem { label: string; to: string; type: string; value: string; }
+interface MenuGroup { title: string; items: MenuItem[]; }
+
+const fallbackMenuGroups: MenuGroup[] = [
   { title: "Shop by category", items: [
     { label: "Anarkalis", to: "/shop?category=Anarkali%20Sets", type: "category", value: "Anarkali Sets" },
     { label: "Angrakhas", to: "/shop?category=Angrakha%20Suits", type: "category", value: "Angrakha Suits" },
@@ -32,12 +36,6 @@ const menuGroups = [
   ] },
 ];
 
-const announcements = [
-  "FREE SHIPPING ON ORDERS ABOVE ₹1,299",
-  "A LITTLE SOMETHING FROM SAFYRA — WITH YOUR FIRST ORDER",
-  "95% OF OUR CUSTOMERS CHOOSE SAFYRA AGAIN",
-];
-
 export default function BrandHeader() {
   const location = useLocation();
   const { cartCount, wishlistIds, openDrawer } = useShop();
@@ -46,8 +44,18 @@ export default function BrandHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const { data: navigationProducts } = useQuery({ queryKey: ["products", "navigation"], queryFn: () => apiGet<Product[]>("/products"), retry: false });
-  const itemHasProducts = (item: (typeof menuGroups)[number]["items"][number]) => item.type === "static" || Boolean(navigationProducts?.some((product) => item.type === "category" ? product.category === item.value : item.type === "collection" ? product.collection === item.value : item.type === "new" ? product.new_arrival : item.type === "best" ? product.best_seller : product.sizes.includes(item.value)));
-  const visibleMenuGroups = menuGroups.map((group) => ({ ...group, items: group.items.filter(itemHasProducts) })).filter((group) => group.items.length);
+  const { data: catalogGroups = [] } = useQuery({ queryKey: ["catalog-groups", "public"], queryFn: () => apiGet<CatalogGroup[]>("/catalog-groups"), retry: false });
+  const { data: homepage } = useQuery({ queryKey: ["homepage"], queryFn: () => apiGet<HomepageSettings>("/homepage"), retry: false });
+  const managedCategories: MenuItem[] = catalogGroups.filter((group) => group.group_type === "category").map((group) => ({ label: group.name, to: `/shop?category=${encodeURIComponent(group.name)}`, type: "category", value: group.name }));
+  const managedCollections: MenuItem[] = catalogGroups.filter((group) => group.group_type === "collection").map((group) => ({ label: group.name, to: `/shop?collection=${encodeURIComponent(group.name)}`, type: "collection", value: group.name }));
+  const itemHasProducts = (item: MenuItem) => item.type === "static" || Boolean(navigationProducts?.some((product) => item.type === "category" ? product.category === item.value : item.type === "collection" ? product.collection === item.value : item.type === "new" ? product.new_arrival : item.type === "best" ? product.best_seller : product.sizes.includes(item.value)));
+  const visibleMenuGroups: MenuGroup[] = managedCategories.length || managedCollections.length ? [
+    { title: "Shop by category", items: managedCategories },
+    { title: "Collections", items: managedCollections },
+    { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter(itemHasProducts) },
+    { title: "About SAFYRA", items: fallbackMenuGroups[2].items },
+  ].filter((group) => group.items.length) : fallbackMenuGroups.map((group) => ({ ...group, items: group.items.filter(itemHasProducts) })).filter((group) => group.items.length);
+  const announcements = homepage?.announcement_messages.length ? homepage.announcement_messages : defaultHomepage.announcement_messages;
   const hasNewArrivals = Boolean(navigationProducts?.some((product) => product.new_arrival));
   const hasLuxury = Boolean(navigationProducts?.some((product) => product.collection === "Safyra Luxury"));
   const hasExtendedSizes = Boolean(navigationProducts?.some((product) => product.sizes.includes("3XL")));
@@ -57,11 +65,11 @@ export default function BrandHeader() {
   useEffect(() => {
     const timer = window.setInterval(() => setAnnouncementIndex((current) => (current + 1) % announcements.length), 5000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [announcements.length]);
 
   return (
     <>
-      <div className="announcement" data-testid="announcement-bar"><span className="announcement-message" data-testid="announcement-message">{announcements[announcementIndex]}</span></div>
+      <div className="announcement" data-testid="announcement-bar"><span className="announcement-message" data-testid="announcement-message">{announcements[announcementIndex % announcements.length]}</span></div>
       <header className="site-header" data-testid="site-header">
         <div className="header-inner">
           <button className="icon-button mobile-only" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu" data-testid="mobile-menu-toggle"><Menu size={20} /></button>

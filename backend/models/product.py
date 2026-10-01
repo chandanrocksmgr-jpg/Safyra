@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 import uuid
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -38,6 +38,7 @@ class ProductFields(BaseModel):
     featured: bool = False
     best_seller: bool = False
     new_arrival: bool = False
+    status: Literal["draft", "active", "archived"] = "active"
 
 
 class ProductCreate(ProductFields):
@@ -77,6 +78,7 @@ class ProductUpdate(BaseModel):
     featured: Optional[bool] = None
     best_seller: Optional[bool] = None
     new_arrival: Optional[bool] = None
+    status: Optional[Literal["draft", "active", "archived"]] = None
 
 
 class Product(ProductFields):

@@ -178,7 +178,7 @@ export default function AdminOrders() {
   return <div className="admin-shell">
     <header className="admin-secure-header"><div><ShieldCheck size={18} /><span>SAFYRA ORDER OPERATIONS</span></div><div><span data-testid="admin-order-user-name">{user?.name}</span><button onClick={() => endSession("/admin-login")} data-testid="admin-orders-logout"><LogOut size={15} /> Sign out</button></div></header>
     <main className="admin-orders-page">
-      <div className="admin-heading"><div><span className="eyebrow">Restricted order workspace</span><h1>Order management</h1><p>Unpaid requests, verified payments, fulfilment and internal history.</p></div><Link to="/admin" className="button button-outline" data-testid="admin-back-to-catalog"><ArrowLeft size={15} /> Catalog admin</Link></div>
+      <div className="admin-heading"><div><span className="eyebrow">Restricted order workspace</span><h1>Order management</h1><p>Unpaid requests, verified payments, fulfilment and internal history.</p></div><Link to="/admin" className="button button-outline" data-testid="admin-back-to-catalog"><ArrowLeft size={15} /> Admin overview</Link></div>
       <form className="admin-order-filters" onSubmit={search} data-testid="admin-order-search-form">
         <label>Search<input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Reference, customer, phone, tracking or product" data-testid="admin-order-search" /></label>
         <label>Payment<select value={filters.payment} onChange={(event) => { setFilters({ ...filters, payment: event.target.value }); setSelectedId(null); }} data-testid="admin-order-filter-payment"><option value="">All</option>{paymentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>

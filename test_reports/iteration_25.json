@@ -1,0 +1,82 @@
+{
+  "iteration": 25,
+  "mode": "generate",
+  "summary": "New admin CMS briefing (Products/Collections/Homepage/Orders workspace) covering 7 acceptance criteria. Wrote 3 new backend pytest files (draft product hidden from public catalog, draft catalog-group hidden from public groups, publishing-state transitions draft->archived->active correctly gate public visibility) and 6 new browser checks (admin login reaches overview with nav, full draft-product lifecycle with size inventory + merchandising + deletion, product image manager URL/upload/reorder/remove/primary, collection/category CRUD, reversible homepage hero-eyebrow edit observed on customer homepage and restored, customer homepage CMS content + same-origin request health run against the public preview URL). All 9 new artifacts passed; full backend suite (31 tests) green. No application bugs found. All temporary fixtures (tscheck- prefixed products/groups, uploaded test image) created during checks were deleted except the uploaded media file which the briefing's spec_deviations explicitly allow to remain as an unreferenced tiny file.",
+  "passed": 9,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Administrator can sign in and reach the editable admin overview",
+      "name": "admin-login-reaches-overview",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Logged in at /admin-login with admin@safyra.co, landed on /admin, admin-workspace + admin-metric-orders visible, admin-nav-products/collections/homepage/orders all visible, clicking Products nav loads admin-product-list-section."
+    },
+    {
+      "criterion": "Product editor supports complete safe draft management",
+      "name": "admin-draft-product-lifecycle",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Created tscheck-draft-lifecycle-<ts> as Draft with size-level stock (S:4,M:6), featured+new_arrival merchandising flags. Confirmed row shows 'Draft' pill in admin list. fetch('/api/products',{credentials:'omit'}) (anonymous) did not contain the title; /shop?q=<title> returned 0 matches. Product deleted via admin UI afterward, confirmed removed."
+    },
+    {
+      "criterion": "Product editor supports complete safe draft management",
+      "name": "test_tscheck_draft_product_hidden",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /products status=draft with stock_by_size {S:2,M:3} -> 201; GET /products (admin session) contains the id; GET /products (anonymous httpx client) excludes it; DELETE /products/{id} -> 204 cleanup."
+    },
+    {
+      "criterion": "Product image management supports URLs and direct upload",
+      "name": "admin-product-image-management",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Added 2 URL images (count 2/12), uploaded /app/frontend/public/favicon-32x32.png via file input (count 3/12), reordered uploaded image to position 0, removed one image (count 2/12), saved, reopened editor and confirmed gallery persisted with 2 images and 'Primary' label on item 0. Product deleted afterward."
+    },
+    {
+      "criterion": "Collections and categories are independently editable",
+      "name": "admin-collection-group-crud",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Created tscheck-group-<ts> collection with cover image as Draft, sort order 42; edited to status=active, sort_order=7, show_on_home unchecked -> card showed 'active' pill, 'Order 7', 'Hidden from homepage'; deleted via admin UI, card count 0 afterward."
+    },
+    {
+      "criterion": "Collections and categories are independently editable",
+      "name": "test_tscheck_draft_catalog_group_hidden",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /catalog-groups status=draft -> 201; PATCH sort_order/description -> 200 reflects changes; GET /catalog-groups?include_all=true (admin) contains id; GET /catalog-groups (anonymous) excludes id; DELETE -> 204 cleanup."
+    },
+    {
+      "criterion": "Homepage content is editable without changing its fixed SAFYRA layout",
+      "name": "admin-homepage-edit-reversible",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Changed hero eyebrow to tscheck-hero-eyebrow-<ts>, published, confirmed homepage-hero-eyebrow on customer homepage showed the new value; restored original eyebrow text, republished, confirmed customer homepage displayed the original value again."
+    },
+    {
+      "criterion": "Publishing states protect the storefront",
+      "name": "test_tscheck_publishing_states_protect_storefront",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Created product as draft -> excluded from anonymous GET /products and GET /products/facets responded 200; PATCH status=archived -> still excluded from anonymous list while admin GET /products still includes it; PATCH status=active -> now present in anonymous GET /products; DELETE -> 204 cleanup."
+    },
+    {
+      "criterion": "Customer homepage remains operational with CMS content",
+      "name": "homepage-loads-cms-content-no-errors",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Run against public preview URL https://lucknowi-craft.preview.emergentagent.com. Hero, announcement bar, homepage-categories and homepage-collections sections visible; 'Shop by category' link navigated to /shop; reload with response listener captured 0 same-origin responses >= 400."
+    }
+  ],
+  "notes": [
+    "7 acceptance criteria covered by 9 artifacts (6 browser checks + 3 backend test files); 2 criteria (draft product management, collection/category editability) received both a browser check and a backend test since they are API-backed UI criteria.",
+    "'Publishing states protect the storefront' was covered purely via backend test since its behavior is validated end-to-end through the admin/public API surfaces already exercised by the draft-lifecycle browser check; no separate UI surface exists for this criterion beyond what admin-draft-product-lifecycle and admin-collection-group-crud already demonstrate visually.",
+    "Backend tests use an anonymous httpx.Client(base_url='http://localhost:8001/api') (no admin cookie) to assert true public-visibility, and in the browser check used page.evaluate(fetch(..., {credentials:'omit'})) for the same reason, since page.request would otherwise inherit the logged-in admin session cookie from the browser context and give a false negative.",
+    "Per briefing spec_deviations: no order/payment mutation performed; the one uploaded test image during the image-management check may remain as an unreferenced tiny file (deletion of media is intentionally out of CMS scope).",
+    "Full backend suite re-run after adding new files: 31 passed, 0 failed."
+  ]
+}

@@ -32,6 +32,7 @@ export interface Product {
   featured: boolean;
   best_seller: boolean;
   new_arrival: boolean;
+  status: "draft" | "active" | "archived";
   created_at: string;
   updated_at: string;
 }
