@@ -184,6 +184,7 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .mrp { color: #8c746a; font-size: .72rem; text-decoration: line-through; }
 .product-craft { display: none; color: #8c746a; font-size: .7rem; line-height: 1.5; }
 .sold-note { display: block; margin-top: .5rem; color: #8b261d; font-size: .65rem; }
+.product-missed-label { width: fit-content; margin: -.2rem 0 1rem; padding: .4rem .55rem; background: #8b261d; color: #fff; font-family: 'Manrope Variable', sans-serif; font-size: .62rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .data-note, .catalog-loading { padding: 3rem; background: #f5efe6; color: #715b52; text-align: center; }
 .luxury-feature, .extended-section { background: #1a0f0b; color: #fdfbf7; display: grid; }
 .luxury-image, .extended-section > img { min-height: 500px; }
@@ -395,6 +396,7 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .admin-confirmation { grid-column: 1 / -1; grid-template-columns: auto 1fr !important; align-items: center; }
 .admin-confirmation input { width: 16px; min-height: 16px; }
 .admin-order-actions-section .button { width: fit-content; }
+.admin-print-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .admin-cancel-order { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .8rem; }
 .danger-button { background: #8b261d; color: #F7F3EB; }
 .admin-order-history > div { padding-top: .75rem; border-top: 1px solid var(--safyra-border); }

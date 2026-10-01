@@ -44,20 +44,25 @@ export default function BrandHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const { data: navigationProducts } = useQuery({ queryKey: ["products", "navigation"], queryFn: () => apiGet<Product[]>("/products"), retry: false });
-  const { data: catalogGroups = [] } = useQuery({ queryKey: ["catalog-groups", "public"], queryFn: () => apiGet<CatalogGroup[]>("/catalog-groups"), retry: false });
+  const { data: catalogGroups = [], isSuccess: catalogGroupsLoaded, isFetching: catalogGroupsFetching, isError: catalogGroupsUnavailable } = useQuery({ queryKey: ["catalog-groups", "public"], queryFn: () => apiGet<CatalogGroup[]>("/catalog-groups"), retry: false });
   const { data: homepage } = useQuery({ queryKey: ["homepage"], queryFn: () => apiGet<HomepageSettings>("/homepage"), retry: false });
   const managedCategories: MenuItem[] = catalogGroups.filter((group) => group.group_type === "category").map((group) => ({ label: group.name, to: `/shop?category=${encodeURIComponent(group.name)}`, type: "category", value: group.name }));
   const managedCollections: MenuItem[] = catalogGroups.filter((group) => group.group_type === "collection").map((group) => ({ label: group.name, to: `/shop?collection=${encodeURIComponent(group.name)}`, type: "collection", value: group.name }));
-  const itemHasProducts = (item: MenuItem) => item.type === "static" || Boolean(navigationProducts?.some((product) => item.type === "category" ? product.category === item.value : item.type === "collection" ? product.collection === item.value : item.type === "new" ? product.new_arrival : item.type === "best" ? product.best_seller : product.sizes.includes(item.value)));
-  const visibleMenuGroups: MenuGroup[] = managedCategories.length || managedCollections.length ? [
+  const catalogGroupsReady = catalogGroupsLoaded && !catalogGroupsFetching;
+  const collectionIsActive = (name: string) => catalogGroupsUnavailable || (catalogGroupsReady && managedCollections.some((group) => group.value === name));
+  const itemHasProducts = (item: MenuItem) => item.type === "static" || Boolean(navigationProducts?.some((product) => item.type === "category" ? product.category === item.value : item.type === "collection" ? product.collection === item.value && collectionIsActive(item.value) : item.type === "new" ? product.new_arrival : item.type === "best" ? product.best_seller : product.sizes.includes(item.value)));
+  const visibleMenuGroups: MenuGroup[] = catalogGroupsReady ? [
     { title: "Shop by category", items: managedCategories },
     { title: "Collections", items: managedCollections },
     { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter(itemHasProducts) },
     { title: "About SAFYRA", items: fallbackMenuGroups[2].items },
-  ].filter((group) => group.items.length) : fallbackMenuGroups.map((group) => ({ ...group, items: group.items.filter(itemHasProducts) })).filter((group) => group.items.length);
+  ].filter((group) => group.items.length) : catalogGroupsUnavailable ? fallbackMenuGroups.map((group) => ({ ...group, items: group.items.filter(itemHasProducts) })).filter((group) => group.items.length) : [
+    { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter((item) => item.type !== "collection" && itemHasProducts(item)) },
+    { title: "About SAFYRA", items: fallbackMenuGroups[2].items },
+  ].filter((group) => group.items.length);
   const announcements = homepage?.announcement_messages.length ? homepage.announcement_messages : defaultHomepage.announcement_messages;
   const hasNewArrivals = Boolean(navigationProducts?.some((product) => product.new_arrival));
-  const hasLuxury = Boolean(navigationProducts?.some((product) => product.collection === "Safyra Luxury"));
+  const hasLuxury = Boolean(navigationProducts?.some((product) => product.collection === "Safyra Luxury")) && collectionIsActive("Safyra Luxury");
   const hasExtendedSizes = Boolean(navigationProducts?.some((product) => product.sizes.includes("3XL")));
   const currentQuery = new URLSearchParams(location.search).get("search") ?? "";
   const showWhatsapp = !["/login", "/signup", "/account", "/checkout"].includes(location.pathname) && !location.pathname.startsWith("/product/");

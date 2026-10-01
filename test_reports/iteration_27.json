@@ -1,0 +1,74 @@
+{
+  "iteration": 27,
+  "summary": "Retest of 7 acceptance criteria: full backend pytest suite (33 tests) + 6 re-run browser checks. Previously reported bug (archived collection still exposed via header quick-link and hero CTA) is now fixed and verified; check was extended to explicitly assert the header-nav-luxury link and 'SHOP SAFYRA LUXURY' hero CTA are both absent while archived. All checks passed.",
+  "passed": 8,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Collections can be safely archived and restored without data loss",
+      "name": "admin-collection-safyra-luxury-archive-restore",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Archive confirmation shown; hidden from anonymous /api/catalog-groups; hidden from homepage Collections grid; hidden from header-nav-luxury quick-link (extended assertion, now data-testid count 0); hidden from 'SHOP SAFYRA LUXURY' hero CTA text (extended assertion, count 0); hidden from mega-menu Collections and Shop-the-edit sections. Restore returns it to active (confirmed via admin GET /catalog-groups?include_all=true -> status=active). Previously-reported bug (BrandHeader hasLuxury/header-nav-luxury and hero CTA not gated on catalog_groups.status) is fixed: BrandHeader.tsx now computes hasLuxury via collectionIsActive() consulting managedCollections from catalog_groups, and itemHasProducts() for mega-menu items does the same."
+    },
+    {
+      "criterion": "Collections can be safely archived and restored without data loss",
+      "name": "test_tscheck_collection_archive_restore.py::test_archive_and_restore_round_trip",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "PATCH /catalog-groups/{id} status=archived -> 200 {status: archived}; GET /catalog-groups (anon) excludes it; PATCH status=active -> 200; GET /catalog-groups (anon) includes it again."
+    },
+    {
+      "criterion": "Admin no longer offers destructive collection deletion",
+      "name": "admin-collection-no-destructive-delete",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Created tscheck-group fixture: active card exposes Edit+Archive only (no delete/restore), archive confirmation dialog required, archived card exposes Edit+Restore only (no delete/archive), Restore returns to active."
+    },
+    {
+      "criterion": "Admin no longer offers destructive collection deletion",
+      "name": "test_tscheck_collection_archive_restore.py::test_legacy_delete_soft_archives_instead_of_destroying",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "DELETE /catalog-groups/{id} -> 204; GET /catalog-groups?include_all=true (admin) still shows the row with status=archived and unchanged name; GET /catalog-groups (anon) excludes it."
+    },
+    {
+      "criterion": "Genuinely unavailable published products show YOU MISSED IT and cannot be purchased",
+      "name": "availability-you-missed-it-guard",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Shop card for Sang-e-Mar-Mar shows exact 'YOU MISSED IT' text, no quick-add control present. PDP shows product-missed-label='YOU MISSED IT', add-to-cart-button disabled with text 'YOU MISSED IT', buy-now-button disabled, sticky-mobile-add-to-cart absent."
+    },
+    {
+      "criterion": "Made-to-order products remain purchasable under existing availability rules",
+      "name": "availability-you-missed-it-guard",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Shop card for Aira shows no YOU MISSED IT text. PDP: product-missed-label absent, size-option-m enabled, selecting it enables add-to-cart-button with text 'Add to bag' without any stock/cart mutation."
+    },
+    {
+      "criterion": "Invoice print view uses only saved values and clearly states limitations",
+      "name": "admin-order-invoice-print-view",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "print-invoice popup HTML contains 'ORDER INVOICE', saved customer/address/items, 'Unit price'/'Line total' columns, status, 'Saved product subtotal', and limitations note mentioning tax registration and 'not proof of payment'."
+    },
+    {
+      "criterion": "Packing slip is distinct and price-free",
+      "name": "admin-order-packing-slip-print",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "print-packing-slip popup HTML contains 'PACKING SLIP', 'Ship to'/'Qty' columns, prices-omitted note; no 'Unit price'/'Line total'/'Saved product subtotal' text."
+    },
+    {
+      "criterion": "Manual tracking remains unchanged and no courier label is fabricated",
+      "name": "admin-order-manual-tracking-no-label-generation",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Courier/tracking-number/tracking-link/shipping-details fields visible on an existing order; no label-generation text or testid found anywhere in the order detail panel."
+    }
+  ]
+}

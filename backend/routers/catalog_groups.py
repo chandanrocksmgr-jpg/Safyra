@@ -83,6 +83,11 @@ async def update_catalog_group(group_id: str, input: CatalogGroupUpdate, _: dict
 
 @router.delete("/{group_id}", status_code=204)
 async def delete_catalog_group(group_id: str, _: dict = Depends(require_admin)):
-    result = await db.catalog_groups.delete_one({"id": group_id})
-    if result.deleted_count == 0:
+    # Retained for backwards compatibility, but deletion is deliberately soft:
+    # catalog relationships and merchandising data must never be destroyed here.
+    result = await db.catalog_groups.update_one(
+        {"id": group_id},
+        {"$set": {"status": "archived", "updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Catalog group not found")

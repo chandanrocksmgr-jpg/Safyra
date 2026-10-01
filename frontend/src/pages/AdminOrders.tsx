@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ExternalLink, LogOut, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink, FileText, LogOut, PackageCheck, PackageOpen, Search, ShieldCheck, Truck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/components/AuthProvider";
@@ -9,6 +9,7 @@ import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api";
 import type { AdminOrderRequest, AdminOrderRequestUpdate, FulfilmentStatus, OrderConversionResponse, PaymentStatus, RefundStatus } from "@/lib/checkout";
 import { endSession } from "@/lib/session";
 import { formatPrice } from "@/lib/shop";
+import { openOrderPrintView } from "@/lib/orderPrint";
 
 const paymentStatuses: PaymentStatus[] = ["Unpaid", "Payment pending", "Paid"];
 const fulfilmentStatuses: FulfilmentStatus[] = ["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"];
@@ -140,6 +141,7 @@ function OrderEditor({ request }: { request: AdminOrderRequest }) {
 
     <section className="admin-order-section admin-order-actions-section">
       <h3>Order actions</h3>
+      <div className="admin-print-actions" data-testid="admin-order-print-actions"><button className="button button-outline" onClick={() => { try { openOrderPrintView(request, "invoice"); } catch { toast.error("Allow pop-ups to open the print preview"); } }} data-testid="admin-order-print-invoice"><FileText size={15} /> Print invoice</button><button className="button button-outline" onClick={() => { try { openOrderPrintView(request, "packing-slip"); } catch { toast.error("Allow pop-ups to open the print preview"); } }} data-testid="admin-order-print-packing-slip"><PackageOpen size={15} /> Print packing slip</button></div>
       <button className="button button-outline" onClick={() => convertMutation.mutate()} disabled={!canConvert || Boolean(request.converted_order_id) || convertMutation.isPending} data-testid="admin-order-convert">{request.converted_order_id ? "Order already created" : "Convert request to order"}</button>
       {!request.cancelled && <div className="admin-cancel-order"><label>Cancellation reason<textarea value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} data-testid="admin-order-cancellation-reason" /></label><button className="button danger-button" onClick={() => cancelMutation.mutate()} disabled={cancellationReason.trim().length < 5 || cancelMutation.isPending} data-testid="admin-order-cancel">Cancel order</button></div>}
       {request.cancelled && <p data-testid="admin-order-cancelled-reason"><strong>Cancellation reason:</strong> {request.cancellation_reason}</p>}
