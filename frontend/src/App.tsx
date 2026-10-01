@@ -16,11 +16,13 @@ import Account from "@/pages/Account";
 import AdminLogin from "@/pages/AdminLogin";
 import Checkout from "@/pages/Checkout";
 import Information from "@/pages/Information";
+import AdminWaitlist from "@/pages/AdminWaitlist";
 import { ShopProvider } from "@/components/ShopProvider";
 import CartDrawer from "@/components/CartDrawer";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { useLocation } from "react-router-dom";
 import { useEffect, type ReactNode } from "react";
+import ProductWaitlistAction from "@/components/ProductWaitlistAction";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -66,9 +68,11 @@ export default function App() {
           <Route path="/admin/collections" element={<AdminRoute><AdminCollections /></AdminRoute>} />
           <Route path="/admin/homepage" element={<AdminRoute><AdminHomepage /></AdminRoute>} />
           <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+          <Route path="/admin/waitlist" element={<AdminRoute><AdminWaitlist /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CartDrawer />
+        <ProductWaitlistAction />
       </ShopProvider>
     </AuthProvider>
   );

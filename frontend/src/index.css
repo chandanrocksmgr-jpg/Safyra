@@ -1259,3 +1259,80 @@ select,
   .admin-group-image, .admin-group-image > img, .admin-group-image > .image-fallback { width: 88px; height: 120px; }
   .admin-group-card > .admin-row-actions { grid-column: 2; }
 }
+
+/* Customer waitlist and demand operations */
+.product-detail-copy:has(.product-missed-label) [data-testid="add-to-cart-button"],
+.product-detail-copy:has(.product-missed-label) [data-testid="buy-now-button"] { display: none; }
+.waitlist-product-trigger { order: -1; flex: 1 1 calc(100% - 62px); min-height: 54px; gap: .55rem; }
+.waitlist-modal-layer { z-index: 95; }
+.waitlist-card { width: min(100%, 560px); border-top: 4px solid var(--safyra-espresso); box-shadow: 0 28px 90px rgb(38 28 25 / .24); animation: soft-rise 220ms ease-out both; }
+.waitlist-close { position: absolute; top: 1rem; right: 1rem; width: 38px; height: 38px; border: 1px solid var(--safyra-border); display: grid; place-items: center; background: transparent; color: var(--safyra-espresso); transition: background-color 160ms ease, color 160ms ease; }
+.waitlist-close:hover { background: var(--safyra-espresso); color: var(--safyra-ivory); }
+.waitlist-card h2 { max-width: 410px; margin: .5rem 0 .75rem; font-size: clamp(2.6rem, 8vw, 4.2rem); line-height: .92; }
+.waitlist-card > p { margin: 0 0 1.35rem; }
+.waitlist-form { margin-top: 1.5rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.waitlist-form label { display: grid; gap: .42rem; color: var(--safyra-espresso-soft); font-size: .68rem; font-weight: 700; letter-spacing: .04em; }
+.waitlist-form label small { justify-self: end; margin-top: -1.2rem; font-weight: 450; }
+.waitlist-form input, .waitlist-form select { width: 100%; min-height: 48px; padding: .75rem; border: 1px solid var(--safyra-border); background: #fff; color: var(--safyra-espresso); outline: 0; }
+.waitlist-form input:focus, .waitlist-form select:focus { border-color: var(--safyra-aubergine); box-shadow: 0 0 0 3px rgb(73 52 61 / .1); }
+.waitlist-field-wide { grid-column: 1 / -1; }
+.waitlist-privacy { color: var(--safyra-espresso-soft); font-size: .62rem; line-height: 1.55; }
+.waitlist-success { padding: 1.6rem 0 .25rem; display: grid; justify-items: start; }
+.waitlist-success > svg { margin-bottom: 1.2rem; color: #31563c; }
+.waitlist-success p { margin: 0 0 1.5rem; color: var(--safyra-espresso-soft); line-height: 1.7; }
+
+.admin-metrics { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.admin-waitlist-summary { min-height: 42px; padding: .7rem .9rem; border: 1px solid var(--safyra-border); display: flex; align-items: center; gap: .55rem; background: var(--safyra-ivory); font-size: .72rem; font-weight: 700; }
+.admin-waitlist-toolbar { margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--safyra-border); display: grid; grid-template-columns: minmax(240px, 1fr) 190px auto; align-items: end; gap: .7rem; background: var(--safyra-ivory); }
+.admin-waitlist-toolbar input, .admin-waitlist-toolbar select { width: 100%; min-height: 44px; padding: .68rem .75rem; border: 1px solid var(--safyra-border); background: #fff; color: var(--safyra-espresso); }
+.admin-waitlist-toolbar .admin-search-field input { padding-left: 2.1rem; }
+.admin-waitlist-layout { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); align-items: start; gap: 1rem; }
+.admin-waitlist-list { border: 1px solid var(--safyra-border); background: var(--safyra-ivory); }
+.admin-waitlist-list-heading { min-height: 76px; padding: 1rem; display: flex; align-items: flex-end; justify-content: space-between; gap: .75rem; }
+.admin-waitlist-list-heading strong { font-size: .75rem; }
+.admin-waitlist-list > p, .admin-waitlist-list > .form-error { margin: 0 1rem 1rem; }
+.admin-waitlist-row { width: 100%; min-height: 92px; padding: .9rem 1rem; border: 0; border-top: 1px solid var(--safyra-border); display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; background: transparent; color: var(--safyra-espresso); text-align: left; transition: background-color 160ms ease, box-shadow 160ms ease; }
+.admin-waitlist-row:hover, .admin-waitlist-row.is-active { background: rgb(73 52 61 / .07); box-shadow: inset 3px 0 var(--safyra-aubergine); }
+.admin-waitlist-row > span { min-width: 0; display: grid; gap: .23rem; }
+.admin-waitlist-row > span:last-child { flex: 0 0 auto; justify-items: end; text-align: right; }
+.admin-waitlist-row strong, .admin-waitlist-row b { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .74rem; }
+.admin-waitlist-row small { max-width: 210px; overflow: hidden; color: var(--safyra-espresso-soft); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+.admin-waitlist-detail { display: grid; gap: 1rem; }
+.admin-waitlist-detail-header { min-height: 150px; padding: 1.1rem; border: 1px solid var(--safyra-border); display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; align-items: start; gap: 1rem; background: var(--safyra-ivory); }
+.admin-waitlist-detail-header > img, .admin-waitlist-detail-header > .image-fallback { width: 90px; height: 120px; object-fit: cover; }
+.admin-waitlist-detail-header h2 { margin: .45rem 0 .35rem; font-size: 2rem; line-height: 1; }
+.admin-waitlist-detail-header p { margin: 0; color: var(--safyra-espresso-soft); font-size: .7rem; }
+.admin-waitlist-contact { border: 1px solid var(--safyra-border); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--safyra-ivory); }
+.admin-waitlist-contact > * { min-height: 88px; padding: 1rem; border-right: 1px solid var(--safyra-border); display: flex; align-items: center; gap: .7rem; }
+.admin-waitlist-contact > *:last-child { border-right: 0; }
+.admin-waitlist-contact span, .admin-waitlist-contact a, .admin-waitlist-contact > div { min-width: 0; }
+.admin-waitlist-contact small, .admin-waitlist-contact strong { display: block; }
+.admin-waitlist-contact small { margin-bottom: .25rem; color: var(--safyra-espresso-soft); font-size: .58rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.admin-waitlist-contact strong { overflow-wrap: anywhere; font-size: .72rem; }
+.admin-waitlist-form { gap: .9rem; }
+.admin-waitlist-footer { padding: .85rem 1rem; border: 1px solid var(--safyra-border); display: flex; justify-content: space-between; gap: 1rem; background: var(--safyra-ivory); color: var(--safyra-espresso-soft); font-size: .63rem; }
+.admin-waitlist-footer a { display: inline-flex; align-items: center; gap: .3rem; color: var(--safyra-espresso); font-weight: 700; }
+.admin-waitlist-empty { min-height: 150px; padding: 2rem; display: grid; place-items: center; align-content: center; gap: .6rem; color: var(--safyra-espresso-soft); text-align: center; }
+.admin-waitlist-placeholder { min-height: 280px; border: 1px solid var(--safyra-border); background: var(--safyra-ivory); }
+.status-waiting { background: #eee7d8; color: #755b27 !important; }
+.status-contacted { background: #e3e9ee; color: #345268 !important; }
+.status-converted { background: #e4eee6; color: #31563c !important; }
+.status-closed { background: #e6e2e0; color: #665c58 !important; }
+
+@media (max-width: 900px) {
+  .admin-waitlist-toolbar, .admin-waitlist-layout { grid-template-columns: 1fr; }
+  .admin-waitlist-contact { grid-template-columns: 1fr; }
+  .admin-waitlist-contact > * { min-height: 68px; border-right: 0; border-bottom: 1px solid var(--safyra-border); }
+  .admin-waitlist-contact > *:last-child { border-bottom: 0; }
+}
+
+@media (max-width: 767px) {
+  .waitlist-card { padding: 1.4rem; }
+  .waitlist-form { grid-template-columns: 1fr; }
+  .waitlist-field-wide { grid-column: 1; }
+  .waitlist-product-trigger { flex-basis: calc(100% - 60px) !important; font-size: .65rem; }
+  .admin-waitlist-detail-header { grid-template-columns: 70px minmax(0, 1fr); }
+  .admin-waitlist-detail-header > img, .admin-waitlist-detail-header > .image-fallback { width: 70px; height: 94px; }
+  .admin-waitlist-detail-header > .admin-status-pill { grid-column: 2; }
+  .admin-waitlist-footer { flex-direction: column; }
+}

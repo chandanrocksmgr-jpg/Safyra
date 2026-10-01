@@ -17,6 +17,7 @@ from routers.order_requests import router as order_requests_router
 from routers.catalog_groups import router as catalog_groups_router
 from routers.homepage import router as homepage_router
 from routers.media import router as media_router
+from routers.waitlist import router as waitlist_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -74,6 +75,7 @@ api_router.include_router(order_requests_router)
 api_router.include_router(catalog_groups_router)
 api_router.include_router(homepage_router)
 api_router.include_router(media_router)
+api_router.include_router(waitlist_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -53,6 +53,15 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("received_at", DESCENDING)], name="received_at"),
         IndexModel([("payment_status", ASCENDING), ("fulfilment_status", ASCENDING), ("received_at", DESCENDING)], name="status_received"),
     ],
+    "waitlist_requests": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
+        IndexModel([("product_id", ASCENDING), ("status", ASCENDING), ("created_at", DESCENDING)], name="product_status_created"),
+        IndexModel([("mobile_normalised", ASCENDING), ("product_id", ASCENDING), ("size_key", ASCENDING), ("color_key", ASCENDING), ("status", ASCENDING)], name="mobile_product_variant_status"),
+        IndexModel([("email_normalised", ASCENDING), ("product_id", ASCENDING), ("size_key", ASCENDING), ("color_key", ASCENDING), ("status", ASCENDING)], name="email_product_variant_status", sparse=True),
+        IndexModel([("active_mobile_key", ASCENDING)], name="active_mobile_key", unique=True, sparse=True),
+        IndexModel([("active_email_key", ASCENDING)], name="active_email_key", unique=True, sparse=True),
+    ],
     "orders": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("order_number", ASCENDING)], name="order_number", unique=True),
