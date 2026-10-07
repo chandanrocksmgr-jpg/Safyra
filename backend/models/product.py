@@ -5,6 +5,30 @@ import uuid
 from pydantic import BaseModel, Field, ConfigDict
 
 
+class ProductSetType(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = Field(min_length=1, max_length=100)
+    price: int = Field(ge=0)
+    mrp: Optional[int] = Field(default=None, ge=0)
+
+
+class ProductVariantOverride(BaseModel):
+    set_type_id: str = Field(min_length=1, max_length=80)
+    size: str = Field(default="", max_length=40)
+    color: str = Field(default="", max_length=80)
+    price: Optional[int] = Field(default=None, ge=0)
+    mrp: Optional[int] = Field(default=None, ge=0)
+    stock: Optional[int] = Field(default=None, ge=0)
+    availability: Optional[str] = Field(default=None, max_length=80)
+
+
+class ActiveDiscount(BaseModel):
+    id: str
+    name: str
+    discount_type: Literal["percentage", "fixed"]
+    value: int
+
+
 class ProductFields(BaseModel):
     title: str
     slug: str
@@ -19,7 +43,7 @@ class ProductFields(BaseModel):
     sizes: list[str] = Field(default_factory=list)
     colors: list[str] = Field(default_factory=list)
     image_url: str
-    image_urls: list[str] = Field(default_factory=list)
+    image_urls: list[str] = Field(default_factory=list, max_length=40)
     description: str
     fit: str
     measurements: str
@@ -39,6 +63,8 @@ class ProductFields(BaseModel):
     best_seller: bool = False
     new_arrival: bool = False
     status: Literal["draft", "active", "archived"] = "active"
+    set_types: list[ProductSetType] = Field(default_factory=list, max_length=20)
+    variant_overrides: list[ProductVariantOverride] = Field(default_factory=list, max_length=500)
 
 
 class ProductCreate(ProductFields):
@@ -59,7 +85,7 @@ class ProductUpdate(BaseModel):
     sizes: Optional[list[str]] = None
     colors: Optional[list[str]] = None
     image_url: Optional[str] = None
-    image_urls: Optional[list[str]] = None
+    image_urls: Optional[list[str]] = Field(default=None, max_length=40)
     description: Optional[str] = None
     fit: Optional[str] = None
     measurements: Optional[str] = None
@@ -79,6 +105,8 @@ class ProductUpdate(BaseModel):
     best_seller: Optional[bool] = None
     new_arrival: Optional[bool] = None
     status: Optional[Literal["draft", "active", "archived"]] = None
+    set_types: Optional[list[ProductSetType]] = Field(default=None, max_length=20)
+    variant_overrides: Optional[list[ProductVariantOverride]] = Field(default=None, max_length=500)
 
 
 class Product(ProductFields):
@@ -87,6 +115,7 @@ class Product(ProductFields):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active_discount: Optional[ActiveDiscount] = None
 
 
 DEFAULT_PRODUCTS: list[Product] = [

@@ -13,6 +13,7 @@ class OrderRequestItemInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     product_id: str = Field(min_length=1, max_length=80)
+    set_type: Optional[str] = Field(default=None, max_length=100)
     size: str = Field(min_length=1, max_length=40)
     color: str = Field(min_length=1, max_length=80)
     quantity: int = Field(ge=1, le=20)
@@ -32,6 +33,7 @@ class OrderRequestCreate(BaseModel):
     country_code: str = Field(pattern=r"^[A-Z]{2}$")
     shipping: Literal["india", "international"]
     note: str = Field(default="", max_length=2000)
+    checkout_session_id: Optional[str] = Field(default=None, max_length=100)
     items: list[OrderRequestItemInput] = Field(min_length=1, max_length=40)
 
 
@@ -44,7 +46,12 @@ class OrderRequestStoredItem(BaseModel):
     product_id: str
     title: str
     image_url: str
+    set_type: Optional[str] = None
+    regular_price: int = 0
     price: int
+    compare_at_price: Optional[int] = None
+    discount_name: Optional[str] = None
+    discount_amount: int = 0
     size: str
     color: str
     quantity: int
@@ -77,6 +84,12 @@ class OrderRequestAdmin(BaseModel):
     note: str = ""
     items: list[OrderRequestStoredItem] = Field(default_factory=list)
     subtotal: int = 0
+    regular_subtotal: int = 0
+    discount_total: int = 0
+    shipping_amount: Optional[int] = None
+    tax_amount: Optional[int] = None
+    total: Optional[int] = None
+    record_type: Literal["Request", "Confirmed"] = "Request"
     payment_status: PaymentStatus = "Unpaid"
     payment_verified_at: Optional[datetime] = None
     fulfilment_status: FulfilmentStatus = "Request received"
@@ -101,6 +114,7 @@ class OrderRequestAdminUpdate(BaseModel):
     payment_status: Optional[PaymentStatus] = None
     payment_verified: bool = False
     fulfilment_status: Optional[FulfilmentStatus] = None
+    shipping_verified: bool = False
     courier_name: Optional[str] = Field(default=None, max_length=120)
     shipping_details: Optional[str] = Field(default=None, max_length=1000)
     tracking_number: Optional[str] = Field(default=None, max_length=160)
@@ -128,3 +142,10 @@ class OrderConversionResponse(BaseModel):
     order_id: str
     order_number: str
     converted_at: datetime
+
+
+class OrderRequestList(BaseModel):
+    items: list[OrderRequestAdmin]
+    total: int
+    page: int
+    page_size: int

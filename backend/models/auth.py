@@ -56,6 +56,8 @@ class SavedCartItem(BaseModel):
     title: str
     imageUrl: str
     price: int
+    compareAtPrice: Optional[int] = None
+    setType: str = ""
     size: str
     color: str
     quantity: int = Field(ge=1, le=20)
@@ -69,6 +71,7 @@ class AccountStateUpdate(BaseModel):
 class OrderItem(BaseModel):
     product_name: str
     image_url: str
+    set_type: str = ""
     size: str
     color: str
     quantity: int

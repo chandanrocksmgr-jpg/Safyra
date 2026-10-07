@@ -3,12 +3,13 @@ from typing import Optional
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
 from lib.security import get_optional_user, require_admin
 from models.product import DEFAULT_PRODUCTS, Product, ProductCreate, ProductUpdate
+from lib.pricing import active_discounts, best_discount
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -26,14 +27,28 @@ class ProductFacets(BaseModel):
     has_best_sellers: bool
 
 
+class ProductBulkUpdate(BaseModel):
+    product_ids: list[str] = Field(min_length=1, max_length=200)
+    status: Optional[str] = None
+    price_mode: Optional[str] = None
+    price_value: Optional[int] = Field(default=None, ge=0)
+    include_set_types: bool = False
+    include_variant_overrides: bool = False
+
+
 async def _ensure_catalog() -> None:
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([product.model_dump() for product in DEFAULT_PRODUCTS])
 
 
-def _clean(document: dict) -> Product:
-    document.pop("_id", None)
-    return Product(**document)
+def _clean(document: dict, discounts: list[dict] | None = None) -> Product:
+    cleaned = dict(document)
+    cleaned.pop("_id", None)
+    if discounts:
+        discount = best_discount(cleaned, discounts, cleaned.get("price", 0))
+        if discount:
+            cleaned["active_discount"] = {key: discount[key] for key in ["id", "name", "discount_type", "value"]}
+    return Product(**cleaned)
 
 
 @router.get("", response_model=list[Product])
@@ -105,7 +120,8 @@ async def list_products(
         "featured": [("featured", -1), ("created_at", -1)],
     }
     documents = await db.products.find(filters).sort(sort_map.get(sort, sort_map["featured"])).to_list(1000)
-    return [_clean(document) for document in documents]
+    discounts = [] if is_admin else await active_discounts()
+    return [_clean(document, discounts) for document in documents]
 
 
 @router.get("/facets", response_model=ProductFacets)
@@ -144,7 +160,8 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_option
     document = await db.products.find_one(filters)
     if not document:
         raise HTTPException(status_code=404, detail="Product not found")
-    return _clean(document)
+    discounts = [] if user and user.get("role") == "admin" else await active_discounts()
+    return _clean(document, discounts)
 
 
 @router.post("", response_model=Product, status_code=201)
@@ -170,6 +187,42 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
         raise HTTPException(status_code=409, detail="A product with this slug already exists") from exc
     document = await db.products.find_one({"id": product_id})
     return _clean(document)
+
+
+@router.post("/bulk", response_model=list[Product])
+async def bulk_update_products(input: ProductBulkUpdate, _: dict = Depends(require_admin)):
+    documents = await db.products.find({"id": {"$in": input.product_ids}}).to_list(len(input.product_ids))
+    if len(documents) != len(set(input.product_ids)):
+        raise HTTPException(status_code=404, detail="One or more selected products were not found")
+    if input.status and input.status not in {"active", "draft", "archived"}:
+        raise HTTPException(status_code=422, detail="Invalid product status")
+    if input.price_mode and input.price_mode not in {"set", "increase_percent", "decrease_percent"}:
+        raise HTTPException(status_code=422, detail="Invalid price update mode")
+    if not input.status and not input.price_mode:
+        raise HTTPException(status_code=422, detail="Choose a status or price update")
+
+    def changed_price(value: int) -> int:
+        if input.price_value is None:
+            return value
+        if input.price_mode == "set":
+            return input.price_value
+        multiplier = 1 + input.price_value / 100 if input.price_mode == "increase_percent" else 1 - input.price_value / 100
+        return max(0, round(value * multiplier))
+
+    now = datetime.now(timezone.utc)
+    for document in documents:
+        changes: dict = {"updated_at": now}
+        if input.status:
+            changes["status"] = input.status
+        if input.price_mode:
+            changes["price"] = changed_price(document["price"])
+            if input.include_set_types:
+                changes["set_types"] = [{**item, "price": changed_price(item["price"])} for item in document.get("set_types", [])]
+            if input.include_variant_overrides:
+                changes["variant_overrides"] = [{**item, **({"price": changed_price(item["price"])} if item.get("price") is not None else {})} for item in document.get("variant_overrides", [])]
+        await db.products.update_one({"id": document["id"]}, {"$set": changes})
+    updated = await db.products.find({"id": {"$in": input.product_ids}}).to_list(len(input.product_ids))
+    return [_clean(document) for document in updated]
 
 
 @router.delete("/{product_id}", status_code=204)

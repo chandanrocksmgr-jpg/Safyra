@@ -26,6 +26,21 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("fabric", ASCENDING)], name="fabric"),
         IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
     ],
+    "discounts": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("status", ASCENDING), ("starts_at", ASCENDING), ("ends_at", ASCENDING)], name="status_window"),
+        IndexModel([("product_ids", ASCENDING)], name="product_ids"),
+        IndexModel([("collections", ASCENDING)], name="collections"),
+    ],
+    "checkout_sessions": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("session_key", ASCENDING)], name="session_key", unique=True),
+        IndexModel([("checkout_number", ASCENDING)], name="checkout_number", unique=True),
+        IndexModel([("status", ASCENDING), ("last_activity_at", DESCENDING)], name="status_activity"),
+        IndexModel([("reminder_status", ASCENDING), ("last_activity_at", ASCENDING)], name="reminder_activity"),
+        IndexModel([("completed_order_request_id", ASCENDING)], name="completed_order", sparse=True),
+    ],
+    "cron_runs": [IndexModel([("run_id", ASCENDING)], name="run_id", unique=True)],
     "catalog_groups": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("group_type", ASCENDING), ("slug", ASCENDING)], name="type_slug", unique=True),
@@ -52,6 +67,7 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("customer_id", ASCENDING), ("received_at", DESCENDING)], name="customer_received"),
         IndexModel([("received_at", DESCENDING)], name="received_at"),
         IndexModel([("payment_status", ASCENDING), ("fulfilment_status", ASCENDING), ("received_at", DESCENDING)], name="status_received"),
+        IndexModel([("converted_order_id", ASCENDING), ("received_at", DESCENDING)], name="converted_received"),
     ],
     "waitlist_requests": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),

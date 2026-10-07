@@ -1,0 +1,8 @@
+crons:
+  - name: checkout-recovery
+    description: "Marks inactive checkouts abandoned and sends each permitted recovery email once"
+    cron: "*/15 * * * *"
+    endpoint: "{{BASE_URL}}/api/cron/checkout-recovery"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true
