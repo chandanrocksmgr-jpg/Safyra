@@ -180,7 +180,11 @@ async def update_checkout_session(session_id: str, input: CheckoutSessionAdminUp
 
 def _recovery_html(session: dict) -> str:
     public_site = os.environ["PUBLIC_SITE_URL"].rstrip("/")
-    items = "".join(f"<li>{escape(item['title'])}{f' — {escape(item.get('set_type') or '')}' if item.get('set_type') else ''}</li>" for item in session["items"])
+    item_rows = []
+    for item in session["items"]:
+        set_type = f" — {escape(item['set_type'])}" if item.get("set_type") else ""
+        item_rows.append(f"<li>{escape(item['title'])}{set_type}</li>")
+    items = "".join(item_rows)
     return (
         '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
         f'<p>Hi {escape(session["name"])},</p><p>You left a SAFYRA checkout unfinished. Your selection is still available to review:</p>'
