@@ -1,0 +1,60 @@
+{
+  "iteration": 28,
+  "summary": "Generated artifacts for 6 new PayU India checkout acceptance criteria: 3 browser checks (india quote/shipping + PayU hosted redirect, international assisted flow, admin PayU order detail) and 4 backend pytest files (order state protection incl. 404/422/admin-override guard, reconciliation cron auth+idempotency, India shipping-rule quote). Also fixed a regression in shared test helper (helpers_order.py) and one legacy test (test_tscheck_shipping_and_notes_privacy.py) that posted India addresses directly to /order-requests -- now correctly rejected (422) since India must route through PayU; switched them to an international destination so unrelated cancellation/refund/notes/shipping criteria keep working. Full backend suite (40 tests) and all 3 new browser checks pass.",
+  "passed": 7,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "India checkout shows the server-verified Shopify-equivalent shipping rule",
+      "name": "india-checkout-payu-redirect",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Added a ₹3,850 approved product to cart, filled valid India address; review step shows India shipping = 'Free' (subtotal >= ₹1,000), product subtotal equals payable total (no shipping added), and 'Pay securely with PayU' button shows the same total. Screenshots: review-step, review-shipping-free."
+    },
+    {
+      "criterion": "India checkout shows the server-verified Shopify-equivalent shipping rule",
+      "name": "test_tscheck_india_shipping_rule_quote.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /payments/quote for an approved product (subtotal>=1000) -> 200, shipping_amount=0, total=subtotal+shipping. POST /payments/quote with empty items -> 422 (payable total must be > 0), exercising the zero-shipping/threshold math guard."
+    },
+    {
+      "criterion": "India checkout hands off securely to PayU Hosted Checkout",
+      "name": "india-checkout-payu-redirect",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Clicking 'Pay securely with PayU · ₹3,850' submitted a hidden POST form and navigated to https://secure.payu.in/_payment (confirmed via page.waitForURL(/secure\\.payu\\.in|api\\.payu\\.in/) and final page.url() matching payu.in); PayU's own hosted branding rendered (screenshot payu-hosted-page) with no card/UPI inputs ever rendered on the SAFYRA page itself."
+    },
+    {
+      "criterion": "PayU order state is server protected",
+      "name": "test_tscheck_payu_order_state_protected.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /payments/create -> 201 with action=https://secure.payu.in/_payment; GET /payments/{txn} -> 200 status='pending'; admin PATCH /order-requests/{number} {payment_status:Paid,payment_verified:true} -> 409 (PayU payments can only be confirmed by a verified gateway response), confirmed still pending afterward. GET /payments/tscheck-unknown-txn-<rand> -> 404. POST /payments/quote with country_code=US/shipping=international -> 422 (India delivery only)."
+    },
+    {
+      "criterion": "International checkout remains assisted rather than entering PayU",
+      "name": "international-checkout-stays-assisted",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Selecting United States auto-flips shipping to international; review step shows 'Personal shipping confirmation' handoff note, no ₹ payable-total/shipping-total testids render; submit button reads 'Submit international order request'; clicking it reaches checkout-complete with a request reference and final URL does NOT match payu.in."
+    },
+    {
+      "criterion": "Admin can distinguish PayU orders and totals",
+      "name": "admin-order-shows-payu-gateway-detail",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Created a real PayU order via POST /payments/create (txn SAF5D78DBF12935482CB816, total 3850), logged in as admin, searched by request_number, opened detail: 'admin-order-gateway' section shows provider PayU, merchant transaction id, inventory reservation state; payment-status select is disabled (cannot be manually set to Paid) and the manual-verification checkbox is absent; ₹3,850 total visible."
+    },
+    {
+      "criterion": "PayU reconciliation schedule endpoint is protected and idempotent",
+      "name": "test_tscheck_payu_reconcile_cron.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /cron/payu-reconcile with no Authorization -> 401; with wrong Bearer secret -> 401; with correct Bearer WEBHOOK_CRON_SECRET -> 202 {accepted:true,duplicate:false} returned quickly (actual reconciliation deferred to BackgroundTasks); re-posting the identical run_id -> 202 {accepted:true,duplicate:true} without reprocessing."
+    }
+  ]
+}

@@ -21,6 +21,7 @@ from routers.waitlist import router as waitlist_router
 from routers.discounts import router as discounts_router
 from routers.checkout_sessions import router as checkout_sessions_router
 from routers.order_emails import router as order_emails_router
+from routers.payments import router as payments_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -82,6 +83,7 @@ api_router.include_router(waitlist_router)
 api_router.include_router(discounts_router)
 api_router.include_router(checkout_sessions_router)
 api_router.include_router(order_emails_router)
+api_router.include_router(payments_router)
 
 app.add_middleware(
     CORSMiddleware,

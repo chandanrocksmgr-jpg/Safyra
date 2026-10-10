@@ -3,14 +3,14 @@ import { useMutation } from "@tanstack/react-query";
 import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { getCountryByCode, validatePostalCode } from "postal-code-checker";
-import { ArrowLeft, Check, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, MessageCircle, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import BrandHeader from "@/components/BrandHeader";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, whatsappUrl } from "@/lib/shop";
 import { apiPost, apiPut } from "@/lib/api";
-import type { OrderRequestCreate, OrderRequestResponse } from "@/lib/checkout";
+import type { OrderRequestCreate, OrderRequestResponse, PaymentQuoteResponse, PayUCheckoutResponse } from "@/lib/checkout";
 import type { CheckoutSessionSummary, CheckoutSessionUpsert } from "@/lib/abandonedCheckout";
 
 type CheckoutStep = "details" | "review" | "complete";
@@ -72,6 +72,24 @@ export default function Checkout() {
       setStep("complete");
       window.localStorage.removeItem("safyra-checkout-session");
       window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+  });
+  const quotePayment = useMutation({ mutationFn: (payload: OrderRequestCreate) => apiPost<PaymentQuoteResponse>("/payments/quote", payload) });
+  const createPayment = useMutation({
+    mutationFn: (payload: OrderRequestCreate) => apiPost<PayUCheckoutResponse>("/payments/create", payload),
+    onSuccess: (response) => {
+      const paymentForm = document.createElement("form");
+      paymentForm.method = "POST";
+      paymentForm.action = response.action;
+      Object.entries(response.fields).forEach(([name, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        paymentForm.appendChild(input);
+      });
+      document.body.appendChild(paymentForm);
+      paymentForm.submit();
     },
   });
   const checkoutTracking = useMutation({
@@ -142,14 +160,23 @@ export default function Checkout() {
     setErrors((current) => ({ ...current, state: undefined, city: undefined }));
   };
   const showFieldError = (field: CheckoutField) => setErrors((current) => ({ ...current, [field]: validateForm()[field] }));
+  const buildPayload = (): OrderRequestCreate | null => selectedCountry ? {
+    name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), address: form.address.trim(),
+    city: form.city.trim(), state_region: form.state.trim(), postal_code: form.postalCode.trim(),
+    country: selectedCountry.name, country_code: selectedCountry.isoCode, shipping: shipping as "india" | "international",
+    note: form.note.trim(), checkout_session_id: checkoutSessionKey,
+    items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
+  } : null;
   const continueToReview = (event: FormEvent) => {
     event.preventDefault();
     const next = validateForm();
     setErrors(next);
     if (Object.keys(next).length) return;
     trackCurrentCheckout();
-    setStep("review");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const payload = buildPayload();
+    if (!payload) return;
+    const showReview = () => { setStep("review"); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    if (payload.country_code === "IN") quotePayment.mutate(payload, { onSuccess: showReview }); else showReview();
   };
   const orderSummary = cart.map((item) => `${item.title} — Size ${item.size}, ${item.color}, Qty ${item.quantity}`).join("; ");
   const handoff = whatsappUrl(`Hello SAFYRA, my order request${request ? ` ${request.request_number}` : ""} is ready for review. Items: ${orderSummary}. Total before shipping: ${formatPrice(cartTotal)}. Shipping: ${shipping === "india" ? "India delivery" : "International shipping quote"}. Deliver to: ${form.name}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.country}. Contact: ${form.phone}, ${form.email}.${form.note.trim() ? ` Note: ${form.note.trim()}` : ""}`);
@@ -157,32 +184,23 @@ export default function Checkout() {
   const contactForLocation = whatsappUrl(`Hello SAFYRA, I need help entering my delivery city for ${form.country || "my country"}.`);
   const checkoutHelpUrl = whatsappUrl("Hello SAFYRA, I need help before submitting my order request.");
   const submitOrderRequest = () => {
-    if (!selectedCountry) return;
-    submitRequest.mutate({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      address: form.address.trim(),
-      city: form.city.trim(),
-      state_region: form.state.trim(),
-      postal_code: form.postalCode.trim(),
-      country: selectedCountry.name,
-      country_code: selectedCountry.isoCode,
-      shipping: shipping as "india" | "international",
-      note: form.note.trim(),
-      checkout_session_id: checkoutSessionKey,
-      items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
-    });
+    const payload = buildPayload();
+    if (!payload) return;
+    if (payload.country_code === "IN") createPayment.mutate(payload); else submitRequest.mutate(payload);
   };
+  const isIndia = selectedCountry?.isoCode === "IN";
+  const estimatedShipping = isIndia ? (cartTotal >= 1000 ? 0 : 120) : 0;
+  const shippingAmount = quotePayment.data?.shipping_amount ?? estimatedShipping;
+  const payableTotal = quotePayment.data?.total ?? cartTotal + shippingAmount;
   if (!cart.length) return <div className="page-shell"><BrandHeader /><main className="checkout-empty"><h1>Your bag is empty.</h1><Link to="/shop" className="button button-dark" data-testid="checkout-empty-shop">Return to shop</Link></main></div>;
   return <div className="page-shell">
     <BrandHeader />
     <main className="checkout-page">
       <Link to="/cart" className="back-link" data-testid="checkout-back"><ArrowLeft size={15} /> Back to bag</Link>
       <div className="checkout-heading">
-        <span className="eyebrow">Checkout preparation</span>
+        <span className="eyebrow">Secure checkout</span>
         <h1 data-testid="checkout-heading">{step === "details" ? "Where should your order go?" : step === "review" ? "Review every detail." : "YOUR SAFYRA ORDER REQUEST IS RECEIVED."}</h1>
-        <p data-testid="checkout-supporting-copy">{step === "complete" ? "Thank you. We’ve received your order details and will verify the product and shipping information before sending your secure payment link." : "No payment is taken on this page. SAFYRA confirms shipping before sending your secure payment link."}</p>
+        <p data-testid="checkout-supporting-copy">{step === "complete" ? "Thank you. We’ve received your international order request and will confirm shipping personally." : isIndia ? "Review the final total here, then complete payment securely on PayU’s hosted checkout." : "International shipping remains personally confirmed by SAFYRA before payment."}</p>
       </div>
       <div className="checkout-layout">
         <section className="checkout-form-card">
@@ -231,19 +249,20 @@ export default function Checkout() {
             </div>
             <fieldset className="shipping-options">
               <legend>Shipping selection</legend>
-              <label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} disabled={Boolean(selectedCountry && selectedCountry.isoCode !== "IN")} onChange={() => { setShipping("india"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-india" /><span><strong>India delivery</strong><small>Charges and dispatch guidance confirmed before payment</small></span></label>
+              <label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} disabled={Boolean(selectedCountry && selectedCountry.isoCode !== "IN")} onChange={() => { setShipping("india"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-india" /><span><strong>India delivery</strong><small>₹120 for orders up to ₹999 · Free from ₹1,000</small></span></label>
               <label className={shipping === "international" ? "is-selected" : ""}><input type="radio" name="shipping" value="international" checked={shipping === "international"} disabled={Boolean(selectedCountry && selectedCountry.isoCode === "IN")} onChange={() => { setShipping("international"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-international" /><span><strong>International shipping</strong><small>SAFYRA will confirm the destination quote personally</small></span></label>
             </fieldset>
             <FieldError field="shipping" message={errors.shipping} />
-            <button className="button button-dark button-full" type="submit" data-testid="checkout-review-button">CONTINUE TO CHECKOUT</button>
+            {quotePayment.isError && <div className="form-error" data-testid="checkout-quote-error">We couldn’t verify the current prices or availability. Please review your bag and try again.</div>}
+            <button className="button button-dark button-full" type="submit" disabled={quotePayment.isPending} data-testid="checkout-review-button">{quotePayment.isPending ? "VERIFYING TOTAL…" : "REVIEW ORDER"}</button>
           </form>}
 
           {step === "review" && <div className="checkout-review" data-testid="checkout-review">
             <div className="checkout-step"><span><Check size={15} /></span><div><strong>Delivery details</strong><small>{form.name} · {form.city}, {form.country}</small></div><button onClick={() => setStep("details")} data-testid="checkout-edit-address">Edit</button></div>
             <div className="review-address"><p>{form.address}</p><p>{form.city}, {form.state} {form.postalCode}</p><p>{form.phone} · {form.email}</p>{form.note && <p data-testid="checkout-review-note">{form.note}</p>}</div>
-            <div className="handoff-note"><ShieldCheck size={20} /><p><strong>Secure payment</strong>We’ll verify your order and shipping details before sending your secure payment link.</p></div>
-            {submitRequest.isError && <div className="form-error" data-testid="checkout-request-error">We couldn’t save your order request. No payment was taken. Please try again.</div>}
-            <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending} data-testid="checkout-submit-request">{submitRequest.isPending ? "Sending request…" : "Request secure payment link"}</button>
+            <div className="handoff-note"><ShieldCheck size={20} /><p><strong>{isIndia ? "PayU Hosted Checkout" : "Personal shipping confirmation"}</strong>{isIndia ? "Your card or UPI details are entered only on PayU. SAFYRA verifies the payment server-to-server before confirming fulfilment." : "SAFYRA will confirm the international shipping charge before requesting payment."}</p></div>
+            {(submitRequest.isError || createPayment.isError) && <div className="form-error" data-testid="checkout-request-error">We couldn’t begin checkout. No payment was taken. Please review your details and try again.</div>}
+            <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending || createPayment.isPending} data-testid="checkout-submit-request">{submitRequest.isPending || createPayment.isPending ? "Preparing secure checkout…" : isIndia ? <><CreditCard size={17} /> Pay securely with PayU · {formatPrice(payableTotal)}</> : "Submit international order request"}</button>
             <a href={checkoutHelpUrl} target="_blank" rel="noreferrer" className="button button-outline button-full" data-testid="checkout-support-whatsapp">Need checkout help?</a>
           </div>}
 
@@ -252,9 +271,9 @@ export default function Checkout() {
             <p data-testid="checkout-request-reference">Request reference: <strong>{request.request_number}</strong></p>
             <h2>WHAT HAPPENS NEXT</h2>
             <ol data-testid="checkout-next-steps">
-              <li>SAFYRA verifies your order and shipping.</li>
-              <li>We send your secure payment link.</li>
-              <li>Your order is confirmed once payment is completed.</li>
+              <li>SAFYRA reviews your destination and shipping feasibility.</li>
+              <li>We confirm the international shipping charge personally.</li>
+              <li>Payment is requested only after those details are agreed.</li>
             </ol>
             <a href={handoff} target="_blank" rel="noreferrer" className="button button-dark button-full" data-testid="checkout-chat-with-safyra"><MessageCircle size={17} /> CHAT WITH SAFYRA</a>
           </div>}
@@ -263,8 +282,11 @@ export default function Checkout() {
         <aside className="checkout-summary">
           <span className="eyebrow">Your order</span>
           {cart.map((item) => <div className="checkout-item" key={item.key} data-testid={`checkout-item-${item.productId}`}><SafeProductImage src={item.imageUrl} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><small>Size {item.size} · {item.color} · Qty {item.quantity}</small><span>{formatPrice(item.price * item.quantity)}</span></div></div>)}
-          <div className="summary-line"><span>Subtotal</span><strong>{formatPrice(cartTotal)}</strong></div>
-          <small>Final shipping and payable total are confirmed before payment.</small>
+          {quotePayment.data && quotePayment.data.discount_total > 0 && <div className="summary-line" data-testid="checkout-discount-total"><span>Automatic savings</span><strong>−{formatPrice(quotePayment.data.discount_total)}</strong></div>}
+          <div className="summary-line"><span>Product subtotal</span><strong data-testid="checkout-subtotal">{formatPrice(quotePayment.data?.subtotal ?? cartTotal)}</strong></div>
+          {isIndia && <div className="summary-line"><span>India shipping</span><strong data-testid="checkout-shipping-total">{shippingAmount === 0 ? "Free" : formatPrice(shippingAmount)}</strong></div>}
+          {isIndia && <div className="summary-line checkout-payable-total"><span>Total</span><strong data-testid="checkout-payable-total">{formatPrice(payableTotal)}</strong></div>}
+          <small>{isIndia ? "Taxes included. The total is recalculated by SAFYRA before PayU opens." : "International shipping is confirmed personally before payment."}</small>
         </aside>
       </div>
     </main>

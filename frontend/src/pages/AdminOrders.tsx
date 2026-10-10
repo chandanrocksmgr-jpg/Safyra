@@ -112,19 +112,24 @@ function OrderEditor({ request }: { request: AdminOrderRequest }) {
     <section className="admin-order-section" data-testid="admin-order-items">
       <h3>Selected products</h3>
       {request.items.map((item) => <div className="admin-order-item" key={`${item.product_id}-${item.size}-${item.color}`}><SafeProductImage src={item.image_url} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><span>{item.size} · {item.color} · Qty {item.quantity}</span></div><strong>{formatPrice(item.line_total)}</strong></div>)}
+      {request.discount_total > 0 && <div className="summary-line" data-testid="admin-order-discount-total"><span>Automatic savings</span><strong>−{formatPrice(request.discount_total)}</strong></div>}
       <div className="summary-line"><span>Product subtotal</span><strong>{formatPrice(request.subtotal)}</strong></div>
+      {request.shipping_amount !== null && <div className="summary-line" data-testid="admin-order-shipping-total"><span>Shipping</span><strong>{request.shipping_amount === 0 ? "Free" : formatPrice(request.shipping_amount)}</strong></div>}
+      {request.total !== null && <div className="summary-line" data-testid="admin-order-total"><span>Total</span><strong>{formatPrice(request.total)}</strong></div>}
     </section>
+
+    {request.payment_provider && <section className="admin-order-section" data-testid="admin-order-gateway"><h3>Payment gateway</h3><p><strong>{request.payment_provider}</strong><br />Status: {request.payment_gateway_status || request.payment_status}<br />Merchant transaction: {request.payment_transaction_id || "—"}<br />PayU payment ID: {request.payu_payment_id || "Awaiting confirmation"}</p>{request.inventory_reservation_status && <p>Inventory: {request.inventory_reservation_status}</p>}{request.payment_error && <div className="form-error">{request.payment_error}</div>}</section>}
 
     <section className="admin-order-section admin-order-email-status" data-testid="admin-order-email-status">
       <h3>Transactional emails</h3>
       <div data-testid="admin-order-request-email-status"><span>Order request received</span><strong>{request.request_received_email_status}</strong><small>{request.request_received_email_sent_at ? `Provider accepted ${new Date(request.request_received_email_sent_at).toLocaleString("en-IN")}` : "Queued automatically after a valid request is saved."}</small></div>
-      <div data-testid="admin-order-paid-email-status"><span>Payment confirmed</span><strong>{request.paid_email_status}</strong><small>{request.paid_email_sent_at ? `Provider accepted ${new Date(request.paid_email_sent_at).toLocaleString("en-IN")}` : "Sent only after an Admin explicitly verifies payment."}</small></div>
+      <div data-testid="admin-order-paid-email-status"><span>Payment confirmed</span><strong>{request.paid_email_status}</strong><small>{request.paid_email_sent_at ? `Provider accepted ${new Date(request.paid_email_sent_at).toLocaleString("en-IN")}` : request.payment_provider === "PayU" ? "Sent only after PayU is verified server-side." : "Sent only after an Admin explicitly verifies payment."}</small></div>
     </section>
 
     <form className="admin-order-management" onSubmit={save} data-testid="admin-order-management-form">
       <h3>Payment & fulfilment</h3>
-      <label>Payment status<select value={form.payment_status} onChange={(event) => setForm({ ...form, payment_status: event.target.value as PaymentStatus })} disabled={request.cancelled} data-testid="admin-order-payment-status">{paymentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
-      {form.payment_status === "Paid" && request.payment_status !== "Paid" && <label className="admin-confirmation"><input type="checkbox" checked={paymentVerified} onChange={(event) => setPaymentVerified(event.target.checked)} data-testid="admin-order-payment-verified" />I have independently verified that payment was received.</label>}
+      <label>Payment status<select value={form.payment_status} onChange={(event) => setForm({ ...form, payment_status: event.target.value as PaymentStatus })} disabled={request.cancelled || request.payment_provider === "PayU"} data-testid="admin-order-payment-status">{paymentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
+      {form.payment_status === "Paid" && request.payment_status !== "Paid" && request.payment_provider !== "PayU" && <label className="admin-confirmation"><input type="checkbox" checked={paymentVerified} onChange={(event) => setPaymentVerified(event.target.checked)} data-testid="admin-order-payment-verified" />I have independently verified that payment was received.</label>}
       <label>Fulfilment status<select value={form.fulfilment_status} onChange={(event) => setForm({ ...form, fulfilment_status: event.target.value as FulfilmentStatus })} disabled={request.cancelled} data-testid="admin-order-fulfilment-status">{fulfilmentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
 
       <h3>Shipping & internal details</h3>

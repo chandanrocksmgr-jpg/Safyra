@@ -480,6 +480,17 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
   .wordmark { align-items: center; }
 }
 
+.checkout-payable-total { padding-top: 1rem; border-top: 1px solid var(--safyra-border); font-size: 1.05rem; }
+.payment-result-page { min-height: calc(100vh - 110px); padding: 5rem 1rem; display: grid; place-items: center; align-content: center; gap: 1rem; }
+.payment-result-card { width: min(100%, 660px); padding: clamp(2rem, 6vw, 4rem); border: 1px solid var(--safyra-border); background: #fff; box-shadow: 0 24px 70px rgb(38 28 25 / .09); }
+.payment-result-card > svg { margin-bottom: 1.2rem; color: var(--safyra-aubergine); }
+.payment-result-card h1 { margin: .7rem 0 1rem; font-size: clamp(2.6rem, 6vw, 4.5rem); line-height: .96; }
+.payment-result-card > p { color: var(--safyra-espresso-soft); line-height: 1.7; }
+.payment-reference { margin: 1.5rem 0; padding: 1rem 0; border-block: 1px solid var(--safyra-border); display: grid; grid-template-columns: 1fr auto; gap: .6rem 1rem; }
+.payment-reference span { color: var(--safyra-espresso-soft); font-size: .72rem; }
+.payment-result-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
+.payment-security-note { display: flex; align-items: center; gap: .5rem; color: var(--safyra-espresso-soft); font-size: .7rem; }
+
 /* SAFYRA master refinement: tighter product-led merchandising */
 .home-page .hero-section { min-height: min(820px, calc(100svh - 100px)); }
 .home-page .hero-copy { padding-bottom: 5rem; }

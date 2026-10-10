@@ -13,3 +13,10 @@ crons:
     method: POST
     # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
     enabled: true
+  - name: payu-reconcile
+    description: "Reconciles pending PayU payments and safely expires unfinished payment sessions"
+    cron: "*/15 * * * *"
+    endpoint: "{{BASE_URL}}/api/cron/payu-reconcile"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

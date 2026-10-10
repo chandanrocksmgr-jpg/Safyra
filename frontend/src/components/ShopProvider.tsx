@@ -16,6 +16,7 @@ interface ShopContextValue {
   addToCart: (product: Product, size?: string, color?: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   removeFromCart: (key: string) => void;
+  clearCart: () => void;
   toggleWishlist: (productId: string) => void;
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -97,6 +98,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
       return next;
     });
+    const clearCart = () => {
+      setCart([]);
+      setOrderNote("");
+      if (user) saveState.mutate({ cart: [], wishlist_ids: wishlistIds });
+    };
     const toggleWishlist = (productId: string) => {
       setWishlistIds((current) => {
         const next = current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId];
@@ -114,6 +120,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       addToCart,
       updateQuantity,
       removeFromCart,
+      clearCart,
       toggleWishlist,
       openDrawer: () => setDrawerOpen(true),
       closeDrawer: () => setDrawerOpen(false),

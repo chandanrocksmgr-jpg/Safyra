@@ -70,6 +70,9 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("converted_order_id", ASCENDING), ("received_at", DESCENDING)], name="converted_received"),
         IndexModel([("request_received_email_status", ASCENDING), ("received_at", ASCENDING)], name="request_email_queue"),
         IndexModel([("paid_email_status", ASCENDING), ("payment_verified_at", ASCENDING)], name="paid_email_queue"),
+        IndexModel([("payment_transaction_id", ASCENDING)], name="payment_transaction_id", unique=True, sparse=True),
+        IndexModel([("payment_provider", ASCENDING), ("payment_status", ASCENDING), ("payment_created_at", ASCENDING)], name="provider_payment_created"),
+        IndexModel([("checkout_session_id", ASCENDING), ("payment_status", ASCENDING)], name="checkout_payment_status", sparse=True),
     ],
     "waitlist_requests": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),

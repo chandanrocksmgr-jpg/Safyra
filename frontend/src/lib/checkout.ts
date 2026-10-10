@@ -36,7 +36,12 @@ export interface OrderRequestStoredItem {
   product_id: string;
   title: string;
   image_url: string;
+  set_type: string | null;
+  regular_price: number;
   price: number;
+  compare_at_price: number | null;
+  discount_name: string | null;
+  discount_amount: number;
   size: string;
   color: string;
   quantity: number;
@@ -69,8 +74,21 @@ export interface AdminOrderRequest {
   note: string;
   items: OrderRequestStoredItem[];
   subtotal: number;
+  regular_subtotal: number;
+  discount_total: number;
+  shipping_amount: number | null;
+  tax_amount: number | null;
+  total: number | null;
+  record_type: "Request" | "Confirmed";
   payment_status: PaymentStatus;
   payment_verified_at: string | null;
+  payment_provider: string | null;
+  payment_transaction_id: string | null;
+  payu_payment_id: string | null;
+  payment_gateway_status: string | null;
+  payment_error: string;
+  payment_created_at: string | null;
+  inventory_reservation_status: string | null;
   fulfilment_status: FulfilmentStatus;
   courier_name: string;
   shipping_details: string;
@@ -115,4 +133,29 @@ export interface OrderConversionResponse {
   order_id: string;
   order_number: string;
   converted_at: string;
+}
+
+export interface PaymentQuoteResponse {
+  regular_subtotal: number;
+  discount_total: number;
+  subtotal: number;
+  shipping_amount: number;
+  total: number;
+  currency: "INR";
+}
+
+export interface PayUCheckoutResponse extends PaymentQuoteResponse {
+  action: string;
+  fields: Record<string, string>;
+  request_number: string;
+  transaction_id: string;
+}
+
+export interface PaymentStatusResponse {
+  transaction_id: string;
+  request_number: string;
+  status: "pending" | "paid" | "failed";
+  amount: number;
+  currency: "INR";
+  updated_at: string;
 }

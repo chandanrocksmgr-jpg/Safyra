@@ -1,5 +1,11 @@
 """Shared helper for tests that need a disposable order request created against a real
-approved catalog product."""
+approved catalog product.
+
+NOTE: India deliveries must now go through the PayU-hosted checkout (POST /payments/create)
+and start life as "Payment pending" -- direct POST /order-requests for India now correctly
+returns 422 ("India orders must use secure PayU checkout"). Tests that only need a plain,
+immediately-unpaid OrderRequest (not specifically exercising PayU) use an international
+(non-India) destination here, which still goes through the assisted /order-requests path."""
 import uuid
 
 
@@ -10,14 +16,14 @@ def create_order_request(client, suffix: str | None = None) -> dict:
     payload = {
         "name": f"tscheck-order-{suffix}",
         "email": f"tscheck-order-{suffix}@example.com",
-        "phone": "9876543210",
-        "address": "221B Baker Street, near Hazratganj",
-        "city": "Lucknow",
-        "state_region": "Uttar Pradesh",
-        "postal_code": "226001",
-        "country": "India",
-        "country_code": "IN",
-        "shipping": "india",
+        "phone": "12025550123",
+        "address": "500 Market Street, Suite 12",
+        "city": "Los Angeles",
+        "state_region": "California",
+        "postal_code": "90001",
+        "country": "United States",
+        "country_code": "US",
+        "shipping": "international",
         "note": f"tscheck note {suffix}",
         "items": [{
             "product_id": product["id"],

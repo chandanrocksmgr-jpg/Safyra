@@ -24,6 +24,7 @@ import { useLocation } from "react-router-dom";
 import { useEffect, type ReactNode } from "react";
 import ProductWaitlistAction from "@/components/ProductWaitlistAction";
 import AdminAbandonedCheckouts from "@/pages/AdminAbandonedCheckouts";
+import PaymentResult from "@/pages/PaymentResult";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/product/:productId" element={<Product />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/payment-result" element={<PaymentResult />} />
           <Route path="/information" element={<Information />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/login" element={<Login />} />

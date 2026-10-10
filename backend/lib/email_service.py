@@ -9,7 +9,7 @@ import httpx
 
 
 logger = logging.getLogger(__name__)
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+EMAIL_BASE_URL = os.environ.get("INTEGRATION_PROXY_URL", "https://integrations.emergentagent.com")
 EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
 EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")

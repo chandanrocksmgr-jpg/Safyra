@@ -93,6 +93,13 @@ class OrderRequestAdmin(BaseModel):
     record_type: Literal["Request", "Confirmed"] = "Request"
     payment_status: PaymentStatus = "Unpaid"
     payment_verified_at: Optional[datetime] = None
+    payment_provider: Optional[str] = None
+    payment_transaction_id: Optional[str] = None
+    payu_payment_id: Optional[str] = None
+    payment_gateway_status: Optional[str] = None
+    payment_error: str = ""
+    payment_created_at: Optional[datetime] = None
+    inventory_reservation_status: Optional[str] = None
     fulfilment_status: FulfilmentStatus = "Request received"
     courier_name: str = ""
     shipping_details: str = ""
