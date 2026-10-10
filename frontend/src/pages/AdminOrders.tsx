@@ -115,6 +115,12 @@ function OrderEditor({ request }: { request: AdminOrderRequest }) {
       <div className="summary-line"><span>Product subtotal</span><strong>{formatPrice(request.subtotal)}</strong></div>
     </section>
 
+    <section className="admin-order-section admin-order-email-status" data-testid="admin-order-email-status">
+      <h3>Transactional emails</h3>
+      <div data-testid="admin-order-request-email-status"><span>Order request received</span><strong>{request.request_received_email_status}</strong><small>{request.request_received_email_sent_at ? `Provider accepted ${new Date(request.request_received_email_sent_at).toLocaleString("en-IN")}` : "Queued automatically after a valid request is saved."}</small></div>
+      <div data-testid="admin-order-paid-email-status"><span>Payment confirmed</span><strong>{request.paid_email_status}</strong><small>{request.paid_email_sent_at ? `Provider accepted ${new Date(request.paid_email_sent_at).toLocaleString("en-IN")}` : "Sent only after an Admin explicitly verifies payment."}</small></div>
+    </section>
+
     <form className="admin-order-management" onSubmit={save} data-testid="admin-order-management-form">
       <h3>Payment & fulfilment</h3>
       <label>Payment status<select value={form.payment_status} onChange={(event) => setForm({ ...form, payment_status: event.target.value as PaymentStatus })} disabled={request.cancelled} data-testid="admin-order-payment-status">{paymentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
@@ -149,7 +155,7 @@ function OrderEditor({ request }: { request: AdminOrderRequest }) {
 
     <section className="admin-order-section">
       <h3>Manual customer notification</h3>
-      <p>No message is sent automatically. Review the text before opening WhatsApp.</p>
+      <p>No WhatsApp message is sent automatically. Review the text before opening WhatsApp.</p>
       <textarea value={notification} readOnly data-testid="admin-order-whatsapp-preview" />
       <a className="button button-outline" href={whatsapp} target="_blank" rel="noreferrer" data-testid="admin-order-whatsapp-link">Review in WhatsApp <ExternalLink size={15} /></a>
     </section>

@@ -6,3 +6,10 @@ crons:
     method: POST
     # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
     enabled: true
+  - name: order-emails
+    description: "Delivers queued order-request and verified-payment transactional emails once"
+    cron: "*/15 * * * *"
+    endpoint: "{{BASE_URL}}/api/cron/order-emails"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

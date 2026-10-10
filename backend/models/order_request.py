@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 PaymentStatus = Literal["Unpaid", "Payment pending", "Paid"]
 FulfilmentStatus = Literal["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"]
 RefundStatus = Literal["Not initiated", "Processing", "Refunded", "Failed"]
+EmailDeliveryStatus = Literal["Not scheduled", "Scheduled", "Sending", "Sent", "Failed"]
 
 
 class OrderRequestItemInput(BaseModel):
@@ -107,6 +108,12 @@ class OrderRequestAdmin(BaseModel):
     refund_reference: str = ""
     refund_confirmed_at: Optional[datetime] = None
     converted_order_id: Optional[str] = None
+    request_received_email_status: EmailDeliveryStatus = "Not scheduled"
+    request_received_email_sent_at: Optional[datetime] = None
+    request_received_email_id: Optional[str] = None
+    paid_email_status: EmailDeliveryStatus = "Not scheduled"
+    paid_email_sent_at: Optional[datetime] = None
+    paid_email_id: Optional[str] = None
     history: list[OrderHistoryEvent] = Field(default_factory=list)
 
 

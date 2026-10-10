@@ -1372,3 +1372,9 @@ select,
   .admin-checkout-detail-header { flex-direction: column; }
   .admin-checkout-detail-header .admin-order-statuses { justify-content: flex-start; }
 }
+
+.admin-order-email-status > div { padding: .85rem 0; border-top: 1px solid var(--safyra-border); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem 1rem; }
+.admin-order-email-status > div:first-of-type { margin-top: .25rem; }
+.admin-order-email-status > div span { font-size: .72rem; font-weight: 700; }
+.admin-order-email-status > div strong { padding: .25rem .45rem; align-self: start; background: rgb(73 52 61 / .09); color: var(--safyra-aubergine); font-size: .6rem; text-transform: uppercase; }
+.admin-order-email-status > div small { grid-column: 1 / -1; color: var(--safyra-espresso-soft); font-size: .62rem; line-height: 1.5; }

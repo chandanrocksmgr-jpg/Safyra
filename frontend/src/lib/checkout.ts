@@ -30,6 +30,7 @@ export interface OrderRequestResponse {
 export type PaymentStatus = "Unpaid" | "Payment pending" | "Paid";
 export type FulfilmentStatus = "Request received" | "Confirmed" | "Processing" | "Ready to ship" | "Shipped" | "Delivered";
 export type RefundStatus = "Not initiated" | "Processing" | "Refunded" | "Failed";
+export type EmailDeliveryStatus = "Not scheduled" | "Scheduled" | "Sending" | "Sent" | "Failed";
 
 export interface OrderRequestStoredItem {
   product_id: string;
@@ -85,6 +86,12 @@ export interface AdminOrderRequest {
   refund_reference: string;
   refund_confirmed_at: string | null;
   converted_order_id: string | null;
+  request_received_email_status: EmailDeliveryStatus;
+  request_received_email_sent_at: string | null;
+  request_received_email_id: string | null;
+  paid_email_status: EmailDeliveryStatus;
+  paid_email_sent_at: string | null;
+  paid_email_id: string | null;
   history: OrderHistoryEvent[];
 }
 

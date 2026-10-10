@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
@@ -16,6 +16,7 @@ from models.order_request import (
     OrderRequestCreate,
     OrderRequestResponse,
 )
+from routers.order_emails import send_order_email
 
 
 router = APIRouter(prefix="/order-requests", tags=["order requests"])
@@ -59,6 +60,12 @@ def _with_defaults(document: dict) -> dict:
     cleaned.setdefault("refund_reference", "")
     cleaned.setdefault("refund_confirmed_at", None)
     cleaned.setdefault("converted_order_id", None)
+    cleaned.setdefault("request_received_email_status", "Not scheduled")
+    cleaned.setdefault("request_received_email_sent_at", None)
+    cleaned.setdefault("request_received_email_id", None)
+    cleaned.setdefault("paid_email_status", "Not scheduled")
+    cleaned.setdefault("paid_email_sent_at", None)
+    cleaned.setdefault("paid_email_id", None)
     cleaned.setdefault("history", [_history_event("request_received", "Order request received.", created_at=cleaned["received_at"])])
     return cleaned
 
@@ -127,7 +134,7 @@ async def _sync_converted_order(request_document: dict) -> None:
 
 
 @router.post("", response_model=OrderRequestResponse, status_code=status.HTTP_201_CREATED)
-async def create_order_request(input: OrderRequestCreate, user: dict | None = Depends(get_optional_user)):
+async def create_order_request(input: OrderRequestCreate, background_tasks: BackgroundTasks, user: dict | None = Depends(get_optional_user)):
     product_ids = list(dict.fromkeys(item.product_id for item in input.items))
     products = await db.products.find({"$and": [{"id": {"$in": product_ids}}, PUBLIC_PRODUCT_FILTER]}).to_list(len(product_ids))
     product_map = {product["id"]: product for product in products}
@@ -173,6 +180,12 @@ async def create_order_request(input: OrderRequestCreate, user: dict | None = De
         "payment_status": "Unpaid",
         "fulfilment_status": "Request received",
         "refund_status": "Not initiated",
+        "request_received_email_status": "Scheduled",
+        "request_received_email_sent_at": None,
+        "request_received_email_id": None,
+        "paid_email_status": "Not scheduled",
+        "paid_email_sent_at": None,
+        "paid_email_id": None,
         "cancelled": False,
         "history": [_history_event("request_received", "Order request received.", created_at=received_at)],
     })
@@ -195,6 +208,7 @@ async def create_order_request(input: OrderRequestCreate, user: dict | None = De
                 }},
             },
         )
+    background_tasks.add_task(send_order_email, document["id"], "request_received")
     return OrderRequestResponse(request_number=request_number, received_at=received_at)
 
 
@@ -235,7 +249,7 @@ async def get_order_request(request_id: str, _: dict = Depends(require_admin)):
 
 
 @router.patch("/{request_id}", response_model=OrderRequestAdmin)
-async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, admin: dict = Depends(require_admin)):
+async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, background_tasks: BackgroundTasks, admin: dict = Depends(require_admin)):
     existing = await _find_request(request_id)
     if existing["cancelled"]:
         raise HTTPException(status_code=409, detail="Cancelled orders cannot be updated")
@@ -251,6 +265,7 @@ async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, 
             if not input.payment_verified:
                 raise HTTPException(status_code=422, detail="Explicit payment verification is required")
             changes["payment_verified_at"] = now
+            changes["paid_email_status"] = "Scheduled"
         changes["payment_status"] = input.payment_status
         events.append(_history_event("payment_status", f"Payment status changed to {input.payment_status}.", admin["id"], now))
 
@@ -295,6 +310,8 @@ async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, 
     await db.order_requests.update_one({"id": existing["id"]}, update)
     updated = await _find_request(existing["id"])
     await _sync_converted_order(updated)
+    if changes.get("paid_email_status") == "Scheduled":
+        background_tasks.add_task(send_order_email, existing["id"], "payment_confirmed")
     return OrderRequestAdmin(**updated)
 
 
