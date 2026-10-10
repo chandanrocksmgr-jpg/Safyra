@@ -9,8 +9,9 @@ import BrandHeader from "@/components/BrandHeader";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, whatsappUrl } from "@/lib/shop";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiPut } from "@/lib/api";
 import type { OrderRequestCreate, OrderRequestResponse } from "@/lib/checkout";
+import type { CheckoutSessionSummary, CheckoutSessionUpsert } from "@/lib/abandonedCheckout";
 
 type CheckoutStep = "details" | "review" | "complete";
 type CheckoutField = "name" | "email" | "phone" | "address" | "city" | "state" | "postalCode" | "country" | "shipping";
@@ -32,6 +33,7 @@ const countries = Country.getAllCountries().sort((left, right) => left.name.loca
 const NO_STATE_REGION = "Not applicable";
 const normalize = (value: string) => value.trim().toLocaleLowerCase();
 const exactMatch = <T extends { name: string }>(items: T[], value: string) => items.find((item) => normalize(item.name) === normalize(value));
+const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 
 function FieldError({ field, message }: { field: CheckoutField; message?: string }) {
   return message ? <small className="checkout-field-error" aria-live="polite" data-testid={`checkout-${field}-error`}>{message}</small> : null;
@@ -44,6 +46,13 @@ export default function Checkout() {
   const [form, setForm] = useState<CheckoutFormState>({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India", note: orderNote });
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [request, setRequest] = useState<OrderRequestResponse | null>(null);
+  const [checkoutSessionKey] = useState(() => {
+    const stored = window.localStorage.getItem("safyra-checkout-session");
+    if (stored) return stored;
+    const created = window.crypto.randomUUID();
+    window.localStorage.setItem("safyra-checkout-session", created);
+    return created;
+  });
   const selectedCountry = exactMatch(countries, form.country);
   const postalCountry = selectedCountry ? getCountryByCode(selectedCountry.isoCode) : undefined;
   const countryUsesPostalCodes = Boolean(postalCountry?.postalCodePatterns.length);
@@ -61,14 +70,38 @@ export default function Checkout() {
     onSuccess: (response) => {
       setRequest(response);
       setStep("complete");
+      window.localStorage.removeItem("safyra-checkout-session");
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
   });
+  const checkoutTracking = useMutation({
+    mutationFn: (payload: CheckoutSessionUpsert) => apiPut<CheckoutSessionSummary>("/checkout-sessions", payload),
+  });
+
+  const trackCurrentCheckout = () => {
+    const hasContact = validEmail(form.email) || form.phone.replace(/\D/g, "").length >= 7;
+    if (form.name.trim().length < 2 || !hasContact || !cart.length) return;
+    checkoutTracking.mutate({
+      session_key: checkoutSessionKey,
+      name: form.name.trim(),
+      email: validEmail(form.email) ? form.email.trim() : null,
+      phone: form.phone.trim(),
+      address: form.address.trim(),
+      city: form.city.trim(),
+      state_region: form.state.trim(),
+      postal_code: form.postalCode.trim(),
+      country: form.country.trim(),
+      note: form.note.trim(),
+      whatsapp_opt_in: false,
+      marketing_email_opt_in: false,
+      items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
+    });
+  };
 
   const validateForm = (): CheckoutErrors => {
     const next: CheckoutErrors = {};
     if (form.name.trim().length < 2 || !/[\p{L}]{2}/u.test(form.name)) next.name = "Enter your full name.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) next.email = "Enter a valid email address.";
+    if (!validEmail(form.email)) next.email = "Enter a valid email address.";
     if (!selectedCountry) next.country = "Select a country from the list.";
     if (selectedCountry) {
       try {
@@ -114,6 +147,7 @@ export default function Checkout() {
     const next = validateForm();
     setErrors(next);
     if (Object.keys(next).length) return;
+    trackCurrentCheckout();
     setStep("review");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -136,7 +170,8 @@ export default function Checkout() {
       country_code: selectedCountry.isoCode,
       shipping: shipping as "india" | "international",
       note: form.note.trim(),
-      items: cart.map((item) => ({ product_id: item.productId, size: item.size, color: item.color, quantity: item.quantity })),
+      checkout_session_id: checkoutSessionKey,
+      items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
     });
   };
   if (!cart.length) return <div className="page-shell"><BrandHeader /><main className="checkout-empty"><h1>Your bag is empty.</h1><Link to="/shop" className="button button-dark" data-testid="checkout-empty-shop">Return to shop</Link></main></div>;
@@ -155,15 +190,15 @@ export default function Checkout() {
             <div className="checkout-step"><span>1</span><div><strong>Contact & delivery</strong><small>Required for shipping confirmation</small></div></div>
             <div className="checkout-fields">
               <label>Full name
-                <input value={form.name} onChange={(event) => setField("name", event.target.value)} onBlur={() => showFieldError("name")} autoComplete="name" required aria-invalid={Boolean(errors.name)} data-testid="checkout-name" />
+                <input value={form.name} onChange={(event) => setField("name", event.target.value)} onBlur={() => { showFieldError("name"); trackCurrentCheckout(); }} autoComplete="name" required aria-invalid={Boolean(errors.name)} data-testid="checkout-name" />
                 <FieldError field="name" message={errors.name} />
               </label>
               <label>Email
-                <input type="email" value={form.email} onChange={(event) => setField("email", event.target.value)} onBlur={() => showFieldError("email")} autoComplete="email" required aria-invalid={Boolean(errors.email)} data-testid="checkout-email" />
+                <input type="email" value={form.email} onChange={(event) => setField("email", event.target.value)} onBlur={() => { showFieldError("email"); trackCurrentCheckout(); }} autoComplete="email" required aria-invalid={Boolean(errors.email)} data-testid="checkout-email" />
                 <FieldError field="email" message={errors.email} />
               </label>
               <label>Phone
-                <input value={form.phone} onChange={(event) => setField("phone", event.target.value)} onBlur={() => showFieldError("phone")} autoComplete="tel" required aria-invalid={Boolean(errors.phone)} data-testid="checkout-phone" />
+                <input value={form.phone} onChange={(event) => setField("phone", event.target.value)} onBlur={() => { showFieldError("phone"); trackCurrentCheckout(); }} autoComplete="tel" required aria-invalid={Boolean(errors.phone)} data-testid="checkout-phone" />
                 <FieldError field="phone" message={errors.phone} />
               </label>
               <label className="field-wide">Address

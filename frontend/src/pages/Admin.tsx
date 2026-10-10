@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowRight, BellRing, CheckCircle2, FileEdit, Image, KeyRound, Package, ReceiptText, Tags } from "lucide-react";
+import { ArrowRight, BellRing, CheckCircle2, FileEdit, Image, KeyRound, Package, ReceiptText, ShoppingBag, Tags } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
 import type { CatalogGroup, HomepageSettings } from "@/lib/cms";
@@ -16,6 +16,7 @@ const quickLinks = [
   { to: "/admin/homepage", title: "Homepage", copy: "Update hero, section copy, imagery and visibility.", icon: Image, testId: "admin-dashboard-homepage" },
   { to: "/admin/orders", title: "Orders", copy: "Manage order requests, payment status and fulfilment.", icon: ReceiptText, testId: "admin-dashboard-orders" },
   { to: "/admin/waitlist", title: "Waitlist", copy: "Track unavailable pieces, customer follow-up and outcomes.", icon: BellRing, testId: "admin-dashboard-waitlist" },
+  { to: "/admin/abandoned-checkouts", title: "Abandoned checkouts", copy: "Review incomplete checkouts and one-time recovery email status.", icon: ShoppingBag, testId: "admin-dashboard-abandoned-checkouts" },
 ];
 
 export default function Admin() {

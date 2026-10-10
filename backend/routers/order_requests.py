@@ -177,6 +177,24 @@ async def create_order_request(input: OrderRequestCreate, user: dict | None = De
         "history": [_history_event("request_received", "Order request received.", created_at=received_at)],
     })
     await db.order_requests.insert_one(document)
+    if input.checkout_session_id:
+        await db.checkout_sessions.update_one(
+            {"$or": [{"id": input.checkout_session_id}, {"session_key": input.checkout_session_id}]},
+            {
+                "$set": {
+                    "status": "Completed",
+                    "completed_order_request_id": document["id"],
+                    "completed_request_number": request_number,
+                    "completed_at": received_at,
+                    "updated_at": received_at,
+                },
+                "$push": {"activity": {
+                    "event": "completed",
+                    "message": f"Checkout completed as order request {request_number}.",
+                    "created_at": received_at,
+                }},
+            },
+        )
     return OrderRequestResponse(request_number=request_number, received_at=received_at)
 
 

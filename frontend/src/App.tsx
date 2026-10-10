@@ -23,6 +23,7 @@ import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { useLocation } from "react-router-dom";
 import { useEffect, type ReactNode } from "react";
 import ProductWaitlistAction from "@/components/ProductWaitlistAction";
+import AdminAbandonedCheckouts from "@/pages/AdminAbandonedCheckouts";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/admin/homepage" element={<AdminRoute><AdminHomepage /></AdminRoute>} />
           <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
           <Route path="/admin/waitlist" element={<AdminRoute><AdminWaitlist /></AdminRoute>} />
+          <Route path="/admin/abandoned-checkouts" element={<AdminRoute><AdminAbandonedCheckouts /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CartDrawer />

@@ -1,5 +1,6 @@
 export interface OrderRequestItemInput {
   product_id: string;
+  set_type?: string | null;
   size: string;
   color: string;
   quantity: number;
@@ -17,6 +18,7 @@ export interface OrderRequestCreate {
   country_code: string;
   shipping: "india" | "international";
   note: string;
+  checkout_session_id?: string | null;
   items: OrderRequestItemInput[];
 }
 
