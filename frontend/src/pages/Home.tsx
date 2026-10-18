@@ -12,9 +12,9 @@ import { defaultHomepage, type CatalogGroup, type HomepageSettings } from "@/lib
 import SafeProductImage from "@/components/SafeProductImage";
 
 const categories = [
-  { name: "Anarkali Sets", image: "https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=900", query: "Anarkali Sets" },
-  { name: "Angrakha Suits", image: "https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=900", query: "Angrakha Suits" },
-  { name: "Straight Kurtis", image: "https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=900", query: "Straight Kurtis" },
+  { name: "Anarkali Sets", image: "/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png", query: "Anarkali Sets" },
+  { name: "Angrakha Suits", image: "/api/media/shopify/IMG_3973.jpg", query: "Angrakha Suits" },
+  { name: "Straight Kurtis", image: "/api/media/shopify/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg", query: "Straight Kurtis" },
   { name: "Kurta & Pant Sets", query: "Kurta & Pant Sets" },
   { name: "Sarees", query: "Sarees" },
 ];
@@ -40,7 +40,7 @@ export default function Home() {
     potentialAction: { "@type": "SearchAction", target: "https://safyra.co/shop?search={search_term_string}", "query-input": "required name=search_term_string" },
   };
 
-  return <div className="page-shell home-page"><Seo title="SAFYRA CHIKANKARI | Lucknowi Chikankari Anarkalis, Angrakhas & Kurtis" description="Shop SAFYRA Lucknowi Chikankari in Kota Doria, viscose and verified fabrics. Discover Anarkalis, Angrakhas, kurtis and SAFYRA Luxury." image="https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=1800" structuredData={homeStructuredData} /><BrandHeader /><main>
+  return <div className="page-shell home-page"><Seo title="SAFYRA CHIKANKARI | Lucknowi Chikankari Anarkalis, Angrakhas & Kurtis" description="Shop SAFYRA Lucknowi Chikankari in Kota Doria, viscose and verified fabrics. Discover Anarkalis, Angrakhas, kurtis and SAFYRA Luxury." image="/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png" structuredData={homeStructuredData} /><BrandHeader /><main>
     <section className="hero-section" data-testid="homepage-hero"><img src={content.hero.image_url} alt="SAFYRA handcrafted Lucknowi Chikankari" className="hero-image" fetchPriority="high" /><div className="hero-overlay" /><div className="hero-copy"><span className="eyebrow hero-eyebrow" data-testid="homepage-hero-eyebrow">{content.hero.eyebrow}</span><h1 data-testid="homepage-hero-title">{content.hero.title}<br /><em>{content.hero.emphasis}</em></h1><p data-testid="homepage-hero-body">{content.hero.body}</p><div className="hero-actions"><Link to={content.hero.primary_url} className="button button-light" data-testid="hero-shop-button">{content.hero.primary_label} <ArrowRight size={16} /></Link>{showSecondaryHeroLink && <Link to={content.hero.secondary_url} className="hero-text-link" data-testid="hero-secondary-link">{content.hero.secondary_label} <ArrowRight size={15} /></Link>}</div></div><div className="hero-note"><span>Lucknow</span><span>Chikankari · Kota Doria · Mukaish</span></div></section>
 
     {content.sections.show_new_arrivals && newArrivals.length > 0 && <section className="section product-section home-product-section" data-testid="homepage-new-arrivals"><div className="section-heading"><div><span className="eyebrow">{content.new_arrivals_eyebrow}</span><h2>{content.new_arrivals_title}</h2></div><Link to="/shop?new=true&sort=newest" className="underlined-link" data-testid="new-arrivals-link">View new arrivals <ArrowRight size={15} /></Link></div>{isError ? <div className="data-note" data-testid="catalog-error-note">The catalogue is reconnecting. Please try again shortly.</div> : <div className={`product-grid ${newArrivals.length < 4 ? "product-grid-compact" : ""}`}>{newArrivals.map((product, index) => <ProductCard key={product.id} product={product} index={index} />)}</div>}</section>}

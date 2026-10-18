@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Link as LinkIcon, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Link as LinkIcon, Star, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import SafeProductImage from "@/components/SafeProductImage";
 import { apiUpload, ApiError } from "@/lib/api";
@@ -19,7 +19,12 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
   const inputRef = useRef<HTMLInputElement>(null);
   const addUrl = () => {
     const next = url.trim();
-    if (!next || images.includes(next) || images.length >= limit) return;
+    if (!next || images.length >= limit) return;
+    if (!/^(https?:\/\/|\/api\/media\/)/i.test(next)) {
+      toast.error("That link only works on your device. Save the photo and use Upload images, or paste a public https:// link.");
+      return;
+    }
+    if (images.includes(next)) { toast.info("This image is already in the gallery"); return; }
     onChange([...images, next]);
     setUrl("");
   };
@@ -42,7 +47,7 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
     }
     if (uploadedUrls.length) {
       onChange([...images, ...uploadedUrls]);
-      toast.success(`${uploadedUrls.length} ${uploadedUrls.length === 1 ? "image" : "images"} uploaded`);
+      toast.success(`${uploadedUrls.length} ${uploadedUrls.length === 1 ? "image" : "images"} uploaded — save the product to publish`);
     }
     if (failed && uploadedUrls.length) toast.warning(`${failed} ${failed === 1 ? "image was" : "images were"} skipped`);
     setUploading(false);
@@ -62,6 +67,6 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
       <button type="button" className="button button-outline" onClick={addUrl} disabled={!url.trim() || images.length >= limit} data-testid={`${testId}-add-url`}><ImagePlus size={15} /> Add URL</button>
       <label className="button button-dark admin-upload-button"><Upload size={15} /> {uploading ? "Uploading…" : "Upload images"}<input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => upload(event.target.files)} disabled={uploading || images.length >= limit} data-testid={`${testId}-file-input`} /></label>
     </div>
-    {images.length > 0 && <div className="admin-image-grid" data-testid={`${testId}-gallery`}>{images.map((image, index) => <div className="admin-image-item" key={`${image}-${index}`} data-testid={`${testId}-item-${index}`}><SafeProductImage src={image} alt={`${label} ${index + 1}`} productName={label} /><span>{index === 0 ? "Primary" : `${index + 1}`}</span><div><button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move image earlier" data-testid={`${testId}-move-up-${index}`}><ArrowUp size={14} /></button><button type="button" onClick={() => move(index, 1)} disabled={index === images.length - 1} aria-label="Move image later" data-testid={`${testId}-move-down-${index}`}><ArrowDown size={14} /></button><button type="button" onClick={() => onChange(images.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove image" data-testid={`${testId}-remove-${index}`}><Trash2 size={14} /></button></div></div>)}</div>}
+    {images.length > 0 && <div className="admin-image-grid" data-testid={`${testId}-gallery`}>{images.map((image, index) => <div className="admin-image-item" key={`${image}-${index}`} data-testid={`${testId}-item-${index}`}><SafeProductImage src={image} alt={`${label} ${index + 1}`} productName={label} /><span>{index === 0 ? "Primary" : `${index + 1}`}</span><div>{index > 0 && <button type="button" onClick={() => onChange([image, ...images.filter((_, itemIndex) => itemIndex !== index)])} aria-label="Make primary image" title="Make primary" data-testid={`${testId}-make-primary-${index}`}><Star size={14} /></button>}<button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move image earlier" data-testid={`${testId}-move-up-${index}`}><ArrowUp size={14} /></button><button type="button" onClick={() => move(index, 1)} disabled={index === images.length - 1} aria-label="Move image later" data-testid={`${testId}-move-down-${index}`}><ArrowDown size={14} /></button><button type="button" onClick={() => onChange(images.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove image" data-testid={`${testId}-remove-${index}`}><Trash2 size={14} /></button></div></div>)}</div>}
   </section>;
 }

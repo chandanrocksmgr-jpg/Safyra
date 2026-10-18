@@ -91,6 +91,7 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("reminder_status", ASCENDING), ("last_activity_at", ASCENDING)], name="reminder_activity"),
         IndexModel([("completed_order_request_id", ASCENDING)], name="completed_order", sparse=True),
     ],
+    "product_media.files": [IndexModel([("metadata.legacy_path", ASCENDING)], name="legacy_path", sparse=True)],
     "cron_runs": [IndexModel([("run_id", ASCENDING)], name="run_id", unique=True)],
     "catalog_groups": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),

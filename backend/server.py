@@ -34,6 +34,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 from lib.db import close_db, db, ensure_indexes, init_db
+from lib.legacy_media import migrate_legacy_media
 
 
 # Startup runs before the yield, shutdown after it. Add your own setup/teardown here.
@@ -41,12 +42,21 @@ from lib.db import close_db, db, ensure_indexes, init_db
 async def lifespan(app: FastAPI):
     init_db()
     app.state.index_task = asyncio.create_task(ensure_indexes())  # background: a big index build must not block boot
+    app.state.media_task = asyncio.create_task(_migrate_legacy_media_safely())  # background: Shopify downloads must not block boot
     yield
-    if not app.state.index_task.done():
-        app.state.index_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await app.state.index_task
+    for task in (app.state.index_task, app.state.media_task):
+        if not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
     close_db()
+
+
+async def _migrate_legacy_media_safely() -> None:
+    try:
+        await migrate_legacy_media()
+    except Exception as exc:  # never crash the app over a media backfill
+        logging.getLogger(__name__).error("Legacy media migration failed: %s", exc)
 
 
 # Create the main app without a prefix

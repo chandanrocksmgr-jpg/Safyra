@@ -9,7 +9,7 @@ interface SeoProps {
 }
 
 const SITE_URL = "https://safyra.co";
-const DEFAULT_IMAGE = "https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=1800";
+const DEFAULT_IMAGE = "https://safyra.co/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png";
 
 function setMeta(attribute: "name" | "property", key: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
@@ -31,8 +31,9 @@ export default function Seo({ title, description, canonicalPath = "/", image, st
     setMeta("property", "og:type", canonicalPath.startsWith("/product/") ? "product" : "website");
     setMeta("property", "og:url", canonicalUrl);
     setMeta("name", "twitter:card", "summary_large_image");
-    setMeta("property", "og:image", image || DEFAULT_IMAGE);
-    setMeta("name", "twitter:image", image || DEFAULT_IMAGE);
+    const shareImage = image ? (image.startsWith("/") ? `${SITE_URL}${image}` : image) : DEFAULT_IMAGE;
+    setMeta("property", "og:image", shareImage);
+    setMeta("name", "twitter:image", shareImage);
     let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!canonical) {
       canonical = document.createElement("link");

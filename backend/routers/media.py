@@ -12,6 +12,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
 from lib.db import get_db
+from lib.legacy_media import get_legacy_image, is_safe_legacy_path
 from lib.security import require_admin
 
 
@@ -68,6 +69,17 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
         content_type=detected_type,
         size=len(content),
     )
+
+
+@router.get("/shopify/{path:path}")
+async def get_legacy_shopify_image(path: str):
+    if not is_safe_legacy_path(path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    media = await get_legacy_image(path)
+    if not media:
+        raise HTTPException(status_code=404, detail="Image not found")
+    content, content_type = media
+    return Response(content=content, media_type=content_type, headers={"Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/{media_id}")

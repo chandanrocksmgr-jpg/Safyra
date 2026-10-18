@@ -8,7 +8,7 @@ class HomepageHero(BaseModel):
     title: str = "Chikankari,"
     emphasis: str = "made to be remembered."
     body: str = "Handcrafted Chikankari, created by skilled artisans in Lucknow."
-    image_url: str = "https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=1800"
+    image_url: str = "/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png"
     primary_label: str = "Shop new arrivals"
     primary_url: str = "/shop?new=true&sort=newest"
     secondary_label: str = "Shop SAFYRA Luxury"
@@ -19,7 +19,7 @@ class HomepageStory(BaseModel):
     eyebrow: str = "SAFYRA, Lucknow"
     title: str = "A focused Chikankari wardrobe."
     body: str = "SAFYRA works with Lucknowi Chikankari across Indian silhouettes and verified fabrics. Each product page brings the textile, embroidery description, fit and making information together in one place."
-    image_url: str = "https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=1200"
+    image_url: str = "/api/media/shopify/IMG_3973.jpg"
     link_label: str = "About the craft"
     link_url: str = "/information#craft"
 

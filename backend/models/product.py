@@ -2,7 +2,35 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 import uuid
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+
+IMAGE_URL_HINT = "Image links must start with https:// or be an uploaded image. Links copied from WhatsApp or your device (blob:, file:) only work on your phone."
+
+
+def _check_image_url(value: Optional[str], allow_empty: bool) -> Optional[str]:
+    if value is None or (allow_empty and value == ""):
+        return value
+    if not value.strip().startswith(("https://", "http://", "/api/media/")):
+        raise ValueError(IMAGE_URL_HINT)
+    return value.strip()
+
+
+class ProductImageValidation(BaseModel):
+    @field_validator("image_url", check_fields=False)
+    @classmethod
+    def _primary_image(cls, value: Optional[str]) -> Optional[str]:
+        return _check_image_url(value, allow_empty=False)
+
+    @field_validator("size_guide_image", check_fields=False)
+    @classmethod
+    def _size_guide_image(cls, value: Optional[str]) -> Optional[str]:
+        return _check_image_url(value, allow_empty=True)
+
+    @field_validator("image_urls", check_fields=False)
+    @classmethod
+    def _gallery_images(cls, value: Optional[list[str]]) -> Optional[list[str]]:
+        return None if value is None else [_check_image_url(item, allow_empty=False) or "" for item in value]
 
 
 class ProductSetType(BaseModel):
@@ -68,11 +96,11 @@ class ProductFields(BaseModel):
     variant_overrides: list[ProductVariantOverride] = Field(default_factory=list, max_length=500)
 
 
-class ProductCreate(ProductFields):
+class ProductCreate(ProductImageValidation, ProductFields):
     pass
 
 
-class ProductUpdate(BaseModel):
+class ProductUpdate(ProductImageValidation):
     title: Optional[str] = None
     slug: Optional[str] = None
     category: Optional[str] = None
@@ -135,8 +163,8 @@ DEFAULT_PRODUCTS: list[Product] = [
         stock_by_size={},
         sizes=["S", "M", "L", "XL", "XXL", "XXXL"],
         colors=["Blood red", "Forest green"],
-        image_url="https://safyra.co/cdn/shop/files/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg?v=1767270653&width=1200",
-        image_urls=["https://safyra.co/cdn/shop/files/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg?v=1767270653&width=1200", "https://safyra.co/cdn/shop/files/B774FE4A-8E49-49F8-9DB7-3B1A69457A93.jpg?v=1767270653&width=1200"],
+        image_url="/api/media/shopify/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg",
+        image_urls=["/api/media/shopify/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg", "/api/media/shopify/B774FE4A-8E49-49F8-9DB7-3B1A69457A93.jpg"],
         description="A quiet celebration of pure viscose, fluid drape and delicate handcrafted Resham silk Chikankari. The coordinated set is finished with a soft shimmer of Mukaish and Badla work.",
         fit="",
         measurements="",
@@ -147,7 +175,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         availability="Made to order",
         tags=["Luxury", "Mukaish", "Badla"],
         style_keywords=["Anarkali", "Occasionwear"],
-        size_guide_image="https://cdn.shopify.com/s/files/1/0853/1325/7781/files/IMG_3734.jpg?v=1775517874",
+        size_guide_image="/api/media/shopify/IMG_3734.jpg",
         featured=True,
     ),
     Product(
@@ -164,8 +192,8 @@ DEFAULT_PRODUCTS: list[Product] = [
         stock_by_size={},
         sizes=["XS", "S", "M", "L", "XL", "2XL", "3XL"],
         colors=["Blush petal", "Serene Sky", "Vanilla", "Midnight bloom", "Buttercup yellow"],
-        image_url="https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=1200",
-        image_urls=["https://safyra.co/cdn/shop/files/rn-image_picker_lib_temp_b45b8222-b248-4367-890e-33fce779156b.png?v=1768253915&width=1200", "https://safyra.co/cdn/shop/files/IMG_3973.jpg?v=1772064171&width=1200"],
+        image_url="/api/media/shopify/IMG_3973.jpg",
+        image_urls=["/api/media/shopify/rn-image_picker_lib_temp_b45b8222-b248-4367-890e-33fce779156b.png", "/api/media/shopify/IMG_3973.jpg"],
         description="Pure Kota Doria meets the charm of a classic Angrakha silhouette. Lightweight, breathable and finished with delicate hand-embroidered Chikankari for effortless grace.",
         fit="A-line, flowy Angrakha",
         measurements="Approx. 48 inch length; model wears M and is 5'5\" tall",
@@ -178,7 +206,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         tags=["Kota Doria", "Angrakha"],
         origin="India",
         style_keywords=["Angrakha", "A-line"],
-        size_guide_image="https://cdn.shopify.com/s/files/1/0853/1325/7781/files/IMG_3734.jpg?v=1775517874",
+        size_guide_image="/api/media/shopify/IMG_3734.jpg",
         featured=True,
         new_arrival=True,
     ),
@@ -196,8 +224,8 @@ DEFAULT_PRODUCTS: list[Product] = [
         stock_by_size={},
         sizes=["S", "M", "L", "XL", "XXL", "XXXL"],
         colors=["Vanilla", "Peach blossom", "Aster blue", "Lilac mist", "Blush petal"],
-        image_url="https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=1200",
-        image_urls=["https://safyra.co/cdn/shop/files/rn-image_picker_lib_temp_5cea29bd-732e-4335-ba9f-0085b5624372.jpg?v=1772064200&width=1200", "https://safyra.co/cdn/shop/files/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png?v=1780244603&width=1200"],
+        image_url="/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png",
+        image_urls=["/api/media/shopify/rn-image_picker_lib_temp_5cea29bd-732e-4335-ba9f-0085b5624372.jpg", "/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png"],
         description="An airy Kota Doria Anarkali adorned with handcrafted French knot stitches and enchanting rose and floral motifs for a delicate, three-dimensional texture.",
         fit="Flowy Anarkali with a regal drape",
         measurements="Approx. 46–48 inch length; model wears M and is 5'5\" tall",
@@ -210,7 +238,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         customisation="Custom dyeing is available through WhatsApp assistance",
         origin="India",
         style_keywords=["Anarkali", "Flowy"],
-        size_guide_image="https://cdn.shopify.com/s/files/1/0853/1325/7781/files/IMG_3734.jpg?v=1775517874",
+        size_guide_image="/api/media/shopify/IMG_3734.jpg",
         featured=True,
         new_arrival=True,
     ),
@@ -228,8 +256,8 @@ DEFAULT_PRODUCTS: list[Product] = [
         stock_by_size={},
         sizes=[],
         colors=["Rose"],
-        image_url="https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=1200",
-        image_urls=["https://safyra.co/cdn/shop/files/preview_images/60cd79dc58734a6597c9712ff4d66366.thumbnail.0000000000.jpg?v=1766183317&width=1200", "https://safyra.co/cdn/shop/files/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg?v=1772205935&width=1200"],
+        image_url="/api/media/shopify/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg",
+        image_urls=["/api/media/shopify/preview_images/60cd79dc58734a6597c9712ff4d66366.thumbnail.0000000000.jpg", "/api/media/shopify/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg"],
         description="",
         fit="",
         measurements="",

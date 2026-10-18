@@ -53,8 +53,8 @@ export default function AdminProducts() {
       };
       return editingId ? apiPatch<Product>(`/products/${editingId}`, body) : apiPost<Product>("/products", body);
     },
-    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["products"] }); toast.success(editingId ? "Product updated" : "Product created"); reset(); },
-    onError: (reason) => toast.error(reason instanceof ApiError && reason.status === 409 ? "That product slug is already in use" : "Product could not be saved"),
+    onSuccess: async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ["products"] }), queryClient.invalidateQueries({ queryKey: ["product"] }), queryClient.invalidateQueries({ queryKey: ["product-facets"] })]); toast.success(editingId ? "Product updated" : "Product created"); reset(); },
+    onError: (reason) => toast.error(reason instanceof ApiError && reason.status === 409 ? "That product slug is already in use" : reason instanceof ApiError && reason.status === 422 && JSON.stringify(reason.body).includes("Image links") ? "One image link only works on your device — remove it and use Upload images instead" : "Product could not be saved"),
   });
   const deleteMutation = useMutation({ mutationFn: (id: string) => apiDelete<void>(`/products/${id}`), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["products"] }); toast.success("Product deleted"); }, onError: () => toast.error("Product could not be deleted") });
   const archiveMutation = useMutation({ mutationFn: (id: string) => apiPatch<Product>(`/products/${id}`, { status: "archived" }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["products"] }); toast.success("Product archived and hidden from the storefront"); } });
