@@ -37,6 +37,7 @@ export interface OrderRequestStoredItem {
   product_id: string;
   title: string;
   image_url: string;
+  hsn_code: string;
   set_type: string | null;
   regular_price: number;
   price: number;

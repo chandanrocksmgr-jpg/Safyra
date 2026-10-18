@@ -66,8 +66,11 @@ export interface StoreSettings {
   registered_address: string;
   seller_state: string;
   state_code: string;
-  gst_rate: number | null;
-  hsn_code: string;
+  gst_slab_threshold: number;
+  gst_rate_lower: number;
+  gst_rate_upper: number;
+  cotton_hsn_code: string;
+  other_hsn_code: string;
   support_email: string | null;
   support_phone: string;
   authorised_signatory: string;

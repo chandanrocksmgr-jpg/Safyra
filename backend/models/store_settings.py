@@ -12,8 +12,11 @@ class StoreSettingsUpdate(BaseModel):
     registered_address: Optional[str] = Field(default=None, max_length=500)
     seller_state: Optional[str] = Field(default=None, max_length=100)
     state_code: Optional[str] = Field(default=None, pattern=r"^$|^\d{2}$")
-    gst_rate: Optional[float] = Field(default=None, gt=0, le=100)
-    hsn_code: Optional[str] = Field(default=None, max_length=16)
+    gst_slab_threshold: Optional[int] = Field(default=None, gt=0)
+    gst_rate_lower: Optional[float] = Field(default=None, gt=0, le=100)
+    gst_rate_upper: Optional[float] = Field(default=None, gt=0, le=100)
+    cotton_hsn_code: Optional[str] = Field(default=None, pattern=r"^\d{8}$")
+    other_hsn_code: Optional[str] = Field(default=None, pattern=r"^\d{8}$")
     support_email: Optional[EmailStr] = None
     support_phone: Optional[str] = Field(default=None, max_length=32)
     authorised_signatory: Optional[str] = Field(default=None, max_length=120)
@@ -28,8 +31,11 @@ class StoreSettings(BaseModel):
     registered_address: str = ""
     seller_state: str = ""
     state_code: str = ""
-    gst_rate: Optional[float] = None
-    hsn_code: str = ""
+    gst_slab_threshold: int = 2500
+    gst_rate_lower: float = 5
+    gst_rate_upper: float = 18
+    cotton_hsn_code: str = "62063090"
+    other_hsn_code: str = "62114922"
     support_email: Optional[EmailStr] = None
     support_phone: str = ""
     authorised_signatory: str = ""

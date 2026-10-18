@@ -6,6 +6,7 @@ export interface Product {
   collection: string;
   fabric: string;
   craft: string;
+  hsn_code: string;
   price: number;
   mrp: number | null;
   stock: number;

@@ -48,6 +48,7 @@ class OrderRequestStoredItem(BaseModel):
     product_id: str
     title: str
     image_url: str
+    hsn_code: str = ""
     set_type: Optional[str] = None
     regular_price: int = 0
     price: int

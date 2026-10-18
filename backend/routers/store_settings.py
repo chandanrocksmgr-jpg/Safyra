@@ -29,7 +29,7 @@ async def get_store_settings(_: dict = Depends(require_admin)):
 async def update_store_settings(input: StoreSettingsUpdate, _: dict = Depends(require_admin)):
     await get_store_settings_document()
     changes = input.model_dump(exclude_unset=True)
-    for field in ["gstin", "hsn_code", "invoice_prefix", "credit_note_prefix"]:
+    for field in ["gstin", "cotton_hsn_code", "other_hsn_code", "invoice_prefix", "credit_note_prefix"]:
         if changes.get(field):
             changes[field] = changes[field].upper()
     changes["updated_at"] = datetime.now(timezone.utc)

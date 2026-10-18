@@ -35,9 +35,9 @@ Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Ch
 
 `OrderRequest`: id, request_number, received_at, optional customer_id, validated contact/delivery fields, customer note, server-priced product items, discounts, shipping and total. International records remain unpaid requests; India PayU records move from Payment pending to Confirmed only after a verified gateway webhook or reconciliation response.
 
-`StoreSettings`: one Admin-only legal/tax configuration document with SAFYRA legal name, GSTIN, registered address, seller state/code, GST rate, HSN, support contacts, authorised signatory and atomic invoice/credit-note sequences. Customer invoice generation is blocked until every required genuine value exists; previews are watermarked `SAMPLE - NOT A TAX INVOICE`.
+`StoreSettings`: one Admin-only legal/tax configuration document with SAFYRA legal name, GSTIN, registered address, seller state/code, transaction-value GST slabs, the two approved product HSN codes, support contacts, authorised signatory and atomic invoice/credit-note sequences. Invoice GST is tax-inclusive and calculated per item at 5% when its actual selling price is at or below ₹2,500, and 18% above ₹2,500, effective under the user-confirmed post-22-September-2025 apparel rule. Previews are watermarked `SAMPLE - NOT A TAX INVOICE`.
 
-Current verified tax configuration: legal/trade name `SAFYRA CHIKANKARI`, GSTIN `09BGVPH9614M1ZH`, seller state Uttar Pradesh and GST state code `09`. Registered address, GST rate, HSN, support email/phone and authorised signatory remain intentionally blank, so customer GST invoice generation remains blocked.
+Current configured tax identity: `SAFYRA CHIKANKARI`, GSTIN `09BGVPH9614M1ZH`, `Husainabad, Lucknow, Uttar Pradesh 226003`, state code `09`, support `safyrachikankari@gmail.com` / `+918090164929`, authorised signatory `Afira`. Product HSN is snapshotted at checkout: `62063090` for cotton woven kurtis/tunics and `62114922` for other women’s Chikankari garments.
 
 `Invoice`: immutable seller, buyer, item, tax and total snapshot linked uniquely to a paid order. PDF is generated on demand and is accessible only to Admin or the verified owning customer. Credit notes are generated only for confirmed refunds and remain Admin-only.
 

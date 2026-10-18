@@ -19,7 +19,9 @@ from lib.db import db
 
 REQUIRED_INVOICE_FIELDS = {
     "gstin": "GSTIN", "registered_address": "registered address", "seller_state": "seller state",
-    "state_code": "state code", "gst_rate": "GST rate", "hsn_code": "HSN code",
+    "state_code": "state code", "gst_slab_threshold": "GST slab threshold",
+    "gst_rate_lower": "lower GST rate", "gst_rate_upper": "upper GST rate",
+    "cotton_hsn_code": "cotton garment HSN", "other_hsn_code": "other garment HSN",
     "support_email": "support email", "support_phone": "support phone",
     "authorised_signatory": "authorised signatory",
 }
@@ -37,7 +39,9 @@ async def get_store_settings_document() -> dict:
     now = datetime.now(timezone.utc)
     document = {
         "id": "store", "legal_name": "SAFYRA CHIKANKARI", "gstin": "", "registered_address": "",
-        "seller_state": "", "state_code": "", "gst_rate": None, "hsn_code": "", "support_email": None,
+        "seller_state": "", "state_code": "", "gst_slab_threshold": 2500,
+        "gst_rate_lower": 5, "gst_rate_upper": 18, "cotton_hsn_code": "62063090",
+        "other_hsn_code": "62114922", "support_email": None,
         "support_phone": "", "authorised_signatory": "", "invoice_prefix": "SAFYRA",
         "invoice_next_number": 1, "credit_note_prefix": "CN-SAFYRA", "credit_note_next_number": 1,
         "tax_inclusive": True, "updated_at": now,
@@ -73,39 +77,51 @@ async def _next_number(field: str) -> tuple[dict, int]:
 
 
 async def generate_invoice_for_order(order_id: str) -> dict | None:
-    print(f"DEBUG_TSCHECK gifo enter {order_id}", flush=True)
     existing = await db.invoices.find_one({"order_id": order_id, "document_type": "invoice"})
     if existing:
-        print("DEBUG_TSCHECK gifo existing found", flush=True)
         return existing
     order = await db.orders.find_one({"id": order_id, "payment_status": "Paid"})
     if not order:
-        print("DEBUG_TSCHECK gifo no order", flush=True)
         return None
     settings = await get_store_settings_document()
     missing = missing_invoice_fields(settings)
-    print(f"DEBUG_TSCHECK gifo missing={missing} source_request_id={order.get('source_request_id')!r}", flush=True)
     if missing:
         message = f"Invoice blocked—complete GST settings: {', '.join(missing)}"
         await db.orders.update_one({"id": order_id}, {"$set": {"invoice_status": "blocked", "invoice_error": message}})
         await db.order_requests.update_one({"id": order["source_request_id"]}, {"$set": {"invoice_status": "blocked", "invoice_error": message}})
         return None
-    print("DEBUG_TSCHECK gifo about to call _next_number", flush=True)
     settings, sequence = await _next_number("invoice_next_number")
-    print(f"DEBUG_TSCHECK gifo sequence={sequence} gst_rate={settings.get('gst_rate')!r} seller_state={settings.get('seller_state')!r}", flush=True)
     local_issued_at = now_in_app_tz()
     issued_at = local_issued_at.astimezone(timezone.utc)
     number = f"{settings['invoice_prefix']}/{financial_year(local_issued_at)}/{sequence:04d}"
     total = int(order.get("total") or order.get("subtotal") or 0)
     intra_state = order.get("state_region", "").strip().lower() == settings["seller_state"].strip().lower()
-    taxable, cgst, sgst, igst = _tax_parts(total, float(settings["gst_rate"]), intra_state)
     invoice_items = []
+    taxable = cgst = sgst = igst = 0
+    item_rates: list[float] = []
     for item in order["items"]:
-        item_taxable, item_cgst, item_sgst, item_igst = _tax_parts(int(item["line_total"]), float(settings["gst_rate"]), intra_state)
+        rate = float(settings["gst_rate_lower"] if int(item["price"]) <= int(settings["gst_slab_threshold"]) else settings["gst_rate_upper"])
+        item_taxable, item_cgst, item_sgst, item_igst = _tax_parts(int(item["line_total"]), rate, intra_state)
+        taxable += item_taxable
+        cgst += item_cgst
+        sgst += item_sgst
+        igst += item_igst
+        item_rates.append(rate)
         invoice_items.append({
-            **item, "taxable_value": item_taxable,
+            **item, "hsn_code": item.get("hsn_code") or settings["other_hsn_code"], "gst_rate": rate,
+            "taxable_value": item_taxable, "cgst": item_cgst, "sgst": item_sgst, "igst": item_igst,
             "tax_amount": item_cgst + item_sgst + item_igst,
         })
+    shipping_amount = int(order.get("shipping_amount") or 0)
+    if shipping_amount:
+        shipping_rate = max(item_rates) if item_rates else float(settings["gst_rate_lower"])
+        shipping_taxable, shipping_cgst, shipping_sgst, shipping_igst = _tax_parts(shipping_amount, shipping_rate, intra_state)
+        taxable += shipping_taxable
+        cgst += shipping_cgst
+        sgst += shipping_sgst
+        igst += shipping_igst
+    else:
+        shipping_rate = 0
     invoice = {
         "id": str(uuid.uuid4()), "document_type": "invoice", "number": number, "sequence": sequence,
         "financial_year": financial_year(local_issued_at), "issued_at": issued_at, "order_id": order_id,
@@ -114,10 +130,11 @@ async def generate_invoice_for_order(order_id: str) -> dict | None:
             key: settings.get(key) for key in ["legal_name", "gstin", "registered_address", "seller_state", "state_code", "support_email", "support_phone", "authorised_signatory"]
         },
         "buyer": {key: order.get(key) for key in ["name", "email", "phone", "address", "city", "state_region", "postal_code", "country"]},
-        "items": invoice_items, "hsn_code": settings["hsn_code"], "gst_rate": settings["gst_rate"],
+        "items": invoice_items, "gst_slab_threshold": settings["gst_slab_threshold"],
+        "gst_rates": [settings["gst_rate_lower"], settings["gst_rate_upper"]], "shipping_gst_rate": shipping_rate,
         "place_of_supply": order.get("state_region", ""), "reverse_charge": "No",
         "regular_subtotal": order.get("regular_subtotal", order["subtotal"]), "discount_total": order.get("discount_total", 0),
-        "subtotal": order["subtotal"], "shipping_amount": order.get("shipping_amount") or 0, "total": total,
+        "subtotal": order["subtotal"], "shipping_amount": shipping_amount, "total": total,
         "taxable_value": taxable, "cgst": cgst, "sgst": sgst, "igst": igst, "status": "issued",
     }
     try:
@@ -147,10 +164,13 @@ async def generate_credit_note_for_order(order_id: str) -> dict | None:
     issued_at = local_issued_at.astimezone(timezone.utc)
     number = f"{settings['credit_note_prefix']}/{financial_year(local_issued_at)}/{sequence:04d}"
     total = min(int(order["refund_amount"]), int(invoice["total"]))
-    intra_state = order.get("state_region", "").strip().lower() == settings["seller_state"].strip().lower()
-    taxable, cgst, sgst, igst = _tax_parts(total, float(settings["gst_rate"]), intra_state)
+    ratio = Decimal(total) / Decimal(max(1, int(invoice["total"])))
+    taxable = int((Decimal(invoice["taxable_value"]) * ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    cgst = int((Decimal(invoice.get("cgst", 0)) * ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    sgst = int((Decimal(invoice.get("sgst", 0)) * ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    igst = int((Decimal(invoice.get("igst", 0)) * ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     credit = {
-        **{key: invoice[key] for key in ["order_id", "order_number", "source_request_id", "customer_id", "seller", "buyer", "items", "hsn_code", "gst_rate"]},
+        **{key: invoice[key] for key in ["order_id", "order_number", "source_request_id", "customer_id", "seller", "buyer", "items", "gst_slab_threshold", "gst_rates"]},
         "id": str(uuid.uuid4()), "document_type": "credit_note", "number": number, "sequence": sequence,
         "financial_year": financial_year(local_issued_at), "issued_at": issued_at, "linked_invoice_id": invoice["id"],
         "linked_invoice_number": invoice["number"], "reason": order.get("refund_reason", ""),
@@ -168,6 +188,17 @@ async def generate_credit_note_for_order(order_id: str) -> dict | None:
 
 def sample_invoice(settings: dict) -> dict:
     now = datetime.now(timezone.utc)
+    sample_items = [
+        {"title": "Cotton woven Chikankari kurti", "quantity": 1, "price": 2400, "line_total": 2400, "size": "M", "color": "Ivory", "hsn_code": settings.get("cotton_hsn_code") or "62063090", "gst_rate": settings.get("gst_rate_lower") or 5},
+        {"title": "Chikankari occasion garment", "quantity": 1, "price": 3000, "line_total": 3000, "size": "M", "color": "Rose", "hsn_code": settings.get("other_hsn_code") or "62114922", "gst_rate": settings.get("gst_rate_upper") or 18},
+    ]
+    taxable = cgst = sgst = 0
+    for item in sample_items:
+        item_taxable, item_cgst, item_sgst, _ = _tax_parts(item["line_total"], item["gst_rate"], True)
+        item.update({"taxable_value": item_taxable, "cgst": item_cgst, "sgst": item_sgst, "igst": 0, "tax_amount": item_cgst + item_sgst})
+        taxable += item_taxable
+        cgst += item_cgst
+        sgst += item_sgst
     return {
         "document_type": "invoice", "number": "SAMPLE/NOT-ISSUED/0000", "issued_at": now,
         "order_number": "SAMPLE-ORDER", "seller": {
@@ -179,10 +210,11 @@ def sample_invoice(settings: dict) -> dict:
             "authorised_signatory": settings.get("authorised_signatory") or "[ADD SIGNATORY]",
         },
         "buyer": {"name": "Sample customer", "email": "sample@example.invalid", "phone": "—", "address": "Sample delivery address", "city": "Lucknow", "state_region": "Uttar Pradesh", "postal_code": "000000", "country": "India"},
-        "items": [{"title": "Sample SAFYRA piece", "quantity": 1, "price": 1000, "line_total": 1000, "size": "M", "color": "Ivory"}],
-        "hsn_code": settings.get("hsn_code") or "[ADD HSN]", "gst_rate": settings.get("gst_rate") or 0,
-        "regular_subtotal": 1000, "discount_total": 0, "subtotal": 1000, "shipping_amount": 0,
-        "total": 1000, "taxable_value": 1000, "cgst": 0, "sgst": 0, "igst": 0, "status": "sample",
+        "items": sample_items, "gst_slab_threshold": settings.get("gst_slab_threshold") or 2500,
+        "gst_rates": [settings.get("gst_rate_lower") or 5, settings.get("gst_rate_upper") or 18],
+        "regular_subtotal": 5400, "discount_total": 0, "subtotal": 5400, "shipping_amount": 0,
+        "total": 5400, "taxable_value": taxable, "cgst": cgst, "sgst": sgst, "igst": 0,
+        "place_of_supply": "Uttar Pradesh", "reverse_charge": "No", "status": "sample",
     }
 
 
@@ -206,16 +238,17 @@ def render_invoice_pdf(document: dict, sample: bool = False) -> bytes:
     story.extend([Spacer(1, 8 * mm), Paragraph("<b>Bill to</b>", styles["Heading3"]), Paragraph("<br/>".join(buyer_lines), small), Spacer(1, 7 * mm)])
     rows = [["Description", "HSN", "Qty", "GST", "Taxable", "Total"]]
     for item in document["items"]:
+        item_rate = float(item.get("gst_rate", document.get("gst_rate", 0)))
         item_taxable = item.get("taxable_value")
         if item_taxable is None:
-            item_taxable, _, _, _ = _tax_parts(int(item["line_total"]), float(document["gst_rate"]), bool(document.get("cgst")))
-        rows.append([Paragraph(f"{escape(str(item['title']))}<br/><font size=7>{escape(str(item.get('size','')))} · {escape(str(item.get('color','')))}</font>", small), escape(str(document["hsn_code"])), str(item["quantity"]), f"{float(document['gst_rate']):g}%", f"INR {item_taxable:,}", f"INR {item['line_total']:,}"])
+            item_taxable, _, _, _ = _tax_parts(int(item["line_total"]), item_rate, bool(document.get("cgst")))
+        rows.append([Paragraph(f"{escape(str(item['title']))}<br/><font size=7>{escape(str(item.get('size','')))} · {escape(str(item.get('color','')))}</font>", small), escape(str(item.get("hsn_code") or document.get("hsn_code", ""))), str(item["quantity"]), f"{item_rate:g}%", f"INR {item_taxable:,}", f"INR {item['line_total']:,}"])
     table = Table(rows, colWidths=[68 * mm, 22 * mm, 12 * mm, 16 * mm, 24 * mm, 26 * mm], repeatRows=1)
     table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#261C19")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, -1), 8), ("GRID", (0, 0), (-1, -1), .35, colors.HexColor("#D6C7B2")), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (2, 1), (-1, -1), "RIGHT"), ("PADDING", (0, 0), (-1, -1), 6)]))
     story.extend([table, Spacer(1, 6 * mm)])
     totals = [["Product subtotal", f"INR {document['subtotal']:,}"], ["Shipping", f"INR {document['shipping_amount']:,}"], ["Taxable value", f"INR {document['taxable_value']:,}"]]
-    if document.get("cgst"): totals += [[f"CGST ({float(document['gst_rate']) / 2:g}%)", f"INR {document['cgst']:,}"], [f"SGST ({float(document['gst_rate']) / 2:g}%)", f"INR {document['sgst']:,}"]]
-    if document.get("igst"): totals += [[f"IGST ({float(document['gst_rate']):g}%)", f"INR {document['igst']:,}"]]
+    if document.get("cgst"): totals += [["CGST included", f"INR {document['cgst']:,}"], ["SGST included", f"INR {document['sgst']:,}"]]
+    if document.get("igst"): totals += [["IGST included", f"INR {document['igst']:,}"]]
     totals.append(["Total", f"INR {document['total']:,}"])
     totals_table = Table(totals, colWidths=[55 * mm, 35 * mm], hAlign="RIGHT", style=TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"), ("LINEABOVE", (0, -1), (-1, -1), .75, colors.HexColor("#261C19")), ("FONTSIZE", (0, 0), (-1, -1), 8), ("PADDING", (0, 0), (-1, -1), 5)]))
     story.extend([totals_table, Spacer(1, 12 * mm), Paragraph(f"Authorised signatory: {escape(str(seller['authorised_signatory']))}", right), Paragraph(f"Support: {escape(str(seller['support_email']))} · {escape(str(seller['support_phone']))}", small), Paragraph("Computer-generated document. Prices are GST-inclusive.", small)])

@@ -96,6 +96,7 @@ async def price_order_items(items: Iterable, discount_code: str | None = None) -
         subtotal += line_total
         stored_items.append({
             "product_id": product["id"], "title": product["title"], "image_url": product.get("image_url", ""),
+            "hsn_code": product.get("hsn_code") or ("62063090" if product.get("category") == "Straight Kurtis" and "cotton" in product.get("fabric", "").lower() else "62114922"),
             "set_type": pricing["set_type"], "regular_price": pricing["regular_price"], "price": pricing["price"],
             "compare_at_price": pricing["compare_at_price"], "discount_name": pricing["discount_name"],
             "discount_id": pricing["discount"].get("id") if pricing["discount"] else None,

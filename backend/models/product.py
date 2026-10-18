@@ -36,6 +36,7 @@ class ProductFields(BaseModel):
     collection: str
     fabric: str
     craft: str
+    hsn_code: str = Field(default="", pattern=r"^$|^\d{8}$")
     price: int
     mrp: Optional[int] = None
     stock: int = 0
@@ -78,6 +79,7 @@ class ProductUpdate(BaseModel):
     collection: Optional[str] = None
     fabric: Optional[str] = None
     craft: Optional[str] = None
+    hsn_code: Optional[str] = Field(default=None, pattern=r"^$|^\d{8}$")
     price: Optional[int] = None
     mrp: Optional[int] = None
     stock: Optional[int] = None
@@ -126,6 +128,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         collection="Safyra Luxury",
         fabric="Pure Viscose",
         craft="Resham silk Chikankari with Mukaish & Badla",
+        hsn_code="62114922",
         price=3850,
         mrp=8400,
         stock=0,
@@ -154,6 +157,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         collection="Everyday Edit",
         fabric="Pure Kota Doria",
         craft="Hand-embroidered Chikankari",
+        hsn_code="62114922",
         price=3850,
         mrp=4500,
         stock=0,
@@ -185,6 +189,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         collection="Vaaya Kota Doria",
         fabric="Pure Kota Doria",
         craft="French knot Chikankari with rose & floral motifs",
+        hsn_code="62114922",
         price=3499,
         mrp=3850,
         stock=0,
@@ -216,6 +221,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         collection="Safyra Luxury",
         fabric="",
         craft="",
+        hsn_code="62114922",
         price=6650,
         mrp=7600,
         stock=0,
