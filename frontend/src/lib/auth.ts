@@ -8,11 +8,17 @@ export interface User {
   phone: string;
   email_verified: boolean;
   email_verified_at: string | null;
+  picture_url: string;
+  auth_providers: string[];
   created_at: string;
 }
 
 export interface AuthResponse {
   user: User;
+}
+
+export interface GoogleAuthResponse extends AuthResponse {
+  claimed_orders: number;
 }
 
 export interface TrackingStep {

@@ -6,10 +6,11 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 import httpx
+from fastapi import HTTPException
 
 
 logger = logging.getLogger(__name__)
-EMAIL_BASE_URL = os.environ.get("INTEGRATION_PROXY_URL", "https://integrations.emergentagent.com")
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
 EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
 EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
@@ -89,7 +90,22 @@ async def send_email(*, to: str, subject: str, html: str) -> str | None:
     payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
     if EMAIL_REPLY_TO:
         payload["contact_email"] = EMAIL_REPLY_TO
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(f"{EMAIL_BASE_URL}/api/v1/email/send", headers={"X-Email-Key": EMAIL_KEY}, json=payload)
-    response.raise_for_status()
-    return response.json().get("id")
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(f"{EMAIL_BASE_URL}/api/v1/email/send", headers={"X-Email-Key": EMAIL_KEY}, json=payload)
+        response.raise_for_status()
+        return response.json().get("id")
+    except httpx.HTTPStatusError as exc:
+        try:
+            body = exc.response.json()
+            code = body.get("code", "")
+        except ValueError:
+            body, code = {}, ""
+        if code in {"insufficient_credits", "integration_disabled", "daily_limit_reached"}:
+            logger.warning("Email paused: %s (%s): %s", code, exc.response.status_code, body.get("message", ""))
+            raise HTTPException(status_code=503, detail="Email is temporarily unavailable") from exc
+        logger.error("Email send failed: %s %s", exc.response.status_code, exc.response.text)
+        raise HTTPException(status_code=502, detail="Failed to send email") from exc
+    except Exception as exc:
+        logger.error("Email send error: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to send email") from exc

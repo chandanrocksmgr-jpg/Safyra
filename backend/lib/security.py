@@ -51,9 +51,9 @@ def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-async def start_session(user_id: str, response: Response) -> None:
+async def start_session(user_id: str, response: Response, *, days: int = 30, oauth_callback: bool = False) -> None:
     token = secrets.token_urlsafe(40)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=days)
     await db.sessions.insert_one(
         {
             "token_hash": token_digest(token),
@@ -65,10 +65,10 @@ async def start_session(user_id: str, response: Response) -> None:
     response.set_cookie(
         SESSION_COOKIE,
         token,
-        max_age=60 * 60 * 24 * 30,
+        max_age=60 * 60 * 24 * days,
         httponly=True,
-        secure=os.environ.get("APP_URL", "").startswith("https://"),
-        samesite="lax",
+        secure=oauth_callback or os.environ.get("APP_URL", "").startswith("https://"),
+        samesite="none" if oauth_callback else "lax",
         path="/",
     )
 

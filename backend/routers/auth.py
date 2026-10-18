@@ -46,6 +46,8 @@ async def signup(input: SignupRequest, response: Response, request: Request, bac
         "role": "customer",
         "email_verified": False,
         "email_verified_at": None,
+        "picture_url": "",
+        "auth_providers": ["password"],
         "password_hash": hash_secret(input.password),
         "wishlist_ids": [],
         "cart": [],

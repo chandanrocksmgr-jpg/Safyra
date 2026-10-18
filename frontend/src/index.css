@@ -538,6 +538,16 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .verification-card h1 { margin: .7rem 0; font-size: clamp(2.5rem, 5vw, 4.3rem); line-height: .98; }
 .verification-card p { color: var(--safyra-espresso-soft); line-height: 1.7; }
 .verification-card .button { margin-top: 1rem; }
+.google-signin-button { width: 100%; min-height: 48px; padding: .75rem 1rem; border: 1px solid #cfc7bd; background: #fff; color: var(--safyra-espresso); display: flex; align-items: center; justify-content: center; gap: .75rem; font-size: .74rem; font-weight: 750; letter-spacing: .03em; cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.google-signin-button:hover { border-color: var(--safyra-espresso); box-shadow: 0 8px 24px rgb(38 28 25 / .08); transform: translateY(-1px); }
+.google-mark { width: 24px; height: 24px; border: 1px solid #d7d2cb; border-radius: 50%; display: grid; place-items: center; color: #1a73e8; font: 800 14px/1 Arial, sans-serif; }
+.auth-divider { margin: .9rem 0; display: flex; align-items: center; gap: .8rem; color: var(--safyra-espresso-soft); font-size: .62rem; text-transform: uppercase; letter-spacing: .12em; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--safyra-border); }
+.google-callback-page { min-height: 100vh; padding: 2rem; display: grid; place-content: center; justify-items: center; gap: 1rem; text-align: center; background: var(--safyra-ivory); color: var(--safyra-espresso); }
+.google-callback-page h1 { max-width: 680px; margin: 0; font-size: clamp(2.6rem, 6vw, 5rem); line-height: .96; }
+.google-callback-page p { display: flex; align-items: center; gap: .45rem; color: var(--safyra-espresso-soft); }
+.google-callback-spinner { animation: google-callback-spin 850ms linear infinite; }
+@keyframes google-callback-spin { to { transform: rotate(360deg); } }
 @media (min-width: 900px) {
   .admin-feature-grid { grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr); }
   .admin-form-row, .admin-settings-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }

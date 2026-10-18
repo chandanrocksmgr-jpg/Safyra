@@ -13,6 +13,8 @@ class UserPublic(BaseModel):
     phone: str = ""
     email_verified: bool = False
     email_verified_at: Optional[datetime] = None
+    picture_url: str = ""
+    auth_providers: list[str] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -29,6 +31,14 @@ class LoginRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     user: UserPublic
+
+
+class GoogleSessionExchange(BaseModel):
+    session_id: str = Field(min_length=16, max_length=500)
+
+
+class GoogleAuthResponse(AuthResponse):
+    claimed_orders: int = 0
 
 
 class PasswordChangeRequest(BaseModel):

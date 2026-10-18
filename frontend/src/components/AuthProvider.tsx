@@ -12,13 +12,15 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const isGoogleCallback = window.location.hash.includes("session_id=");
   const { data, isPending } = useQuery({
     queryKey: sessionQueryKey,
     queryFn: () => apiGet<User | null>("/auth/me"),
     retry: false,
     staleTime: 60_000,
+    enabled: !isGoogleCallback,
   });
-  return <AuthContext.Provider value={{ user: data ?? null, isLoading: isPending }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user: data ?? null, isLoading: !isGoogleCallback && isPending }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

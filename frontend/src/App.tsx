@@ -29,6 +29,7 @@ import AdminOffers from "@/pages/AdminOffers";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminSettings from "@/pages/AdminSettings";
 import VerifyEmail from "@/pages/VerifyEmail";
+import GoogleAuthCallback from "@/pages/GoogleAuthCallback";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -53,9 +54,11 @@ function AdminRoute({ children }: { children: ReactNode }) {
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
+  const location = useLocation();
+  const isGoogleCallback = location.hash.includes("session_id=");
   return (
     <AuthProvider>
-      <ShopProvider>
+      {isGoogleCallback ? <GoogleAuthCallback /> : <ShopProvider>
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
@@ -85,7 +88,7 @@ export default function App() {
         </Routes>
         <CartDrawer />
         <ProductWaitlistAction />
-      </ShopProvider>
+      </ShopProvider>}
     </AuthProvider>
   );
 }

@@ -18,6 +18,20 @@ router = APIRouter(prefix="/email-verification", tags=["email verification"])
 logger = logging.getLogger(__name__)
 
 
+async def claim_paid_guest_orders(user_id: str, email: str) -> int:
+    requests = await db.order_requests.find({"email": email.strip().lower(), "payment_status": "Paid", "customer_id": None}).to_list(500)
+    request_ids = [item["id"] for item in requests]
+    if not request_ids:
+        return 0
+    await db.order_requests.update_many({"id": {"$in": request_ids}}, {"$set": {"customer_id": user_id}})
+    await db.orders.update_many({"source_request_id": {"$in": request_ids}}, {"$set": {"customer_id": user_id}})
+    await db.invoices.update_many({"source_request_id": {"$in": request_ids}}, {"$set": {"customer_id": user_id}})
+    orders = await db.orders.find({"source_request_id": {"$in": request_ids}}).to_list(500)
+    for order in orders:
+        await _sync_customer_order(order)
+    return len(request_ids)
+
+
 def _origin(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-host", "").split(",")[0].strip()
     host = forwarded or request.url.netloc
@@ -88,13 +102,5 @@ async def confirm_verification(input: VerificationConfirm):
     if not user:
         raise HTTPException(status_code=400, detail="This verification link is invalid or expired")
     await db.users.update_one({"id": user["id"]}, {"$set": {"email_verified": True, "email_verified_at": now, "updated_at": now}})
-    requests = await db.order_requests.find({"email": user["email"], "payment_status": "Paid", "customer_id": None}).to_list(500)
-    request_ids = [item["id"] for item in requests]
-    if request_ids:
-        await db.order_requests.update_many({"id": {"$in": request_ids}}, {"$set": {"customer_id": user["id"]}})
-        await db.orders.update_many({"source_request_id": {"$in": request_ids}}, {"$set": {"customer_id": user["id"]}})
-        await db.invoices.update_many({"source_request_id": {"$in": request_ids}}, {"$set": {"customer_id": user["id"]}})
-        orders = await db.orders.find({"source_request_id": {"$in": request_ids}}).to_list(500)
-        for order in orders:
-            await _sync_customer_order(order)
-    return VerificationResponse(verified=True, claimed_orders=len(request_ids))
+    claimed_orders = await claim_paid_guest_orders(user["id"], user["email"])
+    return VerificationResponse(verified=True, claimed_orders=claimed_orders)

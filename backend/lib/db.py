@@ -62,6 +62,11 @@ INDEXES: dict[str, list[IndexModel]] = {
     ],
     "order_status_notifications": [IndexModel([("request_id", ASCENDING), ("status", ASCENDING)], name="request_status", unique=True)],
     "invoice_notifications": [IndexModel([("invoice_id", ASCENDING)], name="invoice_id", unique=True)],
+    "oauth_exchanges": [
+        IndexModel([("session_id_hash", ASCENDING)], name="session_id_hash", unique=True),
+        IndexModel([("created_at", ASCENDING)], name="created_at_ttl", expireAfterSeconds=86400),
+    ],
+    "google_link_notifications": [IndexModel([("user_id", ASCENDING)], name="user_id", unique=True)],
     "users": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("email", ASCENDING)], name="email", unique=True),
