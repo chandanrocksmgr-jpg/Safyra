@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 PaymentStatus = Literal["Unpaid", "Payment pending", "Paid"]
-FulfilmentStatus = Literal["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"]
+FulfilmentStatus = Literal["Request received", "Confirmed", "In production", "Quality check", "Shipped", "Delivered"]
 RefundStatus = Literal["Not initiated", "Processing", "Refunded", "Failed"]
 EmailDeliveryStatus = Literal["Not scheduled", "Scheduled", "Sending", "Sent", "Failed"]
 
@@ -35,6 +35,7 @@ class OrderRequestCreate(BaseModel):
     shipping: Literal["india", "international"]
     note: str = Field(default="", max_length=2000)
     checkout_session_id: Optional[str] = Field(default=None, max_length=100)
+    discount_code: Optional[str] = Field(default=None, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
     items: list[OrderRequestItemInput] = Field(min_length=1, max_length=40)
 
 
@@ -52,6 +53,7 @@ class OrderRequestStoredItem(BaseModel):
     price: int
     compare_at_price: Optional[int] = None
     discount_name: Optional[str] = None
+    discount_id: Optional[str] = None
     discount_amount: int = 0
     size: str
     color: str
@@ -87,6 +89,8 @@ class OrderRequestAdmin(BaseModel):
     subtotal: int = 0
     regular_subtotal: int = 0
     discount_total: int = 0
+    discount_code: Optional[str] = None
+    discount_ids: list[str] = Field(default_factory=list)
     shipping_amount: Optional[int] = None
     tax_amount: Optional[int] = None
     total: Optional[int] = None
@@ -100,6 +104,12 @@ class OrderRequestAdmin(BaseModel):
     payment_error: str = ""
     payment_created_at: Optional[datetime] = None
     inventory_reservation_status: Optional[str] = None
+    invoice_id: Optional[str] = None
+    invoice_number: str = ""
+    invoice_status: str = "not_ready"
+    invoice_error: str = ""
+    credit_note_id: Optional[str] = None
+    credit_note_number: str = ""
     fulfilment_status: FulfilmentStatus = "Request received"
     courier_name: str = ""
     shipping_details: str = ""

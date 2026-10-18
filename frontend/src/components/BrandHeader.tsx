@@ -36,6 +36,12 @@ const fallbackMenuGroups: MenuGroup[] = [
   ] },
 ];
 
+const categoryMenuLabels: Record<string, string> = {
+  "Anarkali Sets": "Anarkalis",
+  "Angrakha Suits": "Angrakhas",
+  "Straight Kurtis": "Kurtas",
+};
+
 export default function BrandHeader() {
   const location = useLocation();
   const { cartCount, wishlistIds, openDrawer } = useShop();
@@ -46,7 +52,7 @@ export default function BrandHeader() {
   const { data: navigationProducts } = useQuery({ queryKey: ["products", "navigation"], queryFn: () => apiGet<Product[]>("/products"), retry: false });
   const { data: catalogGroups = [], isSuccess: catalogGroupsLoaded, isFetching: catalogGroupsFetching, isError: catalogGroupsUnavailable } = useQuery({ queryKey: ["catalog-groups", "public"], queryFn: () => apiGet<CatalogGroup[]>("/catalog-groups"), retry: false });
   const { data: homepage } = useQuery({ queryKey: ["homepage"], queryFn: () => apiGet<HomepageSettings>("/homepage"), retry: false });
-  const managedCategories: MenuItem[] = catalogGroups.filter((group) => group.group_type === "category").map((group) => ({ label: group.name, to: `/shop?category=${encodeURIComponent(group.name)}`, type: "category", value: group.name }));
+  const managedCategories: MenuItem[] = catalogGroups.filter((group) => group.group_type === "category").map((group) => ({ label: categoryMenuLabels[group.name] ?? group.name, to: `/shop?category=${encodeURIComponent(group.name)}`, type: "category", value: group.name }));
   const managedCollections: MenuItem[] = catalogGroups.filter((group) => group.group_type === "collection").map((group) => ({ label: group.name, to: `/shop?collection=${encodeURIComponent(group.name)}`, type: "collection", value: group.name }));
   const catalogGroupsReady = catalogGroupsLoaded && !catalogGroupsFetching;
   const collectionIsActive = (name: string) => catalogGroupsUnavailable || (catalogGroupsReady && managedCollections.some((group) => group.value === name));

@@ -77,7 +77,7 @@ export interface HomepageSettings {
 export const defaultHomepage: HomepageSettings = {
   id: "homepage",
   announcement_messages: [
-    "FREE SHIPPING ON ORDERS ABOVE ₹1,299",
+    "FREE INDIA SHIPPING FROM ₹1,000",
     "A LITTLE SOMETHING FROM SAFYRA — WITH YOUR FIRST ORDER",
   ],
   hero: {

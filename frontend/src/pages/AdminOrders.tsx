@@ -12,7 +12,7 @@ import { formatPrice } from "@/lib/shop";
 import { openOrderPrintView } from "@/lib/orderPrint";
 
 const paymentStatuses: PaymentStatus[] = ["Unpaid", "Payment pending", "Paid"];
-const fulfilmentStatuses: FulfilmentStatus[] = ["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"];
+const fulfilmentStatuses: FulfilmentStatus[] = ["Request received", "Confirmed", "In production", "Quality check", "Shipped", "Delivered"];
 const refundStatuses: RefundStatus[] = ["Not initiated", "Processing", "Refunded", "Failed"];
 
 interface ManagementForm {
@@ -113,12 +113,15 @@ function OrderEditor({ request }: { request: AdminOrderRequest }) {
       <h3>Selected products</h3>
       {request.items.map((item) => <div className="admin-order-item" key={`${item.product_id}-${item.size}-${item.color}`}><SafeProductImage src={item.image_url} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><span>{item.size} · {item.color} · Qty {item.quantity}</span></div><strong>{formatPrice(item.line_total)}</strong></div>)}
       {request.discount_total > 0 && <div className="summary-line" data-testid="admin-order-discount-total"><span>Automatic savings</span><strong>−{formatPrice(request.discount_total)}</strong></div>}
+      {request.discount_code && <p data-testid="admin-order-discount-code"><strong>Offer code:</strong> {request.discount_code}</p>}
       <div className="summary-line"><span>Product subtotal</span><strong>{formatPrice(request.subtotal)}</strong></div>
       {request.shipping_amount !== null && <div className="summary-line" data-testid="admin-order-shipping-total"><span>Shipping</span><strong>{request.shipping_amount === 0 ? "Free" : formatPrice(request.shipping_amount)}</strong></div>}
       {request.total !== null && <div className="summary-line" data-testid="admin-order-total"><span>Total</span><strong>{formatPrice(request.total)}</strong></div>}
     </section>
 
     {request.payment_provider && <section className="admin-order-section" data-testid="admin-order-gateway"><h3>Payment gateway</h3><p><strong>{request.payment_provider}</strong><br />Status: {request.payment_gateway_status || request.payment_status}<br />Merchant transaction: {request.payment_transaction_id || "—"}<br />PayU payment ID: {request.payu_payment_id || "Awaiting confirmation"}</p>{request.inventory_reservation_status && <p>Inventory: {request.inventory_reservation_status}</p>}{request.payment_error && <div className="form-error">{request.payment_error}</div>}</section>}
+
+    <section className="admin-order-section" data-testid="admin-order-invoice"><h3>GST documents</h3>{request.invoice_id ? <a className="underlined-link" href={`/api/invoices/${request.invoice_id}/pdf`} target="_blank" rel="noreferrer" data-testid="admin-order-download-invoice"><FileText size={14} /> {request.invoice_number}</a> : <p>{request.invoice_error || "Invoice will generate after verified payment and complete GST settings."}</p>}{request.credit_note_id && <a className="underlined-link" href={`/api/invoices/${request.credit_note_id}/pdf`} target="_blank" rel="noreferrer" data-testid="admin-order-download-credit-note"><FileText size={14} /> Credit note {request.credit_note_number}</a>}</section>
 
     <section className="admin-order-section admin-order-email-status" data-testid="admin-order-email-status">
       <h3>Transactional emails</h3>

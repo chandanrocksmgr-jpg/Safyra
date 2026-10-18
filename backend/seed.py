@@ -30,45 +30,6 @@ async def seed() -> None:
         }},
         upsert=True,
     )
-    await db.users.update_one(
-        {"email": "customer@safyra.co"},
-        {"$setOnInsert": {
-            "id": str(uuid.uuid4()),
-            "email": "customer@safyra.co",
-            "name": "SAFYRA Guest",
-            "phone": "+91 90000 00000",
-            "role": "customer",
-            "password_hash": hash_secret("Safyra!Customer#2026"),
-            "wishlist_ids": [],
-            "cart": [],
-            "orders": [{
-                "id": str(uuid.uuid4()),
-                "order_number": "SF-DEMO-1042",
-                "placed_at": datetime(2026, 1, 18, tzinfo=timezone.utc),
-                "status": "In transit",
-                "total": 3850,
-                "invoice_number": "INV-DEMO-1042",
-                "is_demo": True,
-                "items": [{
-                    "product_name": "Luxury Nazakat Collection",
-                    "image_url": "https://safyra.co/cdn/shop/files/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg?v=1767270653&width=600",
-                    "size": "M",
-                    "color": "Forest green",
-                    "quantity": 1,
-                    "price": 3850,
-                }],
-                "tracking": [
-                    {"label": "Order confirmed", "completed": True, "date": "18 Jan 2026"},
-                    {"label": "Artisan finishing", "completed": True, "date": "28 Jan 2026"},
-                    {"label": "Dispatched", "completed": True, "date": "12 Feb 2026"},
-                    {"label": "Delivered", "completed": False, "date": ""},
-                ],
-            }],
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }},
-        upsert=True,
-    )
     client.close()
 
 

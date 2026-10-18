@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
+from lib.invoice_service import generate_credit_note_for_order, generate_invoice_for_order
 from lib.order_pricing import price_order_items
 from lib.security import get_optional_user, require_admin
 from models.order_request import (
@@ -17,12 +18,12 @@ from models.order_request import (
     OrderRequestCreate,
     OrderRequestResponse,
 )
-from routers.order_emails import send_order_email
+from routers.order_emails import send_fulfilment_email, send_order_email
 
 
 router = APIRouter(prefix="/order-requests", tags=["order requests"])
 
-FULFILMENT_STEPS = ["Request received", "Confirmed", "Processing", "Ready to ship", "Shipped", "Delivered"]
+FULFILMENT_STEPS = ["Request received", "Confirmed", "In production", "Quality check", "Shipped", "Delivered"]
 PUBLIC_PRODUCT_FILTER = {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}}
 
 
@@ -47,11 +48,14 @@ def _with_defaults(document: dict) -> dict:
     cleaned.setdefault("inventory_reservation_status", None)
     cleaned.setdefault("regular_subtotal", cleaned.get("subtotal", 0))
     cleaned.setdefault("discount_total", 0)
+    cleaned.setdefault("discount_code", None)
+    cleaned.setdefault("discount_ids", [])
     cleaned.setdefault("shipping_amount", None)
     cleaned.setdefault("tax_amount", None)
     cleaned.setdefault("total", None)
     cleaned.setdefault("record_type", "Request")
     cleaned.setdefault("fulfilment_status", "Request received")
+    cleaned["fulfilment_status"] = {"Processing": "In production", "Ready to ship": "Quality check"}.get(cleaned["fulfilment_status"], cleaned["fulfilment_status"])
     cleaned.setdefault("courier_name", "")
     cleaned.setdefault("shipping_details", "")
     cleaned.setdefault("tracking_number", "")
@@ -72,6 +76,12 @@ def _with_defaults(document: dict) -> dict:
     cleaned.setdefault("paid_email_status", "Not scheduled")
     cleaned.setdefault("paid_email_sent_at", None)
     cleaned.setdefault("paid_email_id", None)
+    cleaned.setdefault("invoice_id", None)
+    cleaned.setdefault("invoice_number", "")
+    cleaned.setdefault("invoice_status", "not_ready")
+    cleaned.setdefault("invoice_error", "")
+    cleaned.setdefault("credit_note_id", None)
+    cleaned.setdefault("credit_note_number", "")
     cleaned.setdefault("history", [_history_event("request_received", "Order request received.", created_at=cleaned["received_at"])])
     return cleaned
 
@@ -97,7 +107,11 @@ def _customer_order_snapshot(order: dict) -> dict:
     return {
         "id": order["id"], "order_number": order["order_number"], "placed_at": order["converted_at"],
         "status": "Cancelled" if order.get("cancelled") else order["fulfilment_status"],
-        "total": order.get("total") or order["subtotal"], "invoice_number": f"INV-{order['order_number'].removeprefix('SAF-REQ-')}",
+        "total": order.get("total") or order["subtotal"], "invoice_id": order.get("invoice_id"),
+        "invoice_number": order.get("invoice_number", ""), "invoice_status": order.get("invoice_status", "not_ready"),
+        "credit_note_id": order.get("credit_note_id"), "credit_note_number": order.get("credit_note_number", ""),
+        "courier_name": order.get("courier_name", ""), "tracking_number": order.get("tracking_number", ""),
+        "tracking_link": order.get("tracking_link", ""),
         "is_demo": False,
         "items": [{
             "product_name": item["title"], "image_url": item["image_url"], "size": item["size"],
@@ -143,7 +157,7 @@ async def _sync_converted_order(request_document: dict) -> None:
 async def create_order_request(input: OrderRequestCreate, background_tasks: BackgroundTasks, user: dict | None = Depends(get_optional_user)):
     if input.country_code == "IN":
         raise HTTPException(status_code=422, detail="India orders must use secure PayU checkout")
-    stored_items, regular_subtotal, subtotal, _ = await price_order_items(input.items)
+    stored_items, regular_subtotal, subtotal, _ = await price_order_items(input.items, input.discount_code)
 
     received_at = datetime.now(timezone.utc)
     request_number = f"SAF-REQ-{received_at:%Y%m%d}-{uuid.uuid4().hex[:6].upper()}"
@@ -152,11 +166,12 @@ async def create_order_request(input: OrderRequestCreate, background_tasks: Back
         "id": str(uuid.uuid4()),
         "request_number": request_number,
         "received_at": received_at,
-        "customer_id": user.get("id") if user else None,
+        "customer_id": user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None,
         "items": stored_items,
         "subtotal": subtotal,
         "regular_subtotal": regular_subtotal,
         "discount_total": regular_subtotal - subtotal,
+        "discount_ids": list(dict.fromkeys(item["discount_id"] for item in stored_items if item.get("discount_id"))),
         "shipping_amount": None,
         "tax_amount": None,
         "total": None,
@@ -298,6 +313,10 @@ async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, 
     await _sync_converted_order(updated)
     if changes.get("paid_email_status") == "Scheduled":
         background_tasks.add_task(send_order_email, existing["id"], "payment_confirmed")
+    if changes.get("fulfilment_status") in {"In production", "Quality check", "Shipped", "Delivered"}:
+        background_tasks.add_task(send_fulfilment_email, existing["id"], changes["fulfilment_status"])
+    if changes.get("refund_status") == "Refunded" and updated.get("converted_order_id"):
+        await generate_credit_note_for_order(updated["converted_order_id"])
     return OrderRequestAdmin(**updated)
 
 
@@ -331,11 +350,12 @@ async def _convert_request_document(request_document: dict, actor_id: str | None
     copy_fields = [
         "request_number", "customer_id", "name", "email", "phone", "address", "city", "state_region",
         "postal_code", "country", "country_code", "shipping", "note", "items", "subtotal", "regular_subtotal",
-        "discount_total", "shipping_amount", "tax_amount", "total", "record_type", "payment_status",
+        "discount_total", "discount_code", "discount_ids", "shipping_amount", "tax_amount", "total", "record_type", "payment_status",
         "payment_verified_at", "payment_provider", "payment_transaction_id", "payu_payment_id", "payment_gateway_status",
         "fulfilment_status", "courier_name", "shipping_details", "tracking_number", "tracking_link", "internal_notes",
         "cancelled", "cancellation_reason", "cancelled_at", "refund_status", "refund_reason", "refund_amount",
-        "refund_reference", "refund_confirmed_at",
+        "refund_reference", "refund_confirmed_at", "invoice_id", "invoice_number", "invoice_status", "invoice_error",
+        "credit_note_id", "credit_note_number",
     ]
     order = {
         **{key: request_document.get(key) for key in copy_fields},
@@ -358,6 +378,10 @@ async def _convert_request_document(request_document: dict, actor_id: str | None
     if order:
         order.pop("_id", None)
         await _sync_customer_order(order)
+        print(f"DEBUG_TSCHECK convert order={order['id']} payment_status={order.get('payment_status')!r}", flush=True)
+        if order.get("payment_status") == "Paid":
+            result = await generate_invoice_for_order(order["id"])
+            print(f"DEBUG_TSCHECK generate_invoice_for_order result={result}", flush=True)
     return OrderConversionResponse(order_id=order_id, order_number=request_document["request_number"], converted_at=now)
 
 

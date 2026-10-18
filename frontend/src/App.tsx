@@ -25,6 +25,10 @@ import { useEffect, type ReactNode } from "react";
 import ProductWaitlistAction from "@/components/ProductWaitlistAction";
 import AdminAbandonedCheckouts from "@/pages/AdminAbandonedCheckouts";
 import PaymentResult from "@/pages/PaymentResult";
+import AdminOffers from "@/pages/AdminOffers";
+import AdminAnalytics from "@/pages/AdminAnalytics";
+import AdminSettings from "@/pages/AdminSettings";
+import VerifyEmail from "@/pages/VerifyEmail";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -60,6 +64,7 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/payment-result" element={<PaymentResult />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/information" element={<Information />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/login" element={<Login />} />
@@ -71,6 +76,9 @@ export default function App() {
           <Route path="/admin/collections" element={<AdminRoute><AdminCollections /></AdminRoute>} />
           <Route path="/admin/homepage" element={<AdminRoute><AdminHomepage /></AdminRoute>} />
           <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+          <Route path="/admin/offers" element={<AdminRoute><AdminOffers /></AdminRoute>} />
+          <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+          <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           <Route path="/admin/waitlist" element={<AdminRoute><AdminWaitlist /></AdminRoute>} />
           <Route path="/admin/abandoned-checkouts" element={<AdminRoute><AdminAbandonedCheckouts /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

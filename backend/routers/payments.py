@@ -13,6 +13,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
+from lib.invoice_service import generate_invoice_for_order
 from lib.order_pricing import india_shipping_amount, price_order_items, release_inventory, reserve_inventory
 from lib.security import get_optional_user
 from models.checkout_session import CronEnvelope
@@ -100,7 +101,7 @@ def _quote(document: dict) -> PaymentQuoteResponse:
 async def _priced_quote(input: PaymentQuoteRequest) -> tuple[list[dict], list[dict], PaymentQuoteResponse]:
     if input.country_code != "IN" or input.shipping != "india":
         raise HTTPException(status_code=422, detail="PayU checkout is currently available for India delivery only")
-    items, regular_subtotal, subtotal, plans = await price_order_items(input.items)
+    items, regular_subtotal, subtotal, plans = await price_order_items(input.items, input.discount_code)
     shipping_amount = india_shipping_amount(subtotal)
     quote = PaymentQuoteResponse(
         regular_subtotal=regular_subtotal, discount_total=regular_subtotal - subtotal,
@@ -140,13 +141,14 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
     document = input.model_dump(exclude={"items"})
     document.update({
         "id": str(uuid.uuid4()), "request_number": request_number, "received_at": now,
-        "customer_id": user.get("id") if user else None, "items": stored_items,
+        "customer_id": user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None, "items": stored_items,
         **quote.model_dump(), "record_type": "Request", "payment_status": "Payment pending",
         "payment_provider": "PayU", "payment_transaction_id": transaction_id, "payu_payment_id": None,
         "payment_gateway_status": "initiated", "payment_error": "", "payment_created_at": now,
         "payment_verified_at": None, "payu_productinfo": f"SAFYRA order {request_number}",
         "payment_callback_base": payment_callback_base,
         "inventory_reservations": reservations,
+        "discount_ids": list(dict.fromkeys(item["discount_id"] for item in stored_items if item.get("discount_id"))),
         "inventory_reservation_status": "reserved" if reservations else "not_required",
         "fulfilment_status": "Request received", "refund_status": "Not initiated", "cancelled": False,
         "request_received_email_status": "Scheduled", "request_received_email_sent_at": None,
@@ -261,7 +263,10 @@ async def _mark_paid(document: dict, gateway_status: str, payu_id: str | None) -
     )
     current = updated or await db.order_requests.find_one({"id": document["id"]})
     if current and current.get("payment_status") == "Paid":
-        await _convert_request_document(current, actor_id=None, message="PayU-confirmed order created automatically.")
+        conversion = await _convert_request_document(current, actor_id=None, message="PayU-confirmed order created automatically.")
+        await generate_invoice_for_order(conversion.order_id)
+        if updated and current.get("discount_ids"):
+            await db.discounts.update_many({"id": {"$in": current["discount_ids"]}}, {"$inc": {"usage_count": 1}})
     return bool(updated)
 
 

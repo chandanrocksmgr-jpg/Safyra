@@ -47,15 +47,81 @@ def _request_received_html(order: dict) -> str:
 
 
 def _payment_confirmed_html(order: dict) -> str:
+    account_base = order.get("payment_callback_base") or os.environ["PUBLIC_SITE_URL"].rstrip("/")
+    invoice_note = f'<p>Your GST invoice is ready in <a href="{escape(account_base)}/account">My Account</a>.</p>' if order.get("invoice_status") == "issued" else ""
     return (
         '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
         f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your payment is confirmed.</h1>'
         f'<p>SAFYRA has independently verified payment for <strong>{escape(order["request_number"])}</strong>.</p>'
         f'<p><strong>Confirmed total: {escape(_money(order.get("total") or order["subtotal"]))}</strong></p>'
         '<p>Your order will now move through SAFYRA’s recorded fulfilment process. Courier and tracking details are shared only after they are entered and verified by the team.</p>'
+        f'{invoice_note}'
         f'<p style="font-size:12px;color:#715b52">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for passwords or card details by email.</p>'
         '</td></tr></table>'
     )
+
+
+async def send_fulfilment_email(request_id: str, fulfilment_status: str) -> None:
+    if fulfilment_status not in {"In production", "Quality check", "Shipped", "Delivered"}:
+        return
+    now = datetime.now(timezone.utc)
+    retry = await db.order_status_notifications.find_one_and_update(
+        {"request_id": request_id, "status": fulfilment_status, "delivery_status": "Failed"},
+        {"$set": {"delivery_status": "Sending", "attempted_at": now}}, return_document=ReturnDocument.AFTER,
+    )
+    if not retry:
+        try:
+            await db.order_status_notifications.insert_one({"request_id": request_id, "status": fulfilment_status, "delivery_status": "Sending", "created_at": now})
+        except DuplicateKeyError:
+            return
+    order = await db.order_requests.find_one({"id": request_id, "payment_status": "Paid"})
+    if not order:
+        return
+    account_base = order.get("payment_callback_base") or os.environ["PUBLIC_SITE_URL"].rstrip("/")
+    shipping = ""
+    if fulfilment_status == "Shipped":
+        shipping = f'<p>Courier: <strong>{escape(order.get("courier_name") or "Recorded in My Account")}</strong><br/>Tracking number: <strong>{escape(order.get("tracking_number") or "Awaiting update")}</strong></p>'
+    html = (
+        '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
+        f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your order is {escape(fulfilment_status.lower())}.</h1>'
+        f'<p>SAFYRA order <strong>{escape(order["request_number"])}</strong> has moved to <strong>{escape(fulfilment_status)}</strong>.</p>{shipping}'
+        f'<p><a href="{escape(account_base)}/account">View order tracking in My Account</a></p>'
+        f'<p style="font-size:12px;color:#715b52">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for passwords or card details by email.</p>'
+        '</td></tr></table>'
+    )
+    try:
+        email_id = await send_email(to=str(order["email"]), subject=f"SAFYRA order {order['request_number']}: {fulfilment_status}", html=html)
+        await db.order_status_notifications.update_one({"request_id": request_id, "status": fulfilment_status}, {"$set": {"delivery_status": "Sent", "email_id": email_id, "sent_at": datetime.now(timezone.utc)}})
+        await db.order_requests.update_one({"id": request_id}, {"$push": {"history": {"id": __import__("uuid").uuid4().hex, "event": "fulfilment_email", "message": f"{fulfilment_status} email accepted by the provider.", "created_at": datetime.now(timezone.utc), "admin_id": None}}})
+    except Exception as exc:
+        logger.error("Fulfilment email failed for %s (%s): %s", request_id, fulfilment_status, exc)
+        await db.order_status_notifications.update_one({"request_id": request_id, "status": fulfilment_status}, {"$set": {"delivery_status": "Failed"}})
+
+
+async def send_invoice_ready_email(invoice_id: str) -> None:
+    try:
+        await db.invoice_notifications.insert_one({"invoice_id": invoice_id, "delivery_status": "Sending", "created_at": datetime.now(timezone.utc)})
+    except DuplicateKeyError:
+        return
+    invoice = await db.invoices.find_one({"id": invoice_id, "document_type": "invoice"})
+    order = await db.order_requests.find_one({"id": invoice.get("source_request_id")}) if invoice else None
+    if not invoice or not order:
+        return
+    account_base = order.get("payment_callback_base") or os.environ["PUBLIC_SITE_URL"].rstrip("/")
+    html = (
+        '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
+        f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your GST invoice is ready.</h1>'
+        f'<p>Invoice <strong>{escape(invoice["number"])}</strong> for order <strong>{escape(order["request_number"])}</strong> is stored privately in My Account.</p>'
+        f'<p><a href="{escape(account_base)}/account">Open My Account</a></p>'
+        f'<p style="font-size:12px;color:#715b52">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for passwords or card details by email.</p>'
+        '</td></tr></table>'
+    )
+    try:
+        email_id = await send_email(to=str(order["email"]), subject=f"GST invoice ready for SAFYRA order {order['request_number']}", html=html)
+        await db.invoice_notifications.update_one({"invoice_id": invoice_id}, {"$set": {"delivery_status": "Sent", "email_id": email_id, "sent_at": datetime.now(timezone.utc)}})
+    except Exception as exc:
+        logger.error("Invoice-ready email failed for %s: %s", invoice_id, exc)
+        await db.invoice_notifications.update_one({"invoice_id": invoice_id}, {"$set": {"delivery_status": "Failed"}})
 
 
 async def send_order_email(request_id: str, kind: str) -> None:
@@ -106,7 +172,10 @@ async def process_order_emails(run_id: str) -> None:
         await send_order_email(request_id, "request_received")
     for request_id in paid_ids[:50]:
         await send_order_email(request_id, "payment_confirmed")
-    await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"completed_at": datetime.now(timezone.utc), "processed": len(request_ids[:50]) + len(paid_ids[:50])}})
+    status_retries = await db.order_status_notifications.find({"delivery_status": "Failed"}).limit(25).to_list(25)
+    for notification in status_retries:
+        await send_fulfilment_email(notification["request_id"], notification["status"])
+    await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"completed_at": datetime.now(timezone.utc), "processed": len(request_ids[:50]) + len(paid_ids[:50]) + len(status_retries)}})
 
 
 @router.post("/cron/order-emails", status_code=status.HTTP_202_ACCEPTED)

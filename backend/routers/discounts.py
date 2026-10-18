@@ -38,6 +38,11 @@ async def _response(document: dict) -> Discount:
     cleaned.pop("_id", None)
     cleaned["effective_status"] = effective_discount_status(cleaned)
     cleaned["affected_products"] = await _affected_count(cleaned)
+    cleaned.setdefault("promotion_type", "automatic" if not cleaned.get("code") else "code")
+    cleaned.setdefault("code", None)
+    cleaned.setdefault("minimum_subtotal", 0)
+    cleaned.setdefault("usage_limit", None)
+    cleaned.setdefault("usage_count", 0)
     return Discount(**cleaned)
 
 
@@ -65,7 +70,12 @@ async def preview_discount(input: DiscountCreate, _: dict = Depends(require_admi
 @router.post("", response_model=Discount, status_code=201)
 async def create_discount(input: DiscountCreate, _: dict = Depends(require_admin)):
     now = datetime.now(timezone.utc)
-    document = {**input.model_dump(), "id": __import__("uuid").uuid4().hex, "created_at": now, "updated_at": now}
+    values = input.model_dump()
+    if values.get("code"):
+        values["code"] = values["code"].upper()
+        if await db.discounts.find_one({"code": values["code"]}):
+            raise HTTPException(status_code=409, detail="That coupon code already exists")
+    document = {**values, "id": __import__("uuid").uuid4().hex, "usage_count": 0, "created_at": now, "updated_at": now}
     await db.discounts.insert_one(document)
     return await _response(document)
 
@@ -76,6 +86,11 @@ async def update_discount(discount_id: str, input: DiscountUpdate, _: dict = Dep
     if not existing:
         raise HTTPException(status_code=404, detail="Discount not found")
     changes = input.model_dump(exclude_unset=True)
+    if changes.get("code"):
+        changes["code"] = changes["code"].upper()
+        duplicate = await db.discounts.find_one({"code": changes["code"], "id": {"$ne": discount_id}})
+        if duplicate:
+            raise HTTPException(status_code=409, detail="That coupon code already exists")
     merged = {**existing, **changes}
     DiscountCreate(**{key: merged[key] for key in DiscountCreate.model_fields})
     changes["updated_at"] = datetime.now(timezone.utc)

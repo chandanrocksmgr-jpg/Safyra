@@ -97,6 +97,27 @@ def admin_client(admin_account_lock):
         yield c
 
 
+SAFE_HOST_HEADERS = {"X-Forwarded-Host": "lucknowi-craft.preview.emergentagent.com"}
+
+
+def signup_customer(c: "httpx.Client", name: str, email: str, password: str) -> "httpx.Response":
+    """Signs up a customer and rebinds the session cookie for plain-http use. Sends a
+    preview-domain X-Forwarded-Host header so the server's background verification-email task
+    builds an https confirmation link (matching what a real browser request through the ingress
+    always presents) instead of raising on a scheme mismatch for a bare localhost Host header."""
+    resp = c.post("/auth/signup", json={"name": name, "email": email, "password": password}, headers=SAFE_HOST_HEADERS)
+    if resp.status_code == 201:
+        rebind_session_cookie(c, resp)
+    return resp
+
+
+def login_customer(c: "httpx.Client", email: str, password: str) -> "httpx.Response":
+    resp = c.post("/auth/login", json={"email": email, "password": password})
+    if resp.status_code == 200:
+        rebind_session_cookie(c, resp)
+    return resp
+
+
 @pytest.fixture
 def customer_client():
     """httpx client authenticated as the seeded demo customer (session cookie persisted)."""
@@ -105,3 +126,52 @@ def customer_client():
         assert resp.status_code == 200, f"customer login failed: {resp.status_code} {resp.text[:300]}"
         rebind_session_cookie(c, resp)
         yield c
+
+
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.environ.get("DB_NAME", "app")
+
+GST_SETTINGS_LOCK_PATH = os.path.join(tempfile.gettempdir(), "tscheck_gst_settings.lock")
+
+
+@pytest.fixture(scope="session")
+def mongo_db():
+    """Direct pymongo handle for cleanup/verification of fields no API exposes (e.g. invoice
+    CGST/SGST split, resetting the invoice sequence counter, or deleting discounts -- there is
+    no DELETE endpoint for discounts). Real DB, never mocked; used only for isolation/teardown
+    and for reading values the API intentionally does not expose, never to fabricate app state
+    that an API call should have produced."""
+    from pymongo import MongoClient
+
+    with MongoClient(MONGO_URL) as mongo_client:
+        yield mongo_client[DB_NAME]
+
+
+@pytest.fixture
+def gst_settings_lock():
+    """Serializes any test that temporarily completes the single shared store_settings document
+    so concurrent xdist workers cannot race the save/restore of the same row."""
+    lock = FileLock(GST_SETTINGS_LOCK_PATH, timeout=60)
+    with lock:
+        yield
+
+
+@pytest.fixture
+def temp_complete_gst_settings(admin_client, gst_settings_lock, mongo_db):
+    """Backs up the real (intentionally incomplete) store_settings row, fills in a complete,
+    disposable GST profile for the duration of the test, and restores the exact original
+    document (including invoice_next_number) afterwards."""
+    original = mongo_db.store_settings.find_one({"id": "store"}, {"_id": 0})
+    assert original is not None, "store_settings document should already exist (seeded)"
+    payload = {
+        "gstin": "09TSCHK0000A1Z5", "registered_address": "tscheck test lane, Lucknow",
+        "seller_state": "Uttar Pradesh", "state_code": "09", "gst_rate": 12, "hsn_code": "6204",
+        "support_email": "tscheck-support@example.com", "support_phone": "9999999999",
+        "authorised_signatory": "tscheck Signatory",
+    }
+    resp = admin_client.patch("/store-settings", json=payload)
+    assert resp.status_code == 200, f"temp GST settings patch failed: {resp.status_code} {resp.text[:300]}"
+    try:
+        yield resp.json()
+    finally:
+        mongo_db.store_settings.replace_one({"id": "store"}, original, upsert=True)

@@ -11,6 +11,17 @@ from models.catalog_group import CatalogGroup, CatalogGroupCreate, CatalogGroupU
 
 router = APIRouter(prefix="/catalog-groups", tags=["catalog-groups"])
 
+REQUIRED_CATEGORIES = [
+    ("Anarkali Sets", "anarkali-sets", 10),
+    ("Angrakha Suits", "angrakha-suits", 20),
+    ("Straight Kurtis", "straight-kurtis", 30),
+    ("Stitched Sets", "stitched-sets", 40),
+    ("Sarees", "sarees", 50),
+    ("Dupattas", "dupattas", 60),
+    ("Chikankari Bottoms", "chikankari-bottoms", 70),
+    ("Unstitched Sets", "unstitched-sets", 80),
+]
+
 
 def _slugify(value: str) -> str:
     return re.sub(r"(^-|-$)", "", re.sub(r"[^a-z0-9]+", "-", value.lower()))
@@ -22,27 +33,38 @@ def _clean(document: dict) -> CatalogGroup:
 
 
 async def _ensure_groups() -> None:
-    if await db.catalog_groups.count_documents({}) > 0:
-        return
     products = await db.products.find({}).sort("created_at", 1).to_list(1000)
-    groups: list[CatalogGroup] = []
-    for group_type, field in (("category", "category"), ("collection", "collection")):
-        seen: set[str] = set()
-        for product in products:
-            name = str(product.get(field, "")).strip()
-            if not name or name in seen:
-                continue
-            seen.add(name)
-            groups.append(CatalogGroup(
-                name=name,
-                slug=_slugify(name),
-                group_type=group_type,
-                image_url=product.get("image_url", ""),
-                status="active",
-                sort_order=len(seen) * 10,
-            ))
-    if groups:
-        await db.catalog_groups.insert_many([group.model_dump() for group in groups])
+    category_documents = await db.catalog_groups.find({"group_type": "category"}).to_list(1000)
+    existing_categories = {document["slug"]: document for document in category_documents}
+    product_images = {product.get("category"): product.get("image_url", "") for product in products}
+    for name, slug, sort_order in REQUIRED_CATEGORIES:
+        existing = existing_categories.get(slug)
+        if not existing:
+            group = CatalogGroup(
+                name=name, slug=slug, group_type="category", image_url=product_images.get(name, ""),
+                status="active", sort_order=sort_order, show_on_home=bool(product_images.get(name)),
+            )
+            await db.catalog_groups.insert_one(group.model_dump())
+        elif existing.get("name") != name or existing.get("status") != "active" or existing.get("sort_order") != sort_order:
+            await db.catalog_groups.update_one(
+                {"id": existing["id"]},
+                {"$set": {"name": name, "status": "active", "sort_order": sort_order, "updated_at": datetime.now(timezone.utc)}},
+            )
+    existing_collection_slugs = {
+        document["slug"] for document in await db.catalog_groups.find({"group_type": "collection"}).to_list(1000)
+    }
+    seen_collections: set[str] = set()
+    for product in products:
+        name = str(product.get("collection", "")).strip()
+        slug = _slugify(name)
+        if not name or slug in seen_collections or slug in existing_collection_slugs:
+            continue
+        seen_collections.add(slug)
+        group = CatalogGroup(
+            name=name, slug=slug, group_type="collection", image_url=product.get("image_url", ""),
+            status="active", sort_order=(len(existing_collection_slugs) + len(seen_collections)) * 10,
+        )
+        await db.catalog_groups.insert_one(group.model_dump())
 
 
 @router.get("", response_model=list[CatalogGroup])

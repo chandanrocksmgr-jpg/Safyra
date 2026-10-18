@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowRight, BellRing, CheckCircle2, FileEdit, Image, KeyRound, Package, ReceiptText, ShoppingBag, Tags } from "lucide-react";
+import { ArrowRight, BadgePercent, BarChart3, BellRing, CheckCircle2, FileEdit, Image, KeyRound, Package, ReceiptText, Settings, ShoppingBag, Tags } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
 import type { CatalogGroup, HomepageSettings } from "@/lib/cms";
@@ -15,6 +15,9 @@ const quickLinks = [
   { to: "/admin/collections", title: "Collections", copy: "Organise customer-facing categories and collections.", icon: Tags, testId: "admin-dashboard-collections" },
   { to: "/admin/homepage", title: "Homepage", copy: "Update hero, section copy, imagery and visibility.", icon: Image, testId: "admin-dashboard-homepage" },
   { to: "/admin/orders", title: "Orders", copy: "Manage order requests, payment status and fulfilment.", icon: ReceiptText, testId: "admin-dashboard-orders" },
+  { to: "/admin/offers", title: "Offers", copy: "Schedule coupon codes and automatic non-stacking discounts.", icon: BadgePercent, testId: "admin-dashboard-offers" },
+  { to: "/admin/analytics", title: "Sales analytics", copy: "Track paid revenue, conversion, products and offer performance.", icon: BarChart3, testId: "admin-dashboard-analytics" },
+  { to: "/admin/settings", title: "Tax invoice settings", copy: "Complete GST details, preview PDFs and release blocked invoices.", icon: Settings, testId: "admin-dashboard-settings" },
   { to: "/admin/waitlist", title: "Waitlist", copy: "Track unavailable pieces, customer follow-up and outcomes.", icon: BellRing, testId: "admin-dashboard-waitlist" },
   { to: "/admin/abandoned-checkouts", title: "Abandoned checkouts", copy: "Review incomplete checkouts and one-time recovery email status.", icon: ShoppingBag, testId: "admin-dashboard-abandoned-checkouts" },
 ];

@@ -37,14 +37,28 @@ def best_discount(product: dict, discounts: Iterable[dict], price: int) -> dict 
     return max(candidates, key=lambda discount: discount_amount(discount, price), default=None)
 
 
-async def active_discounts() -> list[dict]:
+async def active_discounts(code: str | None = None, order_subtotal: int | None = None) -> list[dict]:
     now = datetime.now(timezone.utc)
     documents = await db.discounts.find({
         "status": {"$in": ["active", "scheduled"]},
         "starts_at": {"$lte": now},
         "ends_at": {"$gt": now},
     }).to_list(500)
-    return documents
+    normalized_code = code.strip().upper() if code else None
+    eligible = []
+    for document in documents:
+        promotion_type = document.get("promotion_type", "code" if document.get("code") else "automatic")
+        if promotion_type == "code" and document.get("code", "").upper() != normalized_code:
+            continue
+        if promotion_type == "automatic" and normalized_code and document.get("code"):
+            continue
+        if order_subtotal is not None and order_subtotal < document.get("minimum_subtotal", 0):
+            continue
+        limit = document.get("usage_limit")
+        if limit is not None and document.get("usage_count", 0) >= limit:
+            continue
+        eligible.append(document)
+    return eligible
 
 
 def resolve_product_selection(product: dict, set_type: str | None, size: str, color: str, discounts: Iterable[dict]) -> dict:

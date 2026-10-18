@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 
 from lib.db import db
 from lib.security import end_session, get_current_user, get_optional_user, hash_secret, start_session, validate_password, verify_secret
@@ -14,6 +14,7 @@ from models.auth import (
     SignupRequest,
     UserPublic,
 )
+from routers.email_verification import _origin, send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,7 +33,7 @@ async def _login(input: LoginRequest, response: Response, role: str) -> AuthResp
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
-async def signup(input: SignupRequest, response: Response):
+async def signup(input: SignupRequest, response: Response, request: Request, background_tasks: BackgroundTasks):
     validate_password(input.password)
     email = str(input.email).strip().lower()
     if await db.users.find_one({"email": email}):
@@ -43,6 +44,8 @@ async def signup(input: SignupRequest, response: Response):
         "name": input.name.strip(),
         "phone": "",
         "role": "customer",
+        "email_verified": False,
+        "email_verified_at": None,
         "password_hash": hash_secret(input.password),
         "wishlist_ids": [],
         "cart": [],
@@ -52,6 +55,7 @@ async def signup(input: SignupRequest, response: Response):
     }
     await db.users.insert_one(user)
     await start_session(user["id"], response)
+    background_tasks.add_task(send_verification_email, user["id"], _origin(request))
     return AuthResponse(user=_public(user))
 
 

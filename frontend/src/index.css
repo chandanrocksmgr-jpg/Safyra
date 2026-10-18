@@ -490,6 +490,62 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .payment-reference span { color: var(--safyra-espresso-soft); font-size: .72rem; }
 .payment-result-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
 .payment-security-note { display: flex; align-items: center; gap: .5rem; color: var(--safyra-espresso-soft); font-size: .7rem; }
+.checkout-offer-code { margin: 1rem 0; display: grid; gap: .45rem; color: var(--safyra-espresso-soft); font-size: .72rem; font-weight: 600; }
+.checkout-offer-code span { display: grid; gap: .3rem; }
+.checkout-offer-code input { min-height: 46px; padding: .7rem; border: 1px solid var(--safyra-border); background: #fff; text-transform: uppercase; }
+.checkout-offer-code small { color: var(--safyra-espresso-soft); font-weight: 400; }
+.checkout-applied-code { padding: .7rem; border-left: 2px solid #4a5d4e; background: #edf4ed; color: #325b43; font-size: .75rem; }
+.admin-feature-grid, .analytics-detail-grid { display: grid; gap: 1.2rem; }
+.admin-panel-form, .admin-panel-list, .analytics-chart-card, .admin-settings-form { padding: 1.4rem; border: 1px solid var(--safyra-border); background: #fff; }
+.admin-panel-form, .admin-settings-form { display: grid; gap: 1rem; }
+.admin-panel-form label, .admin-settings-form label { display: grid; gap: .4rem; color: var(--safyra-espresso-soft); font-size: .68rem; font-weight: 650; }
+.admin-panel-form input, .admin-panel-form select, .admin-settings-form input { width: 100%; min-height: 44px; padding: .7rem; border: 1px solid var(--safyra-border); background: var(--safyra-ivory); color: var(--safyra-espresso); }
+.admin-form-row { display: grid; gap: .8rem; }
+.admin-check-list { max-height: 210px; padding: .8rem; overflow-y: auto; border: 1px solid var(--safyra-border); }
+.admin-check-list legend { padding: 0 .35rem; font-size: .68rem; font-weight: 700; }
+.admin-check-list label { padding: .4rem 0; grid-template-columns: auto 1fr; align-items: center; }
+.admin-check-list input { width: 16px; min-height: 16px; }
+.admin-form-actions, .admin-range-tabs { display: flex; flex-wrap: wrap; gap: .65rem; }
+.admin-offer-card, .analytics-rank { padding: 1rem 0; border-bottom: 1px solid var(--safyra-border); display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.admin-offer-card h3 { margin: .45rem 0 .25rem; font-size: 1.35rem; }
+.admin-offer-card p, .admin-offer-card small, .analytics-rank small { color: var(--safyra-espresso-soft); }
+.admin-status-pill { padding: .3rem .45rem; background: #f2ebdc; font-size: .58rem; font-weight: 750; text-transform: uppercase; }
+.admin-status-pill.is-active { background: #e2efe7; color: #325b43; }
+.admin-status-pill.is-paused, .admin-status-pill.is-expired { background: #f7eae6; color: #74281f; }
+.admin-range-tabs a { padding: .6rem .8rem; border: 1px solid var(--safyra-border); font-size: .68rem; }
+.admin-range-tabs a.is-active { background: var(--safyra-espresso); color: var(--safyra-ivory); }
+.analytics-metrics div { position: relative; }
+.analytics-metrics svg { position: absolute; right: 1rem; top: 1rem; width: 18px; }
+.analytics-chart-card { margin-top: 1.2rem; }
+.analytics-bars { height: 280px; display: flex; align-items: end; gap: 3px; overflow-x: auto; }
+.analytics-bars > div { min-width: 12px; height: 100%; flex: 1; display: flex; flex-direction: column; justify-content: end; align-items: center; gap: .4rem; }
+.analytics-bars span { width: 100%; min-height: 2px; background: var(--safyra-aubergine); transition: height 240ms ease; }
+.analytics-bars small { display: none; font-size: .5rem; white-space: nowrap; }
+.analytics-detail-grid { margin-top: 1.2rem; }
+.analytics-rank > span { flex: 1; display: grid; gap: .25rem; }
+.analytics-rank > strong { font-size: .72rem; }
+.invoice-readiness { margin-bottom: 1.2rem; padding: 1rem; border-left: 4px solid #8b261d; display: flex; align-items: center; gap: .8rem; background: #f7eae6; }
+.invoice-readiness.is-ready { border-color: #4a5d4e; background: #edf4ed; }
+.invoice-readiness p { margin: .25rem 0 0; color: var(--safyra-espresso-soft); }
+.account-verification { margin-top: 1.5rem; padding: 1rem; border: 1px solid #d6c7b2; display: flex; align-items: center; gap: 1rem; background: #f2ebdc; }
+.account-verification div { flex: 1; }
+.account-verification p { margin: .3rem 0 0; color: var(--safyra-espresso-soft); }
+.account-nav a { display: inline-flex; align-items: center; gap: .3rem; }
+.invoice-pending { color: #8b5f2b; font-size: .7rem; }
+.verification-page { min-height: calc(100vh - 110px); padding: 4rem 1rem; display: grid; place-items: center; }
+.verification-card { width: min(100%, 620px); padding: clamp(2rem, 6vw, 4rem); border: 1px solid var(--safyra-border); background: #fff; text-align: center; }
+.verification-card > svg { color: var(--safyra-aubergine); }
+.verification-card h1 { margin: .7rem 0; font-size: clamp(2.5rem, 5vw, 4.3rem); line-height: .98; }
+.verification-card p { color: var(--safyra-espresso-soft); line-height: 1.7; }
+.verification-card .button { margin-top: 1rem; }
+@media (min-width: 900px) {
+  .admin-feature-grid { grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr); }
+  .admin-form-row, .admin-settings-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-settings-form .admin-section-heading, .admin-settings-form .admin-form-actions { grid-column: 1 / -1; }
+  .analytics-detail-grid { grid-template-columns: 1fr 1fr; }
+  .analytics-bars small { display: block; transform: rotate(-50deg); transform-origin: center; }
+  .tracking-row { grid-template-columns: repeat(5, 1fr); }
+}
 
 /* SAFYRA master refinement: tighter product-led merchandising */
 .home-page .hero-section { min-height: min(820px, calc(100svh - 100px)); }

@@ -31,6 +31,7 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("status", ASCENDING), ("starts_at", ASCENDING), ("ends_at", ASCENDING)], name="status_window"),
         IndexModel([("product_ids", ASCENDING)], name="product_ids"),
         IndexModel([("collections", ASCENDING)], name="collections"),
+        IndexModel([("code", ASCENDING)], name="code_unique", unique=True, partialFilterExpression={"code": {"$type": "string"}}),
     ],
     "checkout_sessions": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
@@ -47,6 +48,20 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("status", ASCENDING), ("sort_order", ASCENDING)], name="status_sort"),
     ],
     "site_content": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "store_settings": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "invoices": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("order_id", ASCENDING), ("document_type", ASCENDING)], name="order_document", unique=True),
+        IndexModel([("number", ASCENDING)], name="number", unique=True),
+        IndexModel([("customer_id", ASCENDING), ("issued_at", DESCENDING)], name="customer_issued", sparse=True),
+    ],
+    "email_verification_tokens": [
+        IndexModel([("token_hash", ASCENDING)], name="token_hash", unique=True),
+        IndexModel([("user_id", ASCENDING), ("created_at", DESCENDING)], name="user_created"),
+        IndexModel([("expires_at", ASCENDING)], name="expires_at_ttl", expireAfterSeconds=0),
+    ],
+    "order_status_notifications": [IndexModel([("request_id", ASCENDING), ("status", ASCENDING)], name="request_status", unique=True)],
+    "invoice_notifications": [IndexModel([("invoice_id", ASCENDING)], name="invoice_id", unique=True)],
     "users": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("email", ASCENDING)], name="email", unique=True),

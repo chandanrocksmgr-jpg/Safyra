@@ -9,7 +9,7 @@ import BrandHeader from "@/components/BrandHeader";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, whatsappUrl } from "@/lib/shop";
-import { apiPost, apiPut } from "@/lib/api";
+import { apiPost, apiPut, ApiError } from "@/lib/api";
 import type { OrderRequestCreate, OrderRequestResponse, PaymentQuoteResponse, PayUCheckoutResponse } from "@/lib/checkout";
 import type { CheckoutSessionSummary, CheckoutSessionUpsert } from "@/lib/abandonedCheckout";
 
@@ -43,6 +43,7 @@ export default function Checkout() {
   const { cart, cartTotal, orderNote, setOrderNote } = useShop();
   const [step, setStep] = useState<CheckoutStep>("details");
   const [shipping, setShipping] = useState("india");
+  const [discountCode, setDiscountCode] = useState("");
   const [form, setForm] = useState<CheckoutFormState>({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India", note: orderNote });
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [request, setRequest] = useState<OrderRequestResponse | null>(null);
@@ -164,7 +165,7 @@ export default function Checkout() {
     name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), address: form.address.trim(),
     city: form.city.trim(), state_region: form.state.trim(), postal_code: form.postalCode.trim(),
     country: selectedCountry.name, country_code: selectedCountry.isoCode, shipping: shipping as "india" | "international",
-    note: form.note.trim(), checkout_session_id: checkoutSessionKey,
+    note: form.note.trim(), checkout_session_id: checkoutSessionKey, discount_code: discountCode.trim().toUpperCase() || null,
     items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
   } : null;
   const continueToReview = (event: FormEvent) => {
@@ -253,13 +254,15 @@ export default function Checkout() {
               <label className={shipping === "international" ? "is-selected" : ""}><input type="radio" name="shipping" value="international" checked={shipping === "international"} disabled={Boolean(selectedCountry && selectedCountry.isoCode === "IN")} onChange={() => { setShipping("international"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-international" /><span><strong>International shipping</strong><small>SAFYRA will confirm the destination quote personally</small></span></label>
             </fieldset>
             <FieldError field="shipping" message={errors.shipping} />
-            {quotePayment.isError && <div className="form-error" data-testid="checkout-quote-error">We couldn’t verify the current prices or availability. Please review your bag and try again.</div>}
+            <label className="checkout-offer-code">Offer code <span><input value={discountCode} onChange={(event) => setDiscountCode(event.target.value.toUpperCase())} placeholder="Optional" data-testid="checkout-offer-code" /><small>Offers never stack; SAFYRA applies the single best eligible saving.</small></span></label>
+            {quotePayment.isError && <div className="form-error" data-testid="checkout-quote-error">{quotePayment.error instanceof ApiError ? quotePayment.error.message : "We couldn’t verify the current prices or availability. Please review your bag and try again."}</div>}
             <button className="button button-dark button-full" type="submit" disabled={quotePayment.isPending} data-testid="checkout-review-button">{quotePayment.isPending ? "VERIFYING TOTAL…" : "REVIEW ORDER"}</button>
           </form>}
 
           {step === "review" && <div className="checkout-review" data-testid="checkout-review">
             <div className="checkout-step"><span><Check size={15} /></span><div><strong>Delivery details</strong><small>{form.name} · {form.city}, {form.country}</small></div><button onClick={() => setStep("details")} data-testid="checkout-edit-address">Edit</button></div>
             <div className="review-address"><p>{form.address}</p><p>{form.city}, {form.state} {form.postalCode}</p><p>{form.phone} · {form.email}</p>{form.note && <p data-testid="checkout-review-note">{form.note}</p>}</div>
+            {discountCode && <p className="checkout-applied-code" data-testid="checkout-applied-code">Offer code checked: <strong>{discountCode}</strong></p>}
             <div className="handoff-note"><ShieldCheck size={20} /><p><strong>{isIndia ? "PayU Hosted Checkout" : "Personal shipping confirmation"}</strong>{isIndia ? "Your card or UPI details are entered only on PayU. SAFYRA verifies the payment server-to-server before confirming fulfilment." : "SAFYRA will confirm the international shipping charge before requesting payment."}</p></div>
             {(submitRequest.isError || createPayment.isError) && <div className="form-error" data-testid="checkout-request-error">We couldn’t begin checkout. No payment was taken. Please review your details and try again.</div>}
             <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending || createPayment.isPending} data-testid="checkout-submit-request">{submitRequest.isPending || createPayment.isPending ? "Preparing secure checkout…" : isIndia ? <><CreditCard size={17} /> Pay securely with PayU · {formatPrice(payableTotal)}</> : "Submit international order request"}</button>

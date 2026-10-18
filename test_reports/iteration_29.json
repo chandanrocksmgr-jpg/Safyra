@@ -1,0 +1,77 @@
+{
+  "iteration": 29,
+  "mode": "generate",
+  "passed": 10,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [
+    "IMPORTANT: running the full pre-existing backend suite (cd /app/backend && python -m pytest -q, which uses -n 2 --dist loadscope from pytest.ini) causes several legacy test_tscheck_*.py files (collection archive/restore, admin catalog CRUD, order creation, session isolation) to leave permanent tscheck-prefixed residue in the LIVE shared database when run together: this pass found 2 stray catalog_groups active collections plus 6 archived tscheck catalog_groups, 2 stray products, 28 stray order_requests, and 2 stray users after one full-suite run. For a strictly-read-only verification task, do NOT run the full legacy suite; run only the new tscheck test files named in this report directly. All residue created during this iteration's investigation was identified and removed (via the product/catalog-groups admin DELETE endpoints and, for order_requests/users which have no delete endpoint, a direct Mongo cleanup) so the final verified state matches the acceptance matrix exactly: 4 products, 5 order-requests, 1 checkout session, 8 active categories, 3 active collections, no tscheck/test residue.",
+    "This appears to be unrelated to the legacy archive/restore test's own correctness (it passes its own assertions) but its cleanup is incomplete by design (it intentionally leaves one group 'active' after an archive->restore round trip and another 'archived' after a legacy-delete test, with no final teardown) which pollutes the shared app database on every run. Recommend the main agent add a teardown/fixture-scoped cleanup to test_tscheck_collection_archive_restore.py if this suite will be run again, or run it against an isolated/ephemeral DB."
+  ],
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Public catalogue contains only the four approved SAFYRA products",
+      "name": "test_public_catalog_is_exactly_the_four_approved_products (reused existing backend test)",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /products -> 200; titles == {Luxury Nazakat Collection, Aira Pure Kota Doria Angrakha, Vaaya Pure Kota Doria Anarkali, Sang-e-Mar-Mar — Rose Edition}; no tscheck/test/debug/placeholder prefixes"
+    },
+    {
+      "criterion": "Public catalogue contains only the four approved SAFYRA products",
+      "name": "public-catalog-four-approved-products",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Shop grid renders exactly 4 product cards, all matching approved titles; also verified against public preview URL https://lucknowi-craft.preview.emergentagent.com"
+    },
+    {
+      "criterion": "The original eight-category navigation contract is restored",
+      "name": "mobile-nav-eight-category-order",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Mobile mega menu (390x844 viewport) renders Anarkalis, Angrakhas, Kurtas, Stitched Sets, Sarees, Dupattas, Chikankari Bottoms, Unstitched Sets in exact DOM order"
+    },
+    {
+      "criterion": "All restored category records are present in Admin",
+      "name": "test_admin_sees_exactly_eight_categories_and_three_collections",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /catalog-groups (admin) -> 200; 8 categories + 3 collections, all status=active, sort_order sequence matches approved navigation order, no tscheck/test-named groups"
+    },
+    {
+      "criterion": "All restored category records are present in Admin",
+      "name": "admin-collections-categories-exact-set",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Admin > Collections & categories shows exactly 8 category cards and 3 collection cards, all status pill = 'active', names match the approved set exactly, no test-named groups"
+    },
+    {
+      "criterion": "Empty restored categories remain customer-facing",
+      "name": "empty-category-editorial-state",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "/shop?category=Sarees renders catalog-empty testid with editorial copy ('being prepared'/'SAFYRA house'), no catalog-error, and genuine recommended products are shown instead of a dead end"
+    },
+    {
+      "criterion": "Test and demo account data is absent",
+      "name": "test_demo_customer_login_is_rejected + test_admin_account_still_logs_in",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /auth/login {customer@safyra.co} -> 401, no session cookie set; admin_client POST /auth/admin/login -> 200 and GET /auth/me confirms role=admin"
+    },
+    {
+      "criterion": "Test and demo account data is absent",
+      "name": "demo-customer-login-blocked-admin-works",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Customer login form shows customer-login-error for customer@safyra.co; admin-login flow reaches /admin workspace successfully for admin@safyra.co"
+    },
+    {
+      "criterion": "Genuine data is preserved",
+      "name": "test_five_genuine_order_requests_remain + test_one_genuine_checkout_session_remains + test_four_approved_products_unaltered_by_cleanup",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /order-requests (admin) -> 200, 5 rows, all genuine emails (afira.husaini@gmail.com, afirahus312@gmail.com, ukk@gmail.cok, afirahusaini0312@gmail.com x2); GET /checkout-sessions -> 1 item, status=Completed, email afira.husaini@gmail.com; GET /products -> same 4 approved titles"
+    }
+  ]
+}

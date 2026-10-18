@@ -6,6 +6,8 @@ export interface User {
   name: string;
   role: "customer" | "admin";
   phone: string;
+  email_verified: boolean;
+  email_verified_at: string | null;
   created_at: string;
 }
 
@@ -22,6 +24,7 @@ export interface TrackingStep {
 export interface OrderItem {
   product_name: string;
   image_url: string;
+  set_type: string;
   size: string;
   color: string;
   quantity: number;
@@ -35,6 +38,11 @@ export interface Order {
   status: string;
   total: number;
   invoice_number: string;
+  invoice_id: string | null;
+  invoice_status: string;
+  courier_name: string;
+  tracking_number: string;
+  tracking_link: string;
   is_demo: boolean;
   items: OrderItem[];
   tracking: TrackingStep[];
@@ -50,3 +58,6 @@ export interface AccountResponse {
 export interface RecoveryQuestionResponse {
   question: string;
 }
+
+export interface VerificationResponse { verified: boolean; claimed_orders: number }
+export interface VerificationSendResponse { accepted: boolean }

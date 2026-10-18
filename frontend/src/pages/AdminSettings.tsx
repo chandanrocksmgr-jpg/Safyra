@@ -1,0 +1,24 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileCheck2, FileWarning, RefreshCw, Save } from "lucide-react";
+import { toast } from "sonner";
+import AdminShell from "@/components/AdminShell";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import type { GenerateInvoicesResponse, StoreSettings } from "@/lib/admin";
+
+const empty = { legal_name: "SAFYRA CHIKANKARI", gstin: "", registered_address: "", seller_state: "", state_code: "", gst_rate: "", hsn_code: "", support_email: "", support_phone: "", authorised_signatory: "", invoice_prefix: "SAFYRA", credit_note_prefix: "CN-SAFYRA" };
+
+export default function AdminSettings() {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState(empty);
+  const { data } = useQuery({ queryKey: ["store-settings"], queryFn: () => apiGet<StoreSettings>("/store-settings"), retry: false });
+  useEffect(() => { if (data) setForm({ legal_name: data.legal_name, gstin: data.gstin, registered_address: data.registered_address, seller_state: data.seller_state, state_code: data.state_code, gst_rate: data.gst_rate ? String(data.gst_rate) : "", hsn_code: data.hsn_code, support_email: data.support_email ?? "", support_phone: data.support_phone, authorised_signatory: data.authorised_signatory, invoice_prefix: data.invoice_prefix, credit_note_prefix: data.credit_note_prefix }); }, [data]);
+  const save = useMutation({ mutationFn: () => apiPatch<StoreSettings>("/store-settings", { ...form, gst_rate: form.gst_rate ? Number(form.gst_rate) : null, support_email: form.support_email || null }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["store-settings"] }); toast.success("Tax invoice settings saved"); } });
+  const generate = useMutation({ mutationFn: () => apiPost<GenerateInvoicesResponse>("/store-settings/generate-pending-invoices", {}), onSuccess: (result) => toast.success(`${result.generated} invoices generated; ${result.blocked} still blocked`) });
+  const submit = (event: FormEvent) => { event.preventDefault(); save.mutate(); };
+  const field = (name: keyof typeof form, label: string, type = "text") => <label>{label}<input type={type} value={form[name]} onChange={(event) => setForm({ ...form, [name]: event.target.value })} data-testid={`settings-${name.replaceAll("_", "-")}`} /></label>;
+  return <AdminShell eyebrow="Store configuration" title="Tax invoices & legal details" description="Customer invoices stay blocked until every genuine GST field is complete. Admin previews are always marked as samples.">
+    <section className={data?.invoice_ready ? "invoice-readiness is-ready" : "invoice-readiness"} data-testid="invoice-readiness">{data?.invoice_ready ? <FileCheck2 /> : <FileWarning />}<div><strong>{data?.invoice_ready ? "GST invoicing is ready" : "Customer invoice generation is blocked"}</strong><p>{data?.invoice_ready ? `Next invoice: ${data.invoice_prefix}/${String(data.invoice_next_number).padStart(4, "0")}` : `Missing: ${data?.missing_fields.join(", ") || "loading settings"}`}</p></div></section>
+    <form className="admin-settings-form" onSubmit={submit} data-testid="admin-store-settings-form"><div className="admin-section-heading"><div><span className="eyebrow">Registered seller</span><h2>GST invoice configuration</h2></div></div>{field("legal_name", "Legal business name")}{field("gstin", "GSTIN")}{field("registered_address", "Registered address")}{field("seller_state", "Seller state")}{field("state_code", "GST state code")}{field("gst_rate", "GST rate (%)", "number")}{field("hsn_code", "HSN code")}{field("support_email", "Support email", "email")}{field("support_phone", "Support phone")}{field("authorised_signatory", "Authorised signatory")}{field("invoice_prefix", "Invoice prefix")}{field("credit_note_prefix", "Credit-note prefix")}<div className="admin-form-actions"><button className="button button-dark" disabled={save.isPending} data-testid="settings-save"><Save size={15} /> Save settings</button><a className="button button-outline" href="/api/store-settings/invoice-preview" target="_blank" rel="noreferrer" data-testid="settings-preview">Preview sample PDF</a><button className="button button-outline" type="button" onClick={() => generate.mutate()} disabled={!data?.invoice_ready || generate.isPending} data-testid="settings-generate-pending"><RefreshCw size={15} /> Generate pending invoices</button></div></form>
+  </AdminShell>;
+}

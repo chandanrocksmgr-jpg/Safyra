@@ -4,7 +4,7 @@ from typing import Iterable
 from fastapi import HTTPException
 
 from lib.db import db
-from lib.pricing import active_discounts, resolve_product_selection
+from lib.pricing import active_discounts, applies_to_product, discount_amount, resolve_product_selection
 
 
 PUBLIC_PRODUCT_FILTER = {
@@ -47,18 +47,15 @@ def _inventory_plan(product: dict, set_type: str | None, size: str, color: str, 
     return {"product_id": product["id"], "source": "global", "quantity": quantity}
 
 
-async def price_order_items(items: Iterable) -> tuple[list[dict], int, int, list[dict]]:
+async def price_order_items(items: Iterable, discount_code: str | None = None) -> tuple[list[dict], int, int, list[dict]]:
     items = list(items)
     product_ids = list(dict.fromkeys(item.product_id for item in items))
     products = await db.products.find({"$and": [{"id": {"$in": product_ids}}, PUBLIC_PRODUCT_FILTER]}).to_list(len(product_ids))
     product_map = {product["id"]: product for product in products}
     if len(product_map) != len(product_ids):
         raise HTTPException(status_code=422, detail="One or more products are no longer available")
-    discounts = await active_discounts()
-    stored_items: list[dict] = []
-    reservations: list[dict] = []
+    selections: list[tuple] = []
     regular_subtotal = 0
-    subtotal = 0
     for item in items:
         product = product_map[item.product_id]
         if product.get("sizes") and item.size not in product["sizes"]:
@@ -66,7 +63,7 @@ async def price_order_items(items: Iterable) -> tuple[list[dict], int, int, list
         if product.get("colors") and item.color not in product["colors"]:
             raise HTTPException(status_code=422, detail=f"Invalid colour for {product['title']}")
         try:
-            pricing = resolve_product_selection(product, item.set_type, item.size, item.color, discounts)
+            pricing = resolve_product_selection(product, item.set_type, item.size, item.color, [])
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=f"{exc} for {product['title']}") from exc
         made_to_order = pricing["availability"].strip().lower() == "made to order"
@@ -74,14 +71,34 @@ async def price_order_items(items: Iterable) -> tuple[list[dict], int, int, list
             raise HTTPException(status_code=409, detail=f"{product['title']} is currently unavailable")
         if not made_to_order and pricing["stock"] < item.quantity:
             raise HTTPException(status_code=409, detail=f"Requested quantity is unavailable for {product['title']} in size {item.size}")
+        regular_subtotal += pricing["regular_price"] * item.quantity
+        selections.append((item, product, pricing))
+    discounts = await active_discounts(discount_code, regular_subtotal)
+    normalized_code = discount_code.strip().upper() if discount_code else None
+    if normalized_code and not any(document.get("promotion_type") == "code" and document.get("code", "").upper() == normalized_code for document in discounts):
+        raise HTTPException(status_code=422, detail="This offer code is invalid, inactive or not eligible for this bag")
+    if discounts:
+        scored = [(discount, sum(
+            discount_amount(discount, pricing["regular_price"]) * item.quantity
+            for item, product, pricing in selections if applies_to_product(discount, product)
+        )) for discount in discounts]
+        if normalized_code and not any(score > 0 and discount.get("code", "").upper() == normalized_code for discount, score in scored):
+            raise HTTPException(status_code=422, detail="This offer code does not apply to the selected products")
+        positive = [(discount, score) for discount, score in scored if score > 0]
+        discounts = [max(positive, key=lambda pair: pair[1])[0]] if positive else []
+    stored_items: list[dict] = []
+    reservations: list[dict] = []
+    subtotal = 0
+    for item, product, _ in selections:
+        pricing = resolve_product_selection(product, item.set_type, item.size, item.color, discounts)
         line_regular = pricing["regular_price"] * item.quantity
         line_total = pricing["price"] * item.quantity
-        regular_subtotal += line_regular
         subtotal += line_total
         stored_items.append({
             "product_id": product["id"], "title": product["title"], "image_url": product.get("image_url", ""),
             "set_type": pricing["set_type"], "regular_price": pricing["regular_price"], "price": pricing["price"],
             "compare_at_price": pricing["compare_at_price"], "discount_name": pricing["discount_name"],
+            "discount_id": pricing["discount"].get("id") if pricing["discount"] else None,
             "discount_amount": line_regular - line_total, "size": item.size, "color": item.color,
             "quantity": item.quantity, "line_total": line_total,
         })

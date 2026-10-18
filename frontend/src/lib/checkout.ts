@@ -19,6 +19,7 @@ export interface OrderRequestCreate {
   shipping: "india" | "international";
   note: string;
   checkout_session_id?: string | null;
+  discount_code?: string | null;
   items: OrderRequestItemInput[];
 }
 
@@ -28,7 +29,7 @@ export interface OrderRequestResponse {
 }
 
 export type PaymentStatus = "Unpaid" | "Payment pending" | "Paid";
-export type FulfilmentStatus = "Request received" | "Confirmed" | "Processing" | "Ready to ship" | "Shipped" | "Delivered";
+export type FulfilmentStatus = "Request received" | "Confirmed" | "In production" | "Quality check" | "Shipped" | "Delivered";
 export type RefundStatus = "Not initiated" | "Processing" | "Refunded" | "Failed";
 export type EmailDeliveryStatus = "Not scheduled" | "Scheduled" | "Sending" | "Sent" | "Failed";
 
@@ -41,6 +42,7 @@ export interface OrderRequestStoredItem {
   price: number;
   compare_at_price: number | null;
   discount_name: string | null;
+  discount_id: string | null;
   discount_amount: number;
   size: string;
   color: string;
@@ -76,6 +78,8 @@ export interface AdminOrderRequest {
   subtotal: number;
   regular_subtotal: number;
   discount_total: number;
+  discount_code: string | null;
+  discount_ids: string[];
   shipping_amount: number | null;
   tax_amount: number | null;
   total: number | null;
@@ -89,6 +93,12 @@ export interface AdminOrderRequest {
   payment_error: string;
   payment_created_at: string | null;
   inventory_reservation_status: string | null;
+  invoice_id: string | null;
+  invoice_number: string;
+  invoice_status: string;
+  invoice_error: string;
+  credit_note_id: string | null;
+  credit_note_number: string;
   fulfilment_status: FulfilmentStatus;
   courier_name: string;
   shipping_details: string;

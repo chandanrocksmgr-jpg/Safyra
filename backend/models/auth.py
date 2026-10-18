@@ -11,6 +11,8 @@ class UserPublic(BaseModel):
     name: str
     role: Literal["customer", "admin"]
     phone: str = ""
+    email_verified: bool = False
+    email_verified_at: Optional[datetime] = None
     created_at: datetime
 
 
@@ -90,7 +92,12 @@ class Order(BaseModel):
     placed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str
     total: int
-    invoice_number: str
+    invoice_id: Optional[str] = None
+    invoice_number: str = ""
+    invoice_status: str = "not_ready"
+    courier_name: str = ""
+    tracking_number: str = ""
+    tracking_link: str = ""
     is_demo: bool = False
     items: list[OrderItem] = Field(default_factory=list)
     tracking: list[TrackingStep] = Field(default_factory=list)

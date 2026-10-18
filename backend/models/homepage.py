@@ -37,7 +37,7 @@ class HomepageSections(BaseModel):
 
 class HomepageContent(BaseModel):
     announcement_messages: list[str] = Field(default_factory=lambda: [
-        "FREE SHIPPING ON ORDERS ABOVE ₹1,299",
+        "FREE INDIA SHIPPING FROM ₹1,000",
         "A LITTLE SOMETHING FROM SAFYRA — WITH YOUR FIRST ORDER",
     ])
     hero: HomepageHero = Field(default_factory=HomepageHero)
