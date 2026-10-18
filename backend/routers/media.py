@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
-from lib.db import db
+from lib.db import get_db
 from lib.security import require_admin
 
 
@@ -22,7 +22,10 @@ ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp
 MAX_BYTES = 8 * 1024 * 1024
 FORMAT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 Image.MAX_IMAGE_PIXELS = 40_000_000
-media_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="product_media")
+
+
+def _media_bucket() -> AsyncIOMotorGridFSBucket:
+    return AsyncIOMotorGridFSBucket(get_db(), bucket_name="product_media")
 
 
 class MediaUploadResponse(BaseModel):
@@ -54,7 +57,7 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     if not detected_type or detected_type != file.content_type:
         raise HTTPException(status_code=415, detail="The image format does not match its file type")
     filename = f"{uuid.uuid4()}{ALLOWED_TYPES[file.content_type]}"
-    media_id = await media_bucket.upload_from_stream(
+    media_id = await _media_bucket().upload_from_stream(
         filename,
         content,
         metadata={"content_type": detected_type, "size": len(content), "width": width, "height": height},
@@ -71,7 +74,7 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
 async def get_image(media_id: str):
     if ObjectId.is_valid(media_id):
         try:
-            media = await media_bucket.open_download_stream(ObjectId(media_id))
+            media = await _media_bucket().open_download_stream(ObjectId(media_id))
             content = await media.read()
             return Response(
                 content=content,

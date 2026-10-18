@@ -1,5 +1,5 @@
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -33,15 +33,20 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-from lib.db import client, db, ensure_indexes
+from lib.db import close_db, db, ensure_indexes, init_db
 
 
 # Startup runs before the yield, shutdown after it. Add your own setup/teardown here.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     app.state.index_task = asyncio.create_task(ensure_indexes())  # background: a big index build must not block boot
     yield
-    client.close()
+    if not app.state.index_task.done():
+        app.state.index_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await app.state.index_task
+    close_db()
 
 
 # Create the main app without a prefix

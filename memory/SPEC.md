@@ -33,6 +33,8 @@ Premium, mobile-first editorial ecommerce experience for handcrafted Lucknowi Ch
 
 `MediaUpload`: protected Admin multi-file uploads accept validated JPG, PNG and WebP files up to 8 MB each, persist binary data and metadata in Mongo GridFS, and return immutable same-origin `/api/media/...` URLs. Product galleries support up to 40 images with reordering and primary-image selection. Existing Shopify CDN image URLs remain valid and unchanged.
 
+Mongo lifecycle: the shared database handle is loop-safe and creates Motor inside the active FastAPI/seed event loop. Production ASGI module import never creates a Motor client, preventing cross-event-loop `Future attached to a different loop` failures while preserving the existing router-level `db` API.
+
 `OrderRequest`: id, request_number, received_at, optional customer_id, validated contact/delivery fields, customer note, server-priced product items, discounts, shipping and total. International records remain unpaid requests; India PayU records move from Payment pending to Confirmed only after a verified gateway webhook or reconciliation response.
 
 `StoreSettings`: one Admin-only legal/tax configuration document with SAFYRA legal name, GSTIN, registered address, seller state/code, transaction-value GST slabs, the two approved product HSN codes, support contacts, authorised signatory and atomic invoice/credit-note sequences. Invoice GST is tax-inclusive and calculated per item at 5% when its actual selling price is at or below ₹2,500, and 18% above ₹2,500, effective under the user-confirmed post-22-September-2025 apparel rule. Previews are watermarked `SAMPLE - NOT A TAX INVOICE`.

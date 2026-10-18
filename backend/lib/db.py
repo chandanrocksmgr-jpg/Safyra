@@ -1,5 +1,11 @@
-"""Shared Mongo handle — import `client`/`db` from here (server.py, routers, seed.py)."""
+"""Loop-safe shared Mongo handle.
 
+Routers import ``db`` as before, but the proxy creates Motor inside the event
+loop that performs the first database operation. This avoids binding Motor to
+the module-import loop used by production ASGI loaders.
+"""
+
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -11,8 +17,52 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+database_name = os.environ["DB_NAME"]
+
+
+class _LoopSafeDatabase:
+    def __init__(self) -> None:
+        self._client: AsyncIOMotorClient | None = None
+        self._database = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def get(self):
+        loop = asyncio.get_running_loop()
+        if self._database is None or self._loop is not loop:
+            if self._client is not None:
+                self._client.close()
+            self._client = AsyncIOMotorClient(mongo_url)
+            self._database = self._client[database_name]
+            self._loop = loop
+        return self._database
+
+    def close(self) -> None:
+        if self._client is not None:
+            self._client.close()
+        self._client = None
+        self._database = None
+        self._loop = None
+
+    def __getattr__(self, name: str):
+        return getattr(self.get(), name)
+
+    def __getitem__(self, name: str):
+        return self.get()[name]
+
+
+db = _LoopSafeDatabase()
+
+
+def get_db():
+    return db.get()
+
+
+def init_db():
+    return get_db()
+
+
+def close_db() -> None:
+    db.close()
 
 logger = logging.getLogger(__name__)
 
@@ -113,9 +163,10 @@ INDEXES: dict[str, list[IndexModel]] = {
 
 
 async def ensure_indexes() -> None:
+    database = get_db()
     for collection, models in INDEXES.items():
         for model in models:  # one at a time so a bad spec skips only itself
             try:
-                await db[collection].create_indexes([model])
+                await database[collection].create_indexes([model])
             except Exception as exc:  # never block boot on an index; the log line names what to fix
                 logger.error("ensure_indexes(%s.%s): %s", collection, model.document["name"], exc)
