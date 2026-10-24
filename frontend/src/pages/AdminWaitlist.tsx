@@ -29,7 +29,7 @@ function WaitlistEditor({ request }: { request: WaitlistRequestAdmin }) {
     onError: (reason) => setError(errorDetail(reason)),
   });
   const save = (event: FormEvent) => { event.preventDefault(); mutation.mutate({ status, admin_notes: notes }); };
-  const variant = [request.size && `Size ${request.size}`, request.color].filter(Boolean).join(" · ") || "No size or colour variant";
+  const variant = [request.set_type, request.size && `Size ${request.size}`, request.color].filter(Boolean).join(" · ") || "No size or colour variant";
 
   return <article className="admin-waitlist-detail" data-testid="admin-waitlist-detail">
     <header className="admin-waitlist-detail-header" data-testid="admin-waitlist-detail-header">

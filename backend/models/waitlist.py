@@ -16,11 +16,13 @@ class WaitlistCreate(BaseModel):
     email: Optional[EmailStr] = None
     size: Optional[str] = Field(default=None, max_length=40)
     color: Optional[str] = Field(default=None, max_length=80)
+    set_type: Optional[str] = Field(default=None, max_length=100)
 
 
 class WaitlistSubmission(BaseModel):
     id: str
     product_title: str
+    set_type: Optional[str] = None
     size: Optional[str] = None
     color: Optional[str] = None
     status: WaitlistStatus
@@ -36,6 +38,7 @@ class WaitlistRequestAdmin(BaseModel):
     customer_name: str
     mobile: str
     email: Optional[EmailStr] = None
+    set_type: Optional[str] = None
     size: Optional[str] = None
     color: Optional[str] = None
     status: WaitlistStatus

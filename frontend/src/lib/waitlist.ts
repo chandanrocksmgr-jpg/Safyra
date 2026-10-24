@@ -7,11 +7,13 @@ export interface WaitlistCreate {
   email: string | null;
   size: string | null;
   color: string | null;
+  set_type: string | null;
 }
 
 export interface WaitlistSubmission {
   id: string;
   product_title: string;
+  set_type: string | null;
   size: string | null;
   color: string | null;
   status: WaitlistStatus;
@@ -27,6 +29,7 @@ export interface WaitlistRequestAdmin {
   customer_name: string;
   mobile: string;
   email: string | null;
+  set_type: string | null;
   size: string | null;
   color: string | null;
   status: WaitlistStatus;

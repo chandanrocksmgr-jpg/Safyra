@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 from lib.db import db
 from lib.pricing import active_discounts, applies_to_product, discount_amount, resolve_product_selection
+from lib.variants import find_variant, selected_set_type, uses_variants, variant_label
 
 
 PUBLIC_PRODUCT_FILTER = {
@@ -22,6 +23,11 @@ def india_shipping_amount(subtotal: int) -> int:
 
 
 def _inventory_plan(product: dict, set_type: str | None, size: str, color: str, quantity: int) -> dict:
+    if uses_variants(product):
+        # Variant stock is tracked for every product (ready stock and made to order) once a variant table exists.
+        chosen_set = selected_set_type(product, set_type)
+        variant = find_variant(product, chosen_set["id"] if chosen_set else "", size, color)
+        return {"product_id": product["id"], "source": "variant", "quantity": quantity, "variant_id": variant["id"] if variant else ""}
     if product.get("availability", "").strip().lower() == "made to order":
         return {"product_id": product["id"], "source": "made_to_order", "quantity": 0}
     selected_set = next(
@@ -66,11 +72,13 @@ async def price_order_items(items: Iterable, discount_code: str | None = None) -
             pricing = resolve_product_selection(product, item.set_type, item.size, item.color, [])
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=f"{exc} for {product['title']}") from exc
-        made_to_order = pricing["availability"].strip().lower() == "made to order"
+        made_to_order = pricing["availability"].strip().lower() == "made to order" and not pricing["uses_variants"]
         if pricing["availability"] == "Currently unavailable" or not product.get("sizes"):
             raise HTTPException(status_code=409, detail=f"{product['title']} is currently unavailable")
         if not made_to_order and pricing["stock"] < item.quantity:
-            raise HTTPException(status_code=409, detail=f"Requested quantity is unavailable for {product['title']} in size {item.size}")
+            selection = variant_label(pricing["set_type"], item.size, item.color)
+            detail = f"{product['title']} ({selection}) is sold out" if pricing["stock"] < 1 else f"Only {pricing['stock']} left of {product['title']} ({selection})"
+            raise HTTPException(status_code=409, detail=detail)
         regular_subtotal += pricing["regular_price"] * item.quantity
         selections.append((item, product, pricing))
     discounts = await active_discounts(discount_code, regular_subtotal)
@@ -114,7 +122,12 @@ async def reserve_inventory(plans: list[dict]) -> list[dict]:
             if plan["source"] == "made_to_order" or plan["quantity"] == 0:
                 continue
             quantity = plan["quantity"]
-            if plan["source"] == "override":
+            if plan["source"] == "variant":
+                result = await db.products.update_one(
+                    {"id": plan["product_id"], "variants": {"$elemMatch": {"id": plan["variant_id"], "available": True, "stock": {"$gte": quantity}}}},
+                    {"$inc": {"variants.$.stock": -quantity}},
+                )
+            elif plan["source"] == "override":
                 match = {
                     "set_type_id": plan["set_type_id"], "size": plan["size"],
                     "color": plan["color"], "stock": {"$gte": quantity},
@@ -150,7 +163,9 @@ async def release_inventory(plans: list[dict]) -> None:
         quantity = plan.get("quantity", 0)
         if not quantity:
             continue
-        if plan["source"] == "override":
+        if plan["source"] == "variant":
+            await db.products.update_one({"id": plan["product_id"], "variants.id": plan["variant_id"]}, {"$inc": {"variants.$.stock": quantity}})
+        elif plan["source"] == "override":
             await db.products.update_one(
                 {"id": plan["product_id"]},
                 {"$inc": {"variant_overrides.$[variant].stock": quantity}},

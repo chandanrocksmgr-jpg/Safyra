@@ -11,7 +11,7 @@ import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { GOOGLE_SIGN_IN_ENABLED } from "@/lib/features";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
-import { formatPrice, whatsappUrl } from "@/lib/shop";
+import { formatPrice, variantLabel, whatsappUrl } from "@/lib/shop";
 import { apiGet, apiPost, apiPut, ApiError } from "@/lib/api";
 import { formatAddressLine } from "@/lib/address";
 import type { AccountResponse, SavedAddress, SavedAddressInput } from "@/lib/auth";
@@ -134,7 +134,7 @@ export default function Checkout() {
       note: form.note.trim(),
       whatsapp_opt_in: false,
       marketing_email_opt_in: false,
-      items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
+      items: cart.map((item) => ({ product_id: item.productId, set_type: item.setTypeId || item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
     });
   };
 
@@ -215,7 +215,7 @@ export default function Checkout() {
     city: form.city.trim(), state_region: form.state.trim(), postal_code: form.postalCode.trim(),
     country: selectedCountry.name, country_code: selectedCountry.isoCode, shipping: shipping as "india" | "international",
     note: form.note.trim(), checkout_session_id: checkoutSessionKey, discount_code: discountCode.trim().toUpperCase() || null,
-    items: cart.map((item) => ({ product_id: item.productId, set_type: item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
+    items: cart.map((item) => ({ product_id: item.productId, set_type: item.setTypeId || item.setType || null, size: item.size, color: item.color, quantity: item.quantity })),
   } : null;
   const continueToReview = (event: FormEvent) => {
     event.preventDefault();
@@ -234,7 +234,7 @@ export default function Checkout() {
     const showReview = () => { setStep("review"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     if (payload.country_code === "IN") quotePayment.mutate(payload, { onSuccess: showReview }); else showReview();
   };
-  const orderSummary = cart.map((item) => `${item.title} — Size ${item.size}, ${item.color}, Qty ${item.quantity}`).join("; ");
+  const orderSummary = cart.map((item) => `${item.title} — ${variantLabel(item)}, Qty ${item.quantity}`).join("; ");
   const handoff = whatsappUrl(`Hello SAFYRA, my order request${request ? ` ${request.request_number}` : ""} is ready for review. Items: ${orderSummary}. Total before shipping: ${formatPrice(cartTotal)}. Shipping: ${shipping === "india" ? "India delivery" : "International shipping quote"}. Deliver to: ${form.name}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.country}. Contact: ${form.phone}, ${form.email}.${form.note.trim() ? ` Note: ${form.note.trim()}` : ""}`);
   const noCityData = Boolean(selectedCountry && (!states.length || selectedState) && !cities.length);
   const contactForLocation = whatsappUrl(`Hello SAFYRA, I need help entering my delivery city for ${form.country || "my country"}.`);
@@ -356,7 +356,7 @@ export default function Checkout() {
 
         <aside className="checkout-summary">
           <span className="eyebrow">Your order</span>
-          {cart.map((item) => <div className="checkout-item" key={item.key} data-testid={`checkout-item-${item.productId}`}><SafeProductImage src={item.imageUrl} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><small>Size {item.size} · {item.color} · Qty {item.quantity}</small><span>{formatPrice(item.price * item.quantity)}</span></div></div>)}
+          {cart.map((item) => <div className="checkout-item" key={item.key} data-testid={`checkout-item-${item.productId}`}><SafeProductImage src={item.imageUrl} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><small>{variantLabel(item)} · Qty {item.quantity}</small><span>{formatPrice(item.price * item.quantity)}</span></div></div>)}
           {quotePayment.data && quotePayment.data.discount_total > 0 && <div className="summary-line" data-testid="checkout-discount-total"><span>Automatic savings</span><strong>−{formatPrice(quotePayment.data.discount_total)}</strong></div>}
           <div className="summary-line"><span>Product subtotal</span><strong data-testid="checkout-subtotal">{formatPrice(quotePayment.data?.subtotal ?? cartTotal)}</strong></div>
           {isIndia && <div className="summary-line"><span>India shipping</span><strong data-testid="checkout-shipping-total">{shippingAmount === 0 ? "Free" : formatPrice(shippingAmount)}</strong></div>}

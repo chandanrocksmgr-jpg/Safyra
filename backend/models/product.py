@@ -50,6 +50,18 @@ class ProductVariantOverride(BaseModel):
     availability: Optional[str] = Field(default=None, max_length=80)
 
 
+class ProductVariant(BaseModel):
+    """One sellable row: combination (set type) × colour × size, with its own stock and optional price."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    set_type_id: str = Field(default="", max_length=80)
+    color: str = Field(default="", max_length=80)
+    size: str = Field(default="", max_length=40)
+    price: Optional[int] = Field(default=None, ge=0)
+    mrp: Optional[int] = Field(default=None, ge=0)
+    stock: int = Field(default=0, ge=0)
+    available: bool = True
+
+
 class ActiveDiscount(BaseModel):
     id: str
     name: str
@@ -94,6 +106,7 @@ class ProductFields(BaseModel):
     status: Literal["draft", "active", "archived"] = "active"
     set_types: list[ProductSetType] = Field(default_factory=list, max_length=20)
     variant_overrides: list[ProductVariantOverride] = Field(default_factory=list, max_length=500)
+    variants: list[ProductVariant] = Field(default_factory=list, max_length=2000)
 
 
 class ProductCreate(ProductImageValidation, ProductFields):
@@ -137,6 +150,7 @@ class ProductUpdate(ProductImageValidation):
     status: Optional[Literal["draft", "active", "archived"]] = None
     set_types: Optional[list[ProductSetType]] = Field(default=None, max_length=20)
     variant_overrides: Optional[list[ProductVariantOverride]] = Field(default=None, max_length=500)
+    variants: Optional[list[ProductVariant]] = Field(default=None, max_length=2000)
 
 
 class Product(ProductFields):

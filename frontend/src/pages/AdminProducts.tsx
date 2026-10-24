@@ -5,9 +5,10 @@ import { toast } from "sonner";
 import AdminShell from "@/components/AdminShell";
 import ImageManager from "@/components/ImageManager";
 import SafeProductImage from "@/components/SafeProductImage";
+import VariantManager, { buildVariantRows } from "@/components/VariantManager";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "@/lib/api";
 import type { CatalogGroup, PublishingStatus } from "@/lib/cms";
-import type { Product } from "@/lib/shop";
+import type { Product, ProductSetType, ProductVariant } from "@/lib/shop";
 
 interface ProductForm {
   title: string; slug: string; status: PublishingStatus; category: string; collection: string; fabric: string; craft: string; hsn_code: string;
@@ -29,7 +30,8 @@ export default function AdminProducts() {
   const { data: groups = [] } = useQuery({ queryKey: ["catalog-groups", "admin"], queryFn: () => apiGet<CatalogGroup[]>("/catalog-groups?include_all=true"), retry: false });
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [images, setImages] = useState<string[]>([]);
-  const [stockBySize, setStockBySize] = useState<Record<string, number>>({});
+  const [setTypes, setSetTypes] = useState<ProductSetType[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [completeLookIds, setCompleteLookIds] = useState<string[]>([]);
@@ -37,18 +39,20 @@ export default function AdminProducts() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | PublishingStatus>("all");
   const sizes = splitList(form.sizes);
+  const colors = splitList(form.colors);
+  const variantRows = buildVariantRows(sizes, colors, setTypes, variants);
   const visibleProducts = useMemo(() => products.filter((product) => (statusFilter === "all" || product.status === statusFilter) && `${product.title} ${product.category} ${product.collection}`.toLowerCase().includes(query.toLowerCase())), [products, query, statusFilter]);
   const categories = groups.filter((group) => group.group_type === "category");
   const collections = groups.filter((group) => group.group_type === "collection");
 
-  const reset = () => { setForm(emptyForm); setImages([]); setStockBySize({}); setCompleteLookIds([]); setMerchandising({ featured: false, new_arrival: false, best_seller: false }); setEditingId(null); setEditorOpen(false); };
+  const reset = () => { setForm(emptyForm); setImages([]); setSetTypes([]); setVariants([]); setCompleteLookIds([]); setMerchandising({ featured: false, new_arrival: false, best_seller: false }); setEditingId(null); setEditorOpen(false); };
   const saveMutation = useMutation({
     mutationFn: () => {
       const body = {
         ...form,
-        price: Number(form.price), mrp: form.mrp ? Number(form.mrp) : null, stock: Number(form.stock),
-        sizes, colors: splitList(form.colors), image_url: images[0] ?? "", image_urls: images,
-        stock_by_size: Object.fromEntries(sizes.map((size) => [size, Math.max(0, stockBySize[size] ?? 0)])),
+        price: Number(form.price), mrp: form.mrp ? Number(form.mrp) : null, stock: variantRows.reduce((sum, row) => sum + (row.available ? row.stock : 0), 0),
+        sizes, colors, image_url: images[0] ?? "", image_urls: images,
+        set_types: setTypes.map((item) => ({ ...item, name: item.name.trim() })), variants: variantRows,
         occasion: splitList(form.occasion), style_keywords: splitList(form.style_keywords), complete_look_ids: completeLookIds, tags: [], ...merchandising,
       };
       return editingId ? apiPatch<Product>(`/products/${editingId}`, body) : apiPost<Product>("/products", body);
@@ -60,9 +64,16 @@ export default function AdminProducts() {
   const archiveMutation = useMutation({ mutationFn: (id: string) => apiPatch<Product>(`/products/${id}`, { status: "archived" }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["products"] }); toast.success("Product archived and hidden from the storefront"); } });
   const edit = (product: Product) => {
     setForm({ title: product.title, slug: product.slug, status: product.status, category: product.category, collection: product.collection, fabric: product.fabric, craft: product.craft, hsn_code: product.hsn_code || "62114922", price: String(product.price), mrp: product.mrp ? String(product.mrp) : "", stock: String(product.stock), sizes: product.sizes.join(", "), colors: product.colors.join(", "), description: product.description, fit: product.fit, measurements: product.measurements, transparency: product.transparency, lining: product.lining, care: product.care, dispatch_days: product.dispatch_days, availability: product.availability, customisation: product.customisation, origin: product.origin, occasion: product.occasion.join(", "), style_keywords: product.style_keywords.join(", "), size_guide_image: product.size_guide_image });
-    setImages(product.image_urls.length ? product.image_urls : product.image_url ? [product.image_url] : []); setStockBySize(product.stock_by_size); setCompleteLookIds(product.complete_look_ids); setMerchandising({ featured: product.featured, new_arrival: product.new_arrival, best_seller: product.best_seller }); setEditingId(product.id); setEditorOpen(true); window.scrollTo({ top: 0, behavior: "smooth" });
+    setImages(product.image_urls.length ? product.image_urls : product.image_url ? [product.image_url] : []); setSetTypes(product.set_types ?? []); setVariants(product.variants ?? []); setCompleteLookIds(product.complete_look_ids); setMerchandising({ featured: product.featured, new_arrival: product.new_arrival, best_seller: product.best_seller }); setEditingId(product.id); setEditorOpen(true); window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const submit = (event: FormEvent) => { event.preventDefault(); if (!images.length) { toast.error("Add at least one product image"); return; } saveMutation.mutate(); };
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!images.length) { toast.error("Add at least one product image"); return; }
+    const names = setTypes.map((item) => item.name.trim().toLowerCase());
+    if (names.some((name) => !name)) { toast.error("Give every combination a name"); return; }
+    if (new Set(names).size !== names.length) { toast.error("Each combination needs a unique name"); return; }
+    saveMutation.mutate();
+  };
 
   return <AdminShell eyebrow="Catalog" title="Products" description="Create complete product stories, control inventory, and decide what customers can see." actions={<button className="button button-dark" onClick={() => { reset(); setEditorOpen(true); }} data-testid="admin-new-product-button"><Plus size={16} /> Add product</button>}>
     {editorOpen && <form className="admin-editor" onSubmit={submit} data-testid="admin-product-editor">
@@ -72,7 +83,7 @@ export default function AdminProducts() {
           <section className="admin-editor-card" data-testid="admin-product-basics"><h3>Product information</h3><label>Title<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value, slug: form.slug || slugify(event.target.value) })} required data-testid="admin-product-title" /></label><label>URL slug<input value={form.slug} onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })} required data-testid="admin-product-slug" /></label><label>Description<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} data-testid="admin-product-description" /></label></section>
           <section className="admin-editor-card" data-testid="admin-product-media"><ImageManager images={images} onChange={setImages} label="Product gallery" testId="admin-product-images" limit={40} /></section>
           <section className="admin-editor-card admin-fields-grid" data-testid="admin-product-details"><h3>Craft & product details</h3><label>Fabric<input value={form.fabric} onChange={(event) => { const fabric = event.target.value; setForm({ ...form, fabric, hsn_code: form.category === "Straight Kurtis" && fabric.toLowerCase().includes("cotton") ? "62063090" : "62114922" }); }} data-testid="admin-product-fabric" /></label><label>Embroidery / work<input value={form.craft} onChange={(event) => setForm({ ...form, craft: event.target.value })} data-testid="admin-product-craft" /></label><label>Product HSN code<select value={form.hsn_code} onChange={(event) => setForm({ ...form, hsn_code: event.target.value })} required data-testid="admin-product-hsn"><option value="62114922">62114922 — other women’s Chikankari garments</option><option value="62063090">62063090 — cotton woven kurtis / tunics</option></select></label><label>Fit & silhouette<input value={form.fit} onChange={(event) => setForm({ ...form, fit: event.target.value })} data-testid="admin-product-fit" /></label><label>Measurements<input value={form.measurements} onChange={(event) => setForm({ ...form, measurements: event.target.value })} data-testid="admin-product-measurements" /></label><label>Transparency<input value={form.transparency} onChange={(event) => setForm({ ...form, transparency: event.target.value })} data-testid="admin-product-transparency" /></label><label>Lining<input value={form.lining} onChange={(event) => setForm({ ...form, lining: event.target.value })} data-testid="admin-product-lining" /></label><label>Care<input value={form.care} onChange={(event) => setForm({ ...form, care: event.target.value })} data-testid="admin-product-care" /></label><label>Origin<input value={form.origin} onChange={(event) => setForm({ ...form, origin: event.target.value })} data-testid="admin-product-origin" /></label><label className="admin-field-wide">Customisation<input value={form.customisation} onChange={(event) => setForm({ ...form, customisation: event.target.value })} data-testid="admin-product-customisation" /></label></section>
-          <section className="admin-editor-card" data-testid="admin-product-inventory"><h3>Options & inventory</h3><label>Sizes <small>Comma separated, for example: S, M, L</small><input value={form.sizes} onChange={(event) => setForm({ ...form, sizes: event.target.value })} data-testid="admin-product-sizes" /></label>{sizes.length > 0 && <div className="admin-variant-stock" data-testid="admin-product-size-stock"><div><span>Size</span><span>Available quantity</span></div>{sizes.map((size) => <label key={size}><strong>{size}</strong><input type="number" min="0" value={stockBySize[size] ?? 0} onChange={(event) => setStockBySize({ ...stockBySize, [size]: Number(event.target.value) })} data-testid={`admin-product-stock-${slugify(size)}`} /></label>)}</div>}<label>Colours <small>Comma separated</small><input value={form.colors} onChange={(event) => setForm({ ...form, colors: event.target.value })} data-testid="admin-product-colors" /></label><label>Total stock <small>Used when a size-specific quantity is not set.</small><input type="number" min="0" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} data-testid="admin-product-stock" /></label></section>
+          <section className="admin-editor-card" data-testid="admin-product-inventory"><h3>Options, variants & inventory</h3><label>Sizes <small>Comma separated, for example: S, M, L</small><input value={form.sizes} onChange={(event) => setForm({ ...form, sizes: event.target.value })} data-testid="admin-product-sizes" /></label><label>Colours <small>Comma separated</small><input value={form.colors} onChange={(event) => setForm({ ...form, colors: event.target.value })} data-testid="admin-product-colors" /></label><VariantManager sizes={sizes} colors={colors} setTypes={setTypes} onSetTypesChange={setSetTypes} variants={variantRows} onVariantsChange={setVariants} basePrice={Number(form.price) || 0} /></section>
           <section className="admin-editor-card" data-testid="admin-product-relations"><h3>Complete the Look</h3><p>Select only combinations approved by SAFYRA.</p><div className="admin-checkbox-list">{products.filter((product) => product.id !== editingId && product.status !== "archived").map((product) => <label key={product.id}><input type="checkbox" checked={completeLookIds.includes(product.id)} onChange={() => setCompleteLookIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} data-testid={`admin-complete-look-${product.slug}`} />{product.title}</label>)}</div></section>
         </div>
         <aside className="admin-editor-stack">

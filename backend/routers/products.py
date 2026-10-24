@@ -10,6 +10,7 @@ from lib.db import db
 from lib.security import get_optional_user, require_admin
 from models.product import DEFAULT_PRODUCTS, Product, ProductCreate, ProductUpdate
 from lib.pricing import active_discounts, best_discount
+from lib.variants import align_variants, default_variants, legacy_stock_summary
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -38,7 +39,7 @@ class ProductBulkUpdate(BaseModel):
 
 async def _ensure_catalog() -> None:
     if await db.products.count_documents({}) == 0:
-        await db.products.insert_many([product.model_dump() for product in DEFAULT_PRODUCTS])
+        await db.products.insert_many([{**product.model_dump(), "variants": default_variants(product.model_dump())} for product in DEFAULT_PRODUCTS])
 
 
 def _clean(document: dict, discounts: list[dict] | None = None) -> Product:
@@ -166,7 +167,10 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_option
 
 @router.post("", response_model=Product, status_code=201)
 async def create_product(input: ProductCreate, _: dict = Depends(require_admin)):
-    product = Product(**input.model_dump())
+    document = Product(**input.model_dump()).model_dump()
+    if document.get("variants"):  # admin editor always sends the table; legacy API payloads keep size-level stock
+        document.update(_variant_fields(document, document["variants"]))
+    product = Product(**document)
     try:
         await db.products.insert_one(product.model_dump())
     except DuplicateKeyError as exc:
@@ -180,6 +184,10 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
     changes = input.model_dump(exclude_unset=True)
+    merged = {**existing, **changes}
+    if changes.get("variants") or ("variants" not in changes and existing.get("variants") and {"set_types", "sizes", "colors"} & changes.keys()):
+        # Keep an existing variant table aligned when options change; never invent one for legacy size-stock updates.
+        changes.update(_variant_fields(merged, merged.get("variants") or []))
     changes["updated_at"] = datetime.now(timezone.utc)
     try:
         await db.products.update_one({"id": product_id}, {"$set": changes})
@@ -187,6 +195,19 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
         raise HTTPException(status_code=409, detail="A product with this slug already exists") from exc
     document = await db.products.find_one({"id": product_id})
     return _clean(document)
+
+
+def _variant_fields(product: dict, variants: list[dict]) -> dict:
+    """Align the variant table with the product's options and mirror totals into the legacy stock fields."""
+    keys = [(item.get("set_type_id", ""), item.get("color", ""), item.get("size", "")) for item in variants]
+    if len(keys) != len(set(keys)):
+        raise HTTPException(status_code=422, detail="Each combination, colour and size can only appear once in the variant table")
+    set_ids = [item.get("id") for item in product.get("set_types", [])]
+    if len(set_ids) != len(set(set_ids)) or len({item.get("name", "").strip().casefold() for item in product.get("set_types", [])}) != len(set_ids):
+        raise HTTPException(status_code=422, detail="Each combination needs a unique name")
+    aligned = align_variants(product, variants)
+    stock, stock_by_size = legacy_stock_summary(aligned)
+    return {"variants": aligned, "stock": stock, "stock_by_size": stock_by_size}
 
 
 @router.post("/bulk", response_model=list[Product])
@@ -220,6 +241,7 @@ async def bulk_update_products(input: ProductBulkUpdate, _: dict = Depends(requi
                 changes["set_types"] = [{**item, "price": changed_price(item["price"])} for item in document.get("set_types", [])]
             if input.include_variant_overrides:
                 changes["variant_overrides"] = [{**item, **({"price": changed_price(item["price"])} if item.get("price") is not None else {})} for item in document.get("variant_overrides", [])]
+                changes["variants"] = [{**item, **({"price": changed_price(item["price"])} if item.get("price") is not None else {})} for item in document.get("variants", [])]
         await db.products.update_one({"id": document["id"]}, {"$set": changes})
     updated = await db.products.find({"id": {"$in": input.product_ids}}).to_list(len(input.product_ids))
     return [_clean(document) for document in updated]

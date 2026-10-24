@@ -1,4 +1,5 @@
 import type { AdminOrderRequest } from "@/lib/checkout";
+import { variantLabel } from "@/lib/shop";
 
 export type OrderDocumentKind = "invoice" | "packing-slip";
 
@@ -17,7 +18,7 @@ export function buildOrderDocumentHtml(order: AdminOrderRequest, kind: OrderDocu
   const invoice = kind === "invoice";
   const title = invoice ? "ORDER SUMMARY — NOT A GST INVOICE" : "PACKING SLIP";
   const itemRows = order.items.map((item) => `<tr>
-    <td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.size)} · ${escapeHtml(item.color)}</small></td>
+    <td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(variantLabel(item))}</small></td>
     <td class="number">${escapeHtml(item.quantity)}</td>
     ${invoice ? `<td class="number">${escapeHtml(money(item.price))}</td><td class="number">${escapeHtml(money(item.line_total))}</td>` : ""}
   </tr>`).join("");

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import type { CartItem, Product } from "@/lib/shop";
 import type { AccountResponse } from "@/lib/auth";
 import { apiGet, apiPut } from "@/lib/api";
-import { availableQuantity } from "@/lib/shop";
+import { availableQuantity, defaultSetTypeId, selectionPrice } from "@/lib/shop";
 import { useAuth } from "@/components/AuthProvider";
 
 interface ShopContextValue {
@@ -13,7 +13,7 @@ interface ShopContextValue {
   setOrderNote: (note: string) => void;
   wishlistIds: string[];
   drawerOpen: boolean;
-  addToCart: (product: Product, size?: string, color?: string) => void;
+  addToCart: (product: Product, size?: string, color?: string, setTypeId?: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   removeFromCart: (key: string) => void;
   clearCart: () => void;
@@ -93,17 +93,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [account, user]);
 
   const value = useMemo<ShopContextValue>(() => {
-    const addToCart = (product: Product, size = product.sizes[0] ?? "Custom", color = product.colors[0] ?? "As shown") => {
-      const limit = availableQuantity(product, size);
-      if (limit < 1) { toast.error("This selection is currently unavailable"); return; }
-      const key = `${product.id}-${size}-${color}`;
-      setCart((current) => {
-        const existing = current.find((item) => item.key === key);
-        if (existing && existing.quantity >= limit) { toast.error(`Only ${limit} available in this size`); return current; }
-        const next = existing ? current.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)) : [...current, { key, productId: product.id, slug: product.slug, title: product.title, imageUrl: product.image_url, price: product.price, size, color, quantity: 1 }];
-        if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
-        return next;
-      });
+    const addToCart = (product: Product, size = product.sizes[0] ?? "Custom", color = product.colors[0] ?? "As shown", setTypeId = defaultSetTypeId(product)) => {
+      const limit = availableQuantity(product, size, color, setTypeId);
+      if (limit < 1) { toast.error("This selection is sold out"); return; }
+      const setType = product.set_types.find((item) => item.id === setTypeId);
+      const { price, mrp } = selectionPrice(product, setTypeId, size, color);
+      const key = [product.id, setTypeId, size, color].filter(Boolean).join("-");
+      // Decide outside the state updater: updaters may run twice (StrictMode), which duplicated toasts and saves.
+      const existing = cart.find((item) => item.key === key);
+      if (existing && existing.quantity >= limit) { toast.error(`Only ${limit} available in this selection`); setDrawerOpen(true); return; }
+      const next = existing ? cart.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)) : [...cart, { key, productId: product.id, slug: product.slug, title: product.title, imageUrl: product.image_url, price, compareAtPrice: mrp, setType: setType?.name ?? "", setTypeId: setType?.id ?? "", size, color, quantity: 1 }];
+      setCart(next);
+      if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
       setDrawerOpen(true);
       toast.success("Added to your bag", { description: product.title });
     };
@@ -111,8 +112,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       setCart((current) => {
         const item = current.find((entry) => entry.key === key);
         const product = item ? products.find((entry) => entry.id === item.productId) : undefined;
-        const limit = item && product ? availableQuantity(product, item.size) : Number.POSITIVE_INFINITY;
-        if (quantity > limit) { toast.error(limit > 0 ? `Only ${limit} available in this size` : "This selection is currently unavailable"); return current; }
+        const limit = item && product ? availableQuantity(product, item.size, item.color, item.setTypeId ?? "") : Number.POSITIVE_INFINITY;
+        if (quantity > limit) { toast.error(limit > 0 ? `Only ${limit} available in this selection` : "This selection is sold out"); return current; }
         const next = quantity < 1 ? current.filter((item) => item.key !== key) : current.map((item) => (item.key === key ? { ...item, quantity } : item));
         if (user) saveState.mutate({ cart: next, wishlist_ids: wishlistIds });
         return next;

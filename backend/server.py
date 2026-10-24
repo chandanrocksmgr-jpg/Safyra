@@ -35,6 +35,7 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 from lib.db import close_db, db, ensure_indexes, init_db
 from lib.legacy_media import migrate_legacy_media
+from lib.variants import migrate_product_variants
 
 
 # Startup runs before the yield, shutdown after it. Add your own setup/teardown here.
@@ -53,6 +54,10 @@ async def lifespan(app: FastAPI):
 
 
 async def _migrate_legacy_media_safely() -> None:
+    try:
+        await migrate_product_variants()
+    except Exception as exc:  # never crash the app over a data backfill
+        logging.getLogger(__name__).error("Product variant migration failed: %s", exc)
     try:
         await migrate_legacy_media()
     except Exception as exc:  # never crash the app over a media backfill

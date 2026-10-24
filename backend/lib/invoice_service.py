@@ -7,6 +7,8 @@ import uuid
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from reportlab.lib import colors
+
+from lib.variants import variant_label
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -242,7 +244,7 @@ def render_invoice_pdf(document: dict, sample: bool = False) -> bytes:
         item_taxable = item.get("taxable_value")
         if item_taxable is None:
             item_taxable, _, _, _ = _tax_parts(int(item["line_total"]), item_rate, bool(document.get("cgst")))
-        rows.append([Paragraph(f"{escape(str(item['title']))}<br/><font size=7>{escape(str(item.get('size','')))} · {escape(str(item.get('color','')))}</font>", small), escape(str(item.get("hsn_code") or document.get("hsn_code", ""))), str(item["quantity"]), f"{item_rate:g}%", f"INR {item_taxable:,}", f"INR {item['line_total']:,}"])
+        rows.append([Paragraph(f"{escape(str(item['title']))}<br/><font size=7>{escape(variant_label(item.get('set_type'), item.get('size'), item.get('color')))}</font>", small), escape(str(item.get("hsn_code") or document.get("hsn_code", ""))), str(item["quantity"]), f"{item_rate:g}%", f"INR {item_taxable:,}", f"INR {item['line_total']:,}"])
     table = Table(rows, colWidths=[68 * mm, 22 * mm, 12 * mm, 16 * mm, 24 * mm, 26 * mm], repeatRows=1)
     table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#261C19")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, -1), 8), ("GRID", (0, 0), (-1, -1), .35, colors.HexColor("#D6C7B2")), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (2, 1), (-1, -1), "RIGHT"), ("PADDING", (0, 0), (-1, -1), 6)]))
     story.extend([table, Spacer(1, 6 * mm)])

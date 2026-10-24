@@ -8,7 +8,7 @@ import SafeProductImage from "@/components/SafeProductImage";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api";
 import type { AdminOrderRequest, AdminOrderRequestUpdate, FulfilmentStatus, OrderConversionResponse, PaymentStatus, RefundStatus } from "@/lib/checkout";
 import { endSession } from "@/lib/session";
-import { formatPrice } from "@/lib/shop";
+import { formatPrice, variantLabel } from "@/lib/shop";
 import { openOrderPrintView } from "@/lib/orderPrint";
 
 const paymentStatuses: PaymentStatus[] = ["Unpaid", "Payment pending", "Paid"];
@@ -111,7 +111,7 @@ function OrderEditor({ request }: { request: AdminOrderRequest }) {
 
     <section className="admin-order-section" data-testid="admin-order-items">
       <h3>Selected products</h3>
-      {request.items.map((item) => <div className="admin-order-item" key={`${item.product_id}-${item.size}-${item.color}`}><SafeProductImage src={item.image_url} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><span>{item.size} · {item.color} · Qty {item.quantity}</span></div><strong>{formatPrice(item.line_total)}</strong></div>)}
+      {request.items.map((item) => <div className="admin-order-item" key={`${item.product_id}-${item.set_type}-${item.size}-${item.color}`}><SafeProductImage src={item.image_url} alt={item.title} productName={item.title} /><div><strong>{item.title}</strong><span>{variantLabel(item)} · Qty {item.quantity}</span></div><strong>{formatPrice(item.line_total)}</strong></div>)}
       {request.discount_total > 0 && <div className="summary-line" data-testid="admin-order-discount-total"><span>Automatic savings</span><strong>−{formatPrice(request.discount_total)}</strong></div>}
       {request.discount_code && <p data-testid="admin-order-discount-code"><strong>Offer code:</strong> {request.discount_code}</p>}
       <div className="summary-line"><span>Product subtotal</span><strong>{formatPrice(request.subtotal)}</strong></div>

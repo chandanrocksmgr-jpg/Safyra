@@ -70,6 +70,7 @@ class SavedCartItem(BaseModel):
     price: int
     compareAtPrice: Optional[int] = None
     setType: str = ""
+    setTypeId: str = ""
     size: str
     color: str
     quantity: int = Field(ge=1, le=20)

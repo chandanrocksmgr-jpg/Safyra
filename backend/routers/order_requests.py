@@ -114,7 +114,7 @@ def _customer_order_snapshot(order: dict) -> dict:
         "tracking_link": order.get("tracking_link", ""),
         "is_demo": False,
         "items": [{
-            "product_name": item["title"], "image_url": item["image_url"], "size": item["size"],
+            "product_name": item["title"], "image_url": item["image_url"], "set_type": item.get("set_type") or "", "size": item["size"],
             "color": item["color"], "quantity": item["quantity"], "price": item["price"],
         } for item in order["items"]],
         "tracking": tracking,

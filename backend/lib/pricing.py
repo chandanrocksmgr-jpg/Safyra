@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Iterable
+from lib.variants import find_variant, uses_variants, variant_label
 
 from lib.db import db
 
@@ -72,7 +73,14 @@ def resolve_product_selection(product: dict, set_type: str | None, size: str, co
             raise ValueError("Select a valid set type")
         regular_price = selected_set["price"]
         compare_at = selected_set.get("mrp")
-    override = next((item for item in product.get("variant_overrides", []) if
+    variant = None
+    if uses_variants(product):
+        variant = find_variant(product, selected_set.get("id", "") if selected_set else "", size, color)
+        if not variant:
+            raise ValueError(f"{variant_label(selected_set.get('name') if selected_set else None, size, color) or 'This selection'} is not offered")
+        regular_price = variant["price"] if variant.get("price") is not None else regular_price
+        compare_at = variant["mrp"] if variant.get("mrp") is not None else compare_at
+    override = None if variant else next((item for item in product.get("variant_overrides", []) if
         (not selected_set or item.get("set_type_id") == selected_set.get("id")) and
         item.get("size", "") == size and item.get("color", "") == color), None)
     if override:
@@ -83,7 +91,10 @@ def resolve_product_selection(product: dict, set_type: str | None, size: str, co
     price = max(0, regular_price - amount)
     if amount and (compare_at is None or compare_at < regular_price):
         compare_at = regular_price
-    stock = override.get("stock") if override and override.get("stock") is not None else product.get("stock_by_size", {}).get(size, product.get("stock", 0))
+    if variant:
+        stock = int(variant.get("stock") or 0) if variant.get("available", True) else 0
+    else:
+        stock = override.get("stock") if override and override.get("stock") is not None else product.get("stock_by_size", {}).get(size, product.get("stock", 0))
     availability = override.get("availability") if override and override.get("availability") else product.get("availability", "")
     return {
         "set_type": selected_set.get("name") if selected_set else None,
@@ -94,5 +105,7 @@ def resolve_product_selection(product: dict, set_type: str | None, size: str, co
         "discount_name": discount.get("name") if discount else None,
         "discount": discount,
         "stock": max(0, stock),
+        "variant_id": variant["id"] if variant else None,
+        "uses_variants": bool(variant),
         "availability": availability,
     }

@@ -5,7 +5,7 @@ import { BellRing } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import WaitlistModal from "@/components/WaitlistModal";
 import { apiGet } from "@/lib/api";
-import { isProductUnavailable, type Product } from "@/lib/shop";
+import { hasVariants, isProductUnavailable, type Product } from "@/lib/shop";
 
 export default function ProductWaitlistAction() {
   const { pathname } = useLocation();
@@ -23,7 +23,8 @@ export default function ProductWaitlistAction() {
     return () => observer.disconnect();
   }, [productId]);
 
-  if (!product || !isProductUnavailable(product)) return null;
+  // Variant products handle "Notify me" per colour and size on the product page itself.
+  if (!product || !isProductUnavailable(product) || (hasVariants(product) && product.availability !== "Currently unavailable" && product.sizes.length > 0)) return null;
   return <>
     {target && createPortal(<button className="button button-dark button-large waitlist-product-trigger" onClick={() => setOpen(true)} data-testid="join-waitlist-button"><BellRing size={17} /> Limited availability · Join the waitlist</button>, target)}
     {open && createPortal(<WaitlistModal product={product} onClose={() => setOpen(false)} />, document.body)}
