@@ -1455,3 +1455,84 @@ select,
 .admin-order-email-status > div span { font-size: .72rem; font-weight: 700; }
 .admin-order-email-status > div strong { padding: .25rem .45rem; align-self: start; background: rgb(73 52 61 / .09); color: var(--safyra-aubergine); font-size: .6rem; text-transform: uppercase; }
 .admin-order-email-status > div small { grid-column: 1 / -1; color: var(--safyra-espresso-soft); font-size: .62rem; line-height: 1.5; }
+/* ---------- Full-screen product photo viewer ---------- */
+@keyframes safyra-viewer-in { from { opacity: 0; } to { opacity: 1; } }
+.image-viewer { position: fixed; inset: 0; z-index: 90; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: #16110f; color: var(--safyra-ivory); animation: safyra-viewer-in .22s ease-out; }
+.image-viewer-top { display: flex; align-items: center; gap: 1rem; padding: max(.85rem, env(safe-area-inset-top)) 1rem .85rem; border-bottom: 1px solid rgb(247 243 235 / .08); }
+.image-viewer-counter { min-width: 3.5rem; font-family: 'Manrope Variable', sans-serif; font-size: .72rem; font-weight: 600; letter-spacing: .16em; font-variant-numeric: tabular-nums; }
+.image-viewer-title { flex: 1; overflow: hidden; font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.15rem; text-overflow: ellipsis; white-space: nowrap; }
+.image-viewer-close, .image-viewer-nav { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgb(247 243 235 / .24); background: rgb(22 17 15 / .55); color: var(--safyra-ivory); cursor: pointer; transition: background-color .2s ease, opacity .2s ease, transform .2s ease; }
+.image-viewer-close:hover, .image-viewer-nav:hover:not(:disabled) { background-color: rgb(247 243 235 / .12); }
+.image-viewer-close:active, .image-viewer-nav:active:not(:disabled) { transform: scale(.94); }
+.image-viewer-body { position: relative; min-height: 0; }
+.image-viewer-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: zoom-in; }
+.image-viewer-stage.is-zoomed { cursor: grab; }
+.image-viewer-track { height: 100%; display: flex; transition: transform .34s cubic-bezier(.2, .7, .2, 1); will-change: transform; }
+.image-viewer-slide { flex: 0 0 100%; height: 100%; display: grid; place-items: center; overflow: hidden; }
+.image-viewer-slide img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; transition: transform .28s cubic-bezier(.2, .7, .2, 1); pointer-events: none; -webkit-user-drag: none; }
+.image-viewer-track.is-dragging, .image-viewer-slide img.is-dragging { transition: none; }
+.image-viewer-slide .image-fallback { width: min(80vw, 420px); aspect-ratio: 3 / 4; }
+.image-viewer-nav { position: absolute; top: 50%; z-index: 2; translate: 0 -50%; }
+.image-viewer-nav.is-prev { left: 1.25rem; }
+.image-viewer-nav.is-next { right: 1.25rem; }
+.image-viewer-nav:disabled { opacity: .25; cursor: default; }
+@media (hover: none) { .image-viewer-nav { display: none; } }
+.image-viewer-bottom { padding: .8rem 1rem max(1rem, env(safe-area-inset-bottom)); display: grid; justify-items: center; gap: .7rem; }
+.image-viewer-hint { margin: 0; font-family: 'Manrope Variable', sans-serif; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; opacity: .62; }
+.image-viewer-dots { display: flex; gap: .45rem; }
+.image-viewer-dots button { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 99px; background: rgb(247 243 235 / .32); cursor: pointer; transition: width .22s ease, background-color .22s ease; }
+.image-viewer-dots button.is-active { width: 20px; background: var(--safyra-ivory); }
+.mobile-gallery-item { position: relative; display: block; padding: 0; border: 0; background: none; scroll-snap-align: start; cursor: zoom-in; }
+.mobile-gallery-count { position: absolute; right: .6rem; bottom: .6rem; padding: .3rem .5rem; background: rgb(22 17 15 / .72); color: var(--safyra-ivory); font-size: .6rem; font-weight: 600; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+
+/* ---------- Admin photo quality hints ---------- */
+.admin-image-item > em.admin-image-warning { position: absolute; right: .4rem; top: .4rem; display: inline-flex; align-items: center; gap: .25rem; padding: .25rem .4rem; background: #8a5a12; color: #fff8ec; font-size: .55rem; font-style: normal; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.admin-image-quality { margin-top: 1rem; padding: .9rem 1rem; display: grid; gap: .35rem; border: 1px solid #e3c995; border-left: 3px solid #b07a1d; background: #fbf4e6; color: #4d3720; font-size: .74rem; }
+.admin-image-quality strong { display: inline-flex; align-items: center; gap: .35rem; }
+.admin-image-quality small { color: #7a6047; }
+.admin-image-quality ul { margin: .25rem 0 0; padding-left: 1.1rem; display: grid; gap: .3rem; line-height: 1.5; }
+
+/* ---------- Account: wishlist + address book ---------- */
+.account-wishlist-grid { margin-top: .5rem; }
+.address-book-intro { margin: -1rem 0 1.25rem; color: #715b52; font-size: .85rem; }
+.address-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.address-card { padding: 1.25rem; display: grid; align-content: start; gap: .35rem; border: 1px solid #e6dec8; background: #fdfbf7; transition: border-color .2s ease, box-shadow .2s ease; }
+.address-card:hover { border-color: #cdb998; box-shadow: 0 10px 30px -22px rgb(38 28 25 / .45); }
+.address-card.is-default { border-color: var(--safyra-espresso); }
+.address-card p { margin: 0; color: #5c463d; font-size: .86rem; line-height: 1.55; }
+.address-card .address-card-name { color: var(--safyra-espresso); font-weight: 600; }
+.address-card .address-card-phone { color: #8c746a; font-size: .8rem; }
+.address-card-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .2rem; }
+.address-card-top strong { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.3rem; font-weight: 500; }
+.address-default-badge { padding: .22rem .5rem; background: var(--safyra-espresso); color: var(--safyra-ivory); font-size: .55rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.address-card-actions { margin-top: .75rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+.address-card-actions button { min-height: 34px; padding: .35rem .65rem; display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--safyra-border); background: #fff; color: var(--safyra-espresso); font-size: .68rem; font-weight: 600; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.address-card-actions button:hover:not(:disabled) { border-color: var(--safyra-espresso); background: #f7f3eb; }
+.address-card-actions button.is-danger { color: #8f3b2e; }
+.address-card-actions button:disabled { opacity: .5; }
+.address-form { margin-bottom: 1.5rem; padding: 1.25rem; border: 1px solid #d6c7b2; background: #fdfbf7; animation: safyra-viewer-in .2s ease-out; }
+.address-form-heading { margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+.address-form-heading strong { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.4rem; font-weight: 500; }
+.address-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.address-form-grid .field-wide { grid-column: 1 / -1; }
+.address-form label { display: grid; gap: .4rem; color: #5c463d; font-size: .72rem; font-weight: 600; }
+.address-form input:not([type="checkbox"]), .address-form textarea { width: 100%; min-height: 46px; padding: .7rem; border: 1px solid #d6c7b2; background: #fff; color: #2c1a14; font: inherit; font-size: .9rem; font-weight: 400; outline: 0; transition: border-color .2s ease, box-shadow .2s ease; }
+.address-form textarea { min-height: 84px; resize: vertical; }
+.address-form input:focus, .address-form textarea:focus { border-color: #9e7b3b; box-shadow: 0 0 0 3px rgb(197 160 89 / .14); }
+.address-form input:disabled { background: #f3eee5; }
+.address-field-error { color: #9b3b2c; font-weight: 500; }
+.address-form .address-default-toggle { margin: 1rem 0; display: flex; align-items: center; gap: .55rem; font-size: .8rem; font-weight: 500; }
+.address-form-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+@media (max-width: 767px) { .address-form-grid { grid-template-columns: 1fr; } .account-section { padding: 1.25rem; } }
+
+/* ---------- Checkout: saved addresses ---------- */
+.saved-address-picker { margin: 0 0 1.5rem; padding: 0; border: 0; display: grid; gap: .55rem; }
+.saved-address-picker legend { margin-bottom: .7rem; font-size: .75rem; font-weight: 700; }
+.saved-address-picker > label { padding: .9rem; display: flex; align-items: flex-start; gap: .7rem; border: 1px solid #d6c7b2; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.saved-address-picker > label.is-selected { border-color: #2c1a14; background: #f9f6f0; }
+.saved-address-picker span { display: flex; flex-direction: column; gap: .2rem; }
+.saved-address-picker strong { display: inline-flex; align-items: center; gap: .45rem; font-size: .85rem; }
+.saved-address-picker em { padding: .12rem .4rem; background: var(--safyra-espresso); color: var(--safyra-ivory); font-size: .52rem; font-style: normal; letter-spacing: .12em; text-transform: uppercase; }
+.saved-address-picker small { color: #8c746a; line-height: 1.45; }
+.checkout-signin-hint { margin: 0 0 1.25rem; color: #715b52; font-size: .82rem; }
+.checkout-save-address { margin-top: 1rem; display: flex; align-items: center; gap: .55rem; color: #5c463d; font-size: .8rem; cursor: pointer; }

@@ -20,6 +20,20 @@ export interface MediaUploadResponse {
   filename: string;
   content_type: string;
   size: number;
+  width: number;
+  height: number;
+  warnings: string[];
+}
+
+export interface MediaQualityItem {
+  url: string;
+  width: number;
+  height: number;
+  warnings: string[];
+}
+
+export interface MediaQualityResponse {
+  items: MediaQualityItem[];
 }
 
 export interface HomepageHero {

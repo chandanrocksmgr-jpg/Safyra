@@ -1,28 +1,11 @@
-# Emergent Google Auth Testing Playbook
+# Emergent Google Auth — testing notes (SAFYRA)
 
-## Required callback checks
-- Start Google sign-in from the current browser origin only; never hardcode or add a fallback redirect URL.
-- The callback returns to `/account#session_id=...`.
-- Callback detection must use React Router `useLocation().hash` synchronously before protected routing.
-- The auth provider must skip its normal session check while a `session_id` fragment is present.
-- Exchange the `session_id` server-side through Emergent Auth `/session-data`; never call it from the browser.
-- Process the fragment once with a `useRef`, clear it immediately, then verify the server session.
+Flow: Login/Signup "Continue with Google" → `https://auth.emergentagent.com/?redirect=<window.location.origin>/account`
+→ Google → back to `/account#session_id=...` → `GoogleAuthCallback` POSTs `/api/auth/google/session`
+→ backend calls `GET https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data` (header `X-Session-ID`)
+→ creates/links a **customer** user by email (admins are refused with 403) and starts the app's own httpOnly session cookie (7 days).
 
-## Session checks
-- The backend is the source of truth through `/api/auth/me` or the app's equivalent session endpoint.
-- Persist only a server-side session and an httpOnly secure cookie; never store OAuth tokens in browser storage.
-- A Google email matching an existing customer links to that same user and preserves wishlist, cart and orders.
-- A Google-verified email claims only exact-email eligible paid guest orders and invoices.
-- Google authentication must never grant the Admin role or access `/admin`.
-- Email/password customer login and separate Admin email/password login must remain functional.
-
-## Browser checks
-- Start Google sign-in from preview/deployed/custom domains and confirm the redirect derives from `window.location.origin`.
-- Confirm callback does not race the global auth provider or remain stuck after the hash is cleared.
-- Confirm My Account loads after exchange and `/api/auth/session` returns the linked customer.
-- Confirm logout removes the server session and clears the cookie.
-
-## Test identity and cleanup
-- Record allowed Google test identities and linked app users in `/app/memory/test_credentials.md` without passwords.
-- Any seeded test user/session/order must use a unique test marker and be deleted after verification.
-- Never create or preserve a Google-authenticated Admin account.
+- Real Google login cannot be automated; verify the button → Google hand-off, and the callback error state with a fake session id.
+- A fake/expired/reused session_id makes session-data return 404 `user_data_not_found` → our API returns 401 → callback page shows "We could not verify that Google response." This is expected.
+- Each session_id can be exchanged once (`oauth_exchanges` unique hash) → a replay returns 409.
+- For signed-in customer flows without Google, use the password QA customer in /app/memory/test_credentials.md.

@@ -113,8 +113,25 @@ class Order(BaseModel):
     tracking: list[TrackingStep] = Field(default_factory=list)
 
 
+class SavedAddressInput(BaseModel):
+    label: str = Field(default="Home", min_length=1, max_length=40)
+    name: str = Field(min_length=2, max_length=80)
+    phone: str = Field(min_length=7, max_length=24)
+    address: str = Field(min_length=5, max_length=300)
+    city: str = Field(min_length=1, max_length=80)
+    state_region: str = Field(default="", max_length=80)
+    postal_code: str = Field(default="", max_length=20)
+    country: str = Field(default="India", min_length=2, max_length=80)
+    is_default: bool = False
+
+
+class SavedAddress(SavedAddressInput):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+
 class AccountResponse(BaseModel):
     user: UserPublic
     wishlist_ids: list[str] = Field(default_factory=list)
     cart: list[SavedCartItem] = Field(default_factory=list)
     orders: list[Order] = Field(default_factory=list)
+    addresses: list[SavedAddress] = Field(default_factory=list)

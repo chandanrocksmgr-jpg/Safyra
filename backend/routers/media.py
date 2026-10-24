@@ -9,9 +9,10 @@ from fastapi.responses import FileResponse, Response
 from gridfs.errors import NoFile
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lib.db import get_db
+from lib.image_quality import analyse_image
 from lib.legacy_media import get_legacy_image, is_safe_legacy_path
 from lib.security import require_admin
 
@@ -34,6 +35,24 @@ class MediaUploadResponse(BaseModel):
     filename: str
     content_type: str
     size: int
+    width: int
+    height: int
+    warnings: list[str] = Field(default_factory=list)
+
+
+class MediaQualityRequest(BaseModel):
+    urls: list[str] = Field(default_factory=list, max_length=60)
+
+
+class MediaQualityItem(BaseModel):
+    url: str
+    width: int
+    height: int
+    warnings: list[str] = Field(default_factory=list)
+
+
+class MediaQualityResponse(BaseModel):
+    items: list[MediaQualityItem] = Field(default_factory=list)
 
 
 @router.post("/upload", response_model=MediaUploadResponse, status_code=201)
@@ -57,18 +76,58 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     detected_type = FORMAT_TYPES.get(image_format)
     if not detected_type or detected_type != file.content_type:
         raise HTTPException(status_code=415, detail="The image format does not match its file type")
+    quality = _safe_analysis(content)
     filename = f"{uuid.uuid4()}{ALLOWED_TYPES[file.content_type]}"
     media_id = await _media_bucket().upload_from_stream(
         filename,
         content,
-        metadata={"content_type": detected_type, "size": len(content), "width": width, "height": height},
+        metadata={"content_type": detected_type, "size": len(content), "width": width, "height": height, "quality": quality},
     )
     return MediaUploadResponse(
         url=f"/api/media/{media_id}",
         filename=filename,
         content_type=detected_type,
         size=len(content),
+        width=quality.get("width", width),
+        height=quality.get("height", height),
+        warnings=quality.get("warnings", []),
     )
+
+
+def _safe_analysis(content: bytes) -> dict:
+    try:
+        return analyse_image(content)
+    except Exception:  # quality hints are advisory; never fail an upload over them
+        return {"warnings": []}
+
+
+@router.post("/quality", response_model=MediaQualityResponse)
+async def check_media_quality(input: MediaQualityRequest, _: dict = Depends(require_admin)):
+    """Advisory photo checks for images already stored in SAFYRA media (external links are skipped)."""
+    files = get_db()["product_media.files"]
+    items: list[MediaQualityItem] = []
+    for url in dict.fromkeys(input.urls):
+        if url.startswith("/api/media/shopify/"):
+            path = url.removeprefix("/api/media/shopify/")
+            if not is_safe_legacy_path(path):
+                continue
+            record = await files.find_one({"metadata.legacy_path": path}, sort=[("uploadDate", -1)])
+            if not record and await get_legacy_image(path):
+                record = await files.find_one({"metadata.legacy_path": path}, sort=[("uploadDate", -1)])
+        elif url.startswith("/api/media/") and ObjectId.is_valid(url.removeprefix("/api/media/")):
+            record = await files.find_one({"_id": ObjectId(url.removeprefix("/api/media/"))})
+        else:
+            continue
+        if not record:
+            continue
+        quality = (record.get("metadata") or {}).get("quality")
+        if not quality or "width" not in quality:
+            stream = await _media_bucket().open_download_stream(record["_id"])
+            quality = _safe_analysis(await stream.read())
+            await files.update_one({"_id": record["_id"]}, {"$set": {"metadata.quality": quality}})
+        if "width" in quality:
+            items.append(MediaQualityItem(url=url, width=quality["width"], height=quality["height"], warnings=quality.get("warnings", [])))
+    return MediaQualityResponse(items=items)
 
 
 @router.get("/shopify/{path:path}")

@@ -54,11 +54,28 @@ export interface Order {
   tracking: TrackingStep[];
 }
 
+export interface SavedAddressInput {
+  label: string;
+  name: string;
+  phone: string;
+  address: string;
+  city: string;
+  state_region: string;
+  postal_code: string;
+  country: string;
+  is_default: boolean;
+}
+
+export interface SavedAddress extends SavedAddressInput {
+  id: string;
+}
+
 export interface AccountResponse {
   user: User;
   wishlist_ids: string[];
   cart: CartItem[];
   orders: Order[];
+  addresses: SavedAddress[];
 }
 
 export interface RecoveryQuestionResponse {

@@ -1,15 +1,18 @@
-import { useState, type FormEvent } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { getCountryByCode, validatePostalCode } from "postal-code-checker";
 import { ArrowLeft, Check, CreditCard, MessageCircle, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/components/AuthProvider";
 import BrandHeader from "@/components/BrandHeader";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, whatsappUrl } from "@/lib/shop";
-import { apiPost, apiPut, ApiError } from "@/lib/api";
+import { apiGet, apiPost, apiPut, ApiError } from "@/lib/api";
+import { formatAddressLine } from "@/lib/address";
+import type { AccountResponse, SavedAddress, SavedAddressInput } from "@/lib/auth";
 import type { OrderRequestCreate, OrderRequestResponse, PaymentQuoteResponse, PayUCheckoutResponse } from "@/lib/checkout";
 import type { CheckoutSessionSummary, CheckoutSessionUpsert } from "@/lib/abandonedCheckout";
 
@@ -47,6 +50,22 @@ export default function Checkout() {
   const [form, setForm] = useState<CheckoutFormState>({ name: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", country: "India", note: orderNote });
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [request, setRequest] = useState<OrderRequestResponse | null>(null);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const isCustomer = user?.role === "customer";
+  const { data: account } = useQuery({ queryKey: ["account", user?.id], queryFn: () => apiGet<AccountResponse>("/account"), enabled: isCustomer, retry: false });
+  const savedAddresses = account?.addresses ?? [];
+  const [selectedAddressId, setSelectedAddressId] = useState("new");
+  const [prefilled, setPrefilled] = useState(false);
+  const [saveAddress, setSaveAddress] = useState(true);
+  const saveAddressMutation = useMutation({
+    mutationFn: (input: SavedAddressInput) => apiPost<SavedAddress[]>("/account/addresses", input),
+    onSuccess: async (addresses, input) => {
+      const saved = addresses.find((address) => address.address === input.address && address.postal_code === input.postal_code);
+      if (saved) setSelectedAddressId(saved.id);
+      await queryClient.invalidateQueries({ queryKey: ["account"] });
+    },
+  });
   const [checkoutSessionKey] = useState(() => {
     const stored = window.localStorage.getItem("safyra-checkout-session");
     if (stored) return stored;
@@ -117,6 +136,29 @@ export default function Checkout() {
     });
   };
 
+  const applyAddress = (address: SavedAddress) => {
+    setSelectedAddressId(address.id);
+    setForm((current) => ({ ...current, name: address.name, phone: address.phone, address: address.address, city: address.city, state: address.state_region, postalCode: address.postal_code, country: address.country }));
+    const country = exactMatch(countries, address.country);
+    if (country) setShipping(country.isoCode === "IN" ? "india" : "international");
+    setErrors({});
+  };
+  const chooseNewAddress = () => {
+    setSelectedAddressId("new");
+    setForm((current) => ({ ...current, address: "", city: "", state: "", postalCode: "", country: "India" }));
+    setShipping("india");
+    setErrors({});
+  };
+  // Signed-in customers start with their default saved address (or their profile contact details).
+  useEffect(() => {
+    if (prefilled || !account) return;
+    setPrefilled(true);
+    setForm((current) => ({ ...current, name: current.name || account.user.name, email: current.email || account.user.email, phone: current.phone || account.user.phone }));
+    const preferred = account.addresses.find((address) => address.is_default) ?? account.addresses[0];
+    if (preferred && !form.address.trim()) applyAddress(preferred);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time prefill when the account first loads
+  }, [account, prefilled]);
+
   const validateForm = (): CheckoutErrors => {
     const next: CheckoutErrors = {};
     if (form.name.trim().length < 2 || !/[\p{L}]{2}/u.test(form.name)) next.name = "Enter your full name.";
@@ -143,12 +185,16 @@ export default function Checkout() {
     return next;
   };
 
+  const ADDRESS_FIELDS: (keyof CheckoutFormState)[] = ["name", "phone", "address", "city", "state", "postalCode", "country"];
+  const detachSavedAddress = () => { if (selectedAddressId !== "new") setSelectedAddressId("new"); };
   const setField = (field: keyof CheckoutFormState, value: string) => {
+    if (ADDRESS_FIELDS.includes(field)) detachSavedAddress();
     setForm((current) => ({ ...current, [field]: value }));
     if (field === "note") setOrderNote(value);
     if (field !== "note") setErrors((current) => ({ ...current, [field]: undefined }));
   };
   const setCountry = (value: string) => {
+    detachSavedAddress();
     const country = exactMatch(countries, value);
     const countryStates = country ? State.getStatesOfCountry(country.isoCode) : [];
     const postalDetails = country ? getCountryByCode(country.isoCode) : undefined;
@@ -157,6 +203,7 @@ export default function Checkout() {
     setErrors((current) => ({ ...current, country: undefined, state: undefined, city: undefined, postalCode: undefined, phone: undefined }));
   };
   const setStateRegion = (value: string) => {
+    detachSavedAddress();
     setForm((current) => ({ ...current, state: value, city: "" }));
     setErrors((current) => ({ ...current, state: undefined, city: undefined }));
   };
@@ -176,6 +223,12 @@ export default function Checkout() {
     trackCurrentCheckout();
     const payload = buildPayload();
     if (!payload) return;
+    if (isCustomer && saveAddress && selectedAddressId === "new") {
+      saveAddressMutation.mutate({
+        label: savedAddresses.length ? "Other" : "Home", name: payload.name, phone: payload.phone, address: payload.address, city: payload.city,
+        state_region: payload.state_region, postal_code: payload.postal_code, country: payload.country, is_default: savedAddresses.length === 0,
+      });
+    }
     const showReview = () => { setStep("review"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     if (payload.country_code === "IN") quotePayment.mutate(payload, { onSuccess: showReview }); else showReview();
   };
@@ -207,6 +260,18 @@ export default function Checkout() {
         <section className="checkout-form-card">
           {step === "details" && <form onSubmit={continueToReview} noValidate data-testid="checkout-address-form">
             <div className="checkout-step"><span>1</span><div><strong>Contact & delivery</strong><small>Required for shipping confirmation</small></div></div>
+            {savedAddresses.length > 0 && <fieldset className="saved-address-picker" data-testid="checkout-saved-addresses">
+              <legend>Deliver to a saved address</legend>
+              {savedAddresses.map((address) => <label key={address.id} className={selectedAddressId === address.id ? "is-selected" : ""} data-testid={`checkout-saved-address-${address.id}`}>
+                <input type="radio" name="saved-address" checked={selectedAddressId === address.id} onChange={() => applyAddress(address)} data-testid={`checkout-saved-address-radio-${address.id}`} />
+                <span><strong>{address.label}{address.is_default && <em>Default</em>}</strong><small>{address.name} · {formatAddressLine(address)}</small></span>
+              </label>)}
+              <label className={selectedAddressId === "new" ? "is-selected" : ""} data-testid="checkout-saved-address-new">
+                <input type="radio" name="saved-address" checked={selectedAddressId === "new"} onChange={chooseNewAddress} data-testid="checkout-saved-address-radio-new" />
+                <span><strong>Use a different address</strong><small>Enter or edit delivery details below</small></span>
+              </label>
+            </fieldset>}
+            {!user && <p className="checkout-signin-hint" data-testid="checkout-signin-hint">Have a SAFYRA account? <Link to="/login" className="underlined-link" data-testid="checkout-signin-link">Sign in</Link> to use your saved addresses.</p>}
             <div className="checkout-fields">
               <label>Full name
                 <input value={form.name} onChange={(event) => setField("name", event.target.value)} onBlur={() => { showFieldError("name"); trackCurrentCheckout(); }} autoComplete="name" required aria-invalid={Boolean(errors.name)} data-testid="checkout-name" />
@@ -248,6 +313,7 @@ export default function Checkout() {
                 <textarea value={form.note} onChange={(event) => setField("note", event.target.value)} placeholder="Any special instructions for your order?" data-testid="checkout-order-note" />
               </label>
             </div>
+            {isCustomer && selectedAddressId === "new" && <label className="checkout-save-address" data-testid="checkout-save-address"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} data-testid="checkout-save-address-checkbox" /> Save this address to my account{savedAddresses.length === 0 ? " as my default" : ""}</label>}
             <fieldset className="shipping-options">
               <legend>Shipping selection</legend>
               <label className={shipping === "india" ? "is-selected" : ""}><input type="radio" name="shipping" value="india" checked={shipping === "india"} disabled={Boolean(selectedCountry && selectedCountry.isoCode !== "IN")} onChange={() => { setShipping("india"); setErrors((current) => ({ ...current, shipping: undefined })); }} data-testid="shipping-india" /><span><strong>India delivery</strong><small>₹120 for orders up to ₹999 · Free from ₹1,000</small></span></label>

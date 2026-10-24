@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Link as LinkIcon, Star, Trash2, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, ArrowDown, ArrowUp, ImagePlus, Link as LinkIcon, Star, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import SafeProductImage from "@/components/SafeProductImage";
-import { apiUpload, ApiError } from "@/lib/api";
-import type { MediaUploadResponse } from "@/lib/cms";
+import { apiPost, apiUpload, ApiError } from "@/lib/api";
+import type { MediaQualityResponse, MediaUploadResponse } from "@/lib/cms";
 
 interface ImageManagerProps {
   images: string[];
@@ -17,6 +18,17 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
   const [url, setUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const storedImages = images.filter((image) => image.startsWith("/api/media/"));
+  // Advisory photo checks (resolution, blur, document/screenshot). Results are cached server-side per file.
+  const { data: quality } = useQuery({
+    queryKey: ["media-quality", storedImages],
+    queryFn: () => apiPost<MediaQualityResponse>("/media/quality", { urls: storedImages }),
+    enabled: storedImages.length > 0,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const warningsFor = (image: string) => quality?.items.find((item) => item.url === image)?.warnings ?? [];
+  const flagged = images.map((image, index) => ({ index, warnings: warningsFor(image) })).filter((item) => item.warnings.length > 0);
   const addUrl = () => {
     const next = url.trim();
     if (!next || images.length >= limit) return;
@@ -40,6 +52,7 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
       try {
         const uploaded = await apiUpload<MediaUploadResponse>("/media/upload", formData);
         uploadedUrls.push(uploaded.url);
+        if (uploaded.warnings.length) toast.warning(`Check ${file.name}`, { description: uploaded.warnings.join(" "), duration: 9000 });
       } catch (reason) {
         failed += 1;
         toast.error(reason instanceof ApiError && reason.status === 413 ? `${file.name} must be 8 MB or smaller` : `${file.name} could not be uploaded`);
@@ -67,6 +80,7 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
       <button type="button" className="button button-outline" onClick={addUrl} disabled={!url.trim() || images.length >= limit} data-testid={`${testId}-add-url`}><ImagePlus size={15} /> Add URL</button>
       <label className="button button-dark admin-upload-button"><Upload size={15} /> {uploading ? "Uploading…" : "Upload images"}<input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => upload(event.target.files)} disabled={uploading || images.length >= limit} data-testid={`${testId}-file-input`} /></label>
     </div>
-    {images.length > 0 && <div className="admin-image-grid" data-testid={`${testId}-gallery`}>{images.map((image, index) => <div className="admin-image-item" key={`${image}-${index}`} data-testid={`${testId}-item-${index}`}><SafeProductImage src={image} alt={`${label} ${index + 1}`} productName={label} /><span>{index === 0 ? "Primary" : `${index + 1}`}</span><div>{index > 0 && <button type="button" onClick={() => onChange([image, ...images.filter((_, itemIndex) => itemIndex !== index)])} aria-label="Make primary image" title="Make primary" data-testid={`${testId}-make-primary-${index}`}><Star size={14} /></button>}<button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move image earlier" data-testid={`${testId}-move-up-${index}`}><ArrowUp size={14} /></button><button type="button" onClick={() => move(index, 1)} disabled={index === images.length - 1} aria-label="Move image later" data-testid={`${testId}-move-down-${index}`}><ArrowDown size={14} /></button><button type="button" onClick={() => onChange(images.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove image" data-testid={`${testId}-remove-${index}`}><Trash2 size={14} /></button></div></div>)}</div>}
+    {images.length > 0 && <div className="admin-image-grid" data-testid={`${testId}-gallery`}>{images.map((image, index) => <div className="admin-image-item" key={`${image}-${index}`} data-testid={`${testId}-item-${index}`}><SafeProductImage src={image} alt={`${label} ${index + 1}`} productName={label} /><span>{index === 0 ? "Primary" : `${index + 1}`}</span>{warningsFor(image).length > 0 && <em className="admin-image-warning" title={warningsFor(image).join("\n")} data-testid={`${testId}-warning-${index}`}><AlertTriangle size={12} /> Check photo</em>}<div>{index > 0 && <button type="button" onClick={() => onChange([image, ...images.filter((_, itemIndex) => itemIndex !== index)])} aria-label="Make primary image" title="Make primary" data-testid={`${testId}-make-primary-${index}`}><Star size={14} /></button>}<button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move image earlier" data-testid={`${testId}-move-up-${index}`}><ArrowUp size={14} /></button><button type="button" onClick={() => move(index, 1)} disabled={index === images.length - 1} aria-label="Move image later" data-testid={`${testId}-move-down-${index}`}><ArrowDown size={14} /></button><button type="button" onClick={() => onChange(images.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove image" data-testid={`${testId}-remove-${index}`}><Trash2 size={14} /></button></div></div>)}</div>}
+    {flagged.length > 0 && <div className="admin-image-quality" role="status" data-testid={`${testId}-quality-notes`}><strong><AlertTriangle size={14} /> Photo checks</strong><small>Suggestions only. You can still save these images.</small><ul>{flagged.map((item) => <li key={item.index} data-testid={`${testId}-quality-note-${item.index}`}><b>{item.index === 0 ? "Primary" : `Image ${item.index + 1}`}:</b> {item.warnings.join(" ")}</li>)}</ul></div>}
   </section>;
 }
