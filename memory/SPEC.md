@@ -107,3 +107,10 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 - Email: order number, customer, items, shipping, total (credit split noted) and an "Open the order" button, sent through Emergent Resend to `ADMIN_ALERT_EMAIL` (backend/.env, currently safyrachikankari@gmail.com).
 - In-panel: `components/AdminOrderAlerts.tsx` is mounted in `AdminRoute`, so it shows on every admin page. It polls `GET /api/admin/order-alerts` every 15s, lists pending alerts bottom-right and clears them through `POST /api/admin/order-alerts/ack` (`alert_ids: []` dismisses all; opening an order acks just that one).
 - Sound: WebAudio — a soft two-note chime first, then a louder three-note alert repeating every 9s while any alert is pending. Mute toggle in the banner header, remembered per device in `localStorage["safyra-order-alert-muted"]`.
+
+## Daily order digest (9pm IST)
+- Cron `order-digest` in `.emergent/crons.yml`: `0 21 * * *` in `Asia/Kolkata` → `POST /api/cron/order-digest` (Bearer `WEBHOOK_CRON_SECRET`, acks 202 and backgrounds the work, `X-Webhook-Id` deduped through `cron_runs`).
+- `routers/order_digest.py` emails `ADMIN_ALERT_EMAIL`: today's paid orders (IST day window via `lib/dates.now_in_app_tz`), revenue, pieces sold, SAFYRA Credit settled, a per-order list, and a consolidated "pieces to pack" list (title · set · size · colour × qty with order numbers) for every paid order still in Confirmed / In production / Quality check / Ready to dispatch.
+
+## Colour dots on shop cards
+- `ProductCard` shows up to 5 colour dots (the colour's first assigned photo, else its swatch) with a `+N` overflow, only when a product has more than one colour. Each dot links to `/product/{slug}?color={name}`, and the product page pre-selects that shade from the `color` query param.

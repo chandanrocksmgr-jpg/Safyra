@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BellRing, ChevronDown, Heart, Maximize2, MessageCircle, Ruler, Share2, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import BrandHeader from "@/components/BrandHeader";
 import ProductImageViewer from "@/components/ProductImageViewer";
@@ -27,7 +27,9 @@ export default function ProductPage() {
   const { addToCart, closeDrawer, wishlistIds, toggleWishlist } = useShop();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
+  const [searchParams] = useSearchParams();
+  // A shade can be deep-linked from a shop card: /product/slug?color=Blush%20petal
+  const [selectedColor, setSelectedColor] = useState(searchParams.get("color") ?? "");
   const [selectedSetTypeId, setSelectedSetTypeId] = useState("");
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
