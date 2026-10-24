@@ -91,7 +91,7 @@ export default function BrandHeader() {
             <button className="nav-link nav-menu-trigger" onClick={() => setMenuOpen((open) => !open)} data-testid="header-nav-collections">Collections</button>
             {hasLuxury && <Link to="/shop?collection=Safyra%20Luxury" className="nav-link" data-testid="header-nav-luxury">SAFYRA Luxury</Link>}
             {hasExtendedSizes && <Link to="/shop?size=3XL" className="nav-link" data-testid="header-nav-extended-sizes">Extended Sizes</Link>}
-            <Link to="/information#craft" className="nav-link" data-testid="header-nav-about">About</Link>
+            <Link to="/about" className="nav-link" data-testid="header-nav-about">About</Link>
           </nav>
           <div className="header-actions">
             <button className="icon-button" onClick={() => setSearchOpen((open) => !open)} aria-label="Search SAFYRA" data-testid="header-search-button"><Search size={19} /></button>

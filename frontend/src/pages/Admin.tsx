@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowRight, BadgePercent, BarChart3, BellRing, CheckCircle2, FileEdit, FileText, Image, KeyRound, Package, ReceiptText, Settings, ShoppingBag, Tags, UserCog } from "lucide-react";
+import { ArrowRight, BadgePercent, BookOpen, BarChart3, BellRing, CheckCircle2, FileEdit, FileText, Image, KeyRound, Package, ReceiptText, Settings, ShoppingBag, Tags, UserCog } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
 import type { CatalogGroup, HomepageSettings } from "@/lib/cms";
@@ -22,6 +22,7 @@ const quickLinks = [
   { to: "/admin/waitlist", title: "Waitlist", copy: "Track unavailable pieces, customer follow-up and outcomes.", icon: BellRing, testId: "admin-dashboard-waitlist" },
   { to: "/admin/abandoned-checkouts", title: "Abandoned checkouts", copy: "Review incomplete checkouts and one-time recovery email status.", icon: ShoppingBag, testId: "admin-dashboard-abandoned-checkouts" },
   { to: "/admin/information", title: "Care & information", copy: "Edit delivery, exchange, care, Chikankari and FAQ copy.", icon: FileText, testId: "admin-dashboard-information" },
+  { to: "/admin/about", title: "Brand story", copy: "Edit the About page: craft story, promises and founder note.", icon: BookOpen, testId: "admin-dashboard-about" },
   { to: "/admin/staff", title: "Staff access", copy: "Create Junior Admins and control their access.", icon: UserCog, testId: "admin-dashboard-staff" },
 ];
 

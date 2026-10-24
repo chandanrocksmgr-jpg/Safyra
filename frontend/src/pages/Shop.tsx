@@ -5,6 +5,7 @@ import BrandHeader from "@/components/BrandHeader";
 import ProductCard from "@/components/ProductCard";
 import Seo from "@/components/Seo";
 import { apiGet } from "@/lib/api";
+import { availabilityLabel } from "@/lib/shop";
 import type { Product, ProductFacets } from "@/lib/shop";
 
 type FilterKey = "category" | "collection" | "fabric" | "size" | "color" | "craft" | "availability";
@@ -13,7 +14,7 @@ const testSlug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "
 
 function FilterGroup({ title, filterKey, values, selected, onToggle }: { title: string; filterKey: FilterKey; values: string[]; selected: string[]; onToggle: (key: FilterKey, value: string) => void }) {
   if (!values.length) return null;
-  return <details className="filter-block" open={title === "Size"}><summary className="filter-label">{title}<ChevronDown size={15} /></summary>{values.map((item) => <label className="filter-check" key={item} data-testid={`filter-${filterKey}-${testSlug(item)}`}><input type="checkbox" checked={selected.includes(item)} onChange={() => onToggle(filterKey, item)} /><span>{item}</span></label>)}</details>;
+  return <details className="filter-block" open={title === "Size"}><summary className="filter-label">{title}<ChevronDown size={15} /></summary>{values.map((item) => <label className="filter-check" key={item} data-testid={`filter-${filterKey}-${testSlug(item)}`}><input type="checkbox" checked={selected.includes(item)} onChange={() => onToggle(filterKey, item)} /><span>{filterKey === "availability" ? availabilityLabel(item) : item}</span></label>)}</details>;
 }
 
 export default function Shop() {

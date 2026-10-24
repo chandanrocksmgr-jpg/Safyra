@@ -213,3 +213,7 @@ export function galleryFor(product: Pick<Product, "color_options" | "image_urls"
   if (assigned.length) return assigned;
   return product.image_urls?.length ? product.image_urls : [product.image_url];
 }
+
+/** Customer-facing wording for an availability value. "Currently unavailable" reads as "You just missed it". */
+export const availabilityLabel = (availability: string) => availability === "Currently unavailable" ? "You just missed it" : availability;
+export const MISSED_IT_LABEL = "You just missed it";

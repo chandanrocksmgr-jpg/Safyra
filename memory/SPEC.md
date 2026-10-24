@@ -125,3 +125,14 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 ## Editable care & information page
 - `GET /api/information` is public, `PUT /api/information` is Super Admin only (`routers/information.py`, defaults in `DEFAULT_CONTENT`, stored in `site_content` under id `information`).
 - Editable: eyebrow, two-line headline, intro, every section (tab label, anchor id, headline, body — add/remove), FAQ heading and Q&A pairs (add/remove), and the WhatsApp button label plus its pre-filled message. Admin screen: `pages/AdminInformation.tsx` at `/admin/information`; the storefront page reads it live.
+
+## Combination pricing + per-variant override
+- In the product editor's variant table, filter by combination (and/or colour/stock), enter a price and press **Price N shown** → a preview panel lists old → new for up to 8 rows and the total count; nothing changes until **Apply** is pressed. This is how a new product gets one price per combination (Kurta only, Kurta + Dupatta, …) across every size and colour at once.
+- Any single variant can still be overridden in its own Price cell, and **Clear overrides** resets the shown rows back to the combination/product price (blank = inherit). Verified: bulk 4,199 applied to 35 variants, then Blush petal · M overridden to 4,599, both persisted.
+
+## Editable About page
+- `GET /api/about` public, `PUT /api/about` Super Admin only (`routers/about.py`, `site_content` id `about`). Editable: eyebrow, two-line headline, intro, hero image, craft/artisan story blocks (heading, body, image — add/remove), "Why SAFYRA" promises, founder block (name, role, pull quote, note, portrait) and the WhatsApp prompt.
+- Storefront page `/about` (`pages/About.tsx`) replaces the old `/information#craft` header link; admin screen `/admin/about` (`pages/AdminAbout.tsx`, nav "Brand story").
+
+## Out-of-stock wording
+- The stored availability value is still `"Currently unavailable"`, but every customer- and admin-facing surface renders it through `availabilityLabel()` in `lib/shop.ts` as **"You just missed it"** — product page badge, availability line, accordion, Add-to-bag button, shop cards, shop availability filter, and the admin product list and availability dropdown.

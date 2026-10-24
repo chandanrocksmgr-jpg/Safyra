@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Layers, Plus, Trash2 } from "lucide-react";
+import { IndianRupee, Layers, Plus, Trash2 } from "lucide-react";
 import type { ProductSetType, ProductVariant } from "@/lib/shop";
 
 const COMBINATION_SUGGESTIONS = ["Kurta only", "Kurta + Dupatta", "Kurta + Bottom", "Kurta + Bottom + Dupatta", "Kurta + Dupatta + Bottom + Inner"];
@@ -33,6 +33,8 @@ export default function VariantManager({ sizes, colors, setTypes, onSetTypesChan
   const [colorFilter, setColorFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [bulkStock, setBulkStock] = useState("");
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [pricePreview, setPricePreview] = useState<{ price: number; rows: ProductVariant[] } | null>(null);
   const rows = useMemo(() => buildVariantRows(sizes, colors, setTypes, variants), [sizes, colors, setTypes, variants]);
   const isSoldOut = (row: ProductVariant) => !row.available || row.stock < 1;
   const visible = rows.filter((row) => (setFilter === "all" || row.set_type_id === setFilter) && (colorFilter === "all" || row.color === colorFilter)
@@ -81,7 +83,19 @@ export default function VariantManager({ sizes, colors, setTypes, onSetTypesChan
         {colors.length > 1 && <select value={colorFilter} onChange={(event) => setColorFilter(event.target.value)} aria-label="Filter by colour" data-testid="admin-variant-filter-color"><option value="all">All colours</option>{colors.map((color) => <option key={color} value={color}>{color}</option>)}</select>}
         <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value as StockFilter)} aria-label="Filter by stock" data-testid="admin-variant-filter-stock"><option value="all">Any stock</option><option value="in-stock">In stock</option><option value="sold-out">Sold out / unavailable</option></select>
         <div className="variant-bulk"><input type="number" min="0" value={bulkStock} onChange={(event) => setBulkStock(event.target.value)} placeholder="Stock" aria-label="Stock for all shown variants" data-testid="admin-variant-bulk-stock" /><button type="button" className="button button-outline" disabled={bulkStock === "" || !visible.length} onClick={() => { updateRows(visible, { stock: Math.max(0, Number(bulkStock)) }); setBulkStock(""); }} data-testid="admin-variant-bulk-apply">Set for {visible.length} shown</button></div>
+        <div className="variant-bulk"><input type="number" min="0" value={bulkPrice} onChange={(event) => setBulkPrice(event.target.value)} placeholder="Price ₹" aria-label="Price for all shown variants" data-testid="admin-variant-bulk-price" /><button type="button" className="button button-outline" disabled={bulkPrice === "" || !visible.length} onClick={() => setPricePreview({ price: Math.max(0, Number(bulkPrice)), rows: visible })} data-testid="admin-variant-bulk-price-preview"><IndianRupee size={14} /> Price {visible.length} shown</button></div>
+        <button type="button" className="button button-outline" disabled={!visible.some((row) => row.price !== null)} onClick={() => updateRows(visible, { price: null })} data-testid="admin-variant-clear-prices">Clear overrides</button>
       </div>
+      {pricePreview && <div className="variant-price-preview" data-testid="admin-variant-price-preview">
+        <strong>Review this price change</strong>
+        <p>{pricePreview.rows.length} variant{pricePreview.rows.length === 1 ? "" : "s"} will be priced at ₹{pricePreview.price.toLocaleString("en-IN")}. Individual variants can still be overridden afterwards.</p>
+        <ul>{pricePreview.rows.slice(0, 8).map((row) => { const id = `${slug(setTypes.length ? setName(row.set_type_id) : "")}-${slug(row.color)}-${slug(row.size)}`; return <li key={id} data-testid={`admin-variant-price-preview-row-${id}`}>{[setTypes.length ? setName(row.set_type_id) : "", row.color, row.size].filter(Boolean).join(" · ") || "Single variant"}<span>₹{(row.price ?? defaultPrice(row)).toLocaleString("en-IN")} → <b>₹{pricePreview.price.toLocaleString("en-IN")}</b></span></li>; })}</ul>
+        {pricePreview.rows.length > 8 && <p className="admin-help-text">…and {pricePreview.rows.length - 8} more.</p>}
+        <div className="variant-price-preview-actions">
+          <button type="button" className="button button-dark" onClick={() => { updateRows(pricePreview.rows, { price: pricePreview.price }); setPricePreview(null); setBulkPrice(""); }} data-testid="admin-variant-price-confirm">Apply to {pricePreview.rows.length} variants</button>
+          <button type="button" className="button button-outline" onClick={() => setPricePreview(null)} data-testid="admin-variant-price-cancel">Cancel</button>
+        </div>
+      </div>}
       {sizes.length === 0 && colors.length === 0 && setTypes.length === 0 && <p className="admin-help-text">Add sizes or colours above to create variants. Until then this product has a single stock row.</p>}
       <div className="variant-table-wrap"><table className="variant-table" data-testid="admin-variant-table">
         <thead><tr>{setTypes.length > 0 && <th>Combination</th>}{colors.length > 0 && <th>Colour</th>}{sizes.length > 0 && <th>Size</th>}<th>Price (₹)</th><th>Stock</th><th>Available</th><th>Status</th></tr></thead>
@@ -93,7 +107,7 @@ export default function VariantManager({ sizes, colors, setTypes, onSetTypesChan
           <td><span className={`variant-status ${!row.available ? "is-off" : row.stock < 1 ? "is-out" : "is-ok"}`} data-testid={`admin-variant-status-${id}`}>{!row.available ? "Unavailable" : row.stock < 1 ? "Sold out" : `${row.stock} in stock`}</span></td>
         </tr>; })}</tbody>
       </table>{!visible.length && <p className="admin-help-text">No variants match these filters.</p>}</div>
-      <p className="admin-help-text">Leave a price blank to use the {setTypes.length ? "combination" : "product"} price.</p>
+      <p className="admin-help-text">Leave a price blank to use the {setTypes.length ? "combination" : "product"} price. Filter by combination above, then use <b>Price shown</b> to price every colour and size of that combination together — any single variant can still be overridden in its own row.</p>
     </div>
   </div>;
 }
