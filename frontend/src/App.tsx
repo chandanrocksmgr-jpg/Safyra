@@ -12,6 +12,8 @@ import AdminHomepage from "@/pages/AdminHomepage";
 import AdminOrders from "@/pages/AdminOrders";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Account from "@/pages/Account";
 import AdminLogin from "@/pages/AdminLogin";
 import Checkout from "@/pages/Checkout";
@@ -73,6 +75,8 @@ export default function App() {
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/account" element={<CustomerRoute><Account /></CustomerRoute>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />

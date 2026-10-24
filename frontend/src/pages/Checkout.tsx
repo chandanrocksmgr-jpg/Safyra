@@ -385,7 +385,7 @@ export default function Checkout() {
           {isIndia && <div className={creditApplied > 0 ? "summary-line" : "summary-line checkout-payable-total"}><span>Total</span><strong data-testid="checkout-payable-total">{formatPrice(payableTotal)}</strong></div>}
           {isIndia && creditApplied > 0 && <div className="summary-line checkout-credit-line" data-testid="checkout-credit-applied"><span>SAFYRA Credit</span><strong>−{formatPrice(creditApplied)}</strong></div>}
           {isIndia && creditApplied > 0 && <div className="summary-line checkout-payable-total"><span>To pay</span><strong data-testid="checkout-amount-due">{formatPrice(amountDue)}</strong></div>}
-          <small>{isIndia ? "Taxes included. The total is recalculated by SAFYRA before PayU opens." : "International shipping is confirmed personally before payment."}</small>
+          <small>{isIndia ? "The total is recalculated by SAFYRA before PayU opens." : "International shipping is confirmed personally before payment."}</small>
         </aside>
       </div>
     </main>

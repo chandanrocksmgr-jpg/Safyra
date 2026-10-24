@@ -51,7 +51,7 @@ def _request_received_html(order: dict) -> str:
 
 def _payment_confirmed_html(order: dict) -> str:
     account_base = order.get("payment_callback_base") or os.environ["PUBLIC_SITE_URL"].rstrip("/")
-    invoice_note = f'<p>Your GST invoice is ready in <a href="{escape(account_base)}/account">My Account</a>.</p>' if order.get("invoice_status") == "issued" else ""
+    invoice_note = f'<p>Your invoice is ready in <a href="{escape(account_base)}/account">My Account</a>.</p>' if order.get("invoice_status") == "issued" else ""
     return (
         '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
         f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your payment is confirmed.</h1>'
@@ -114,14 +114,14 @@ async def send_invoice_ready_email(invoice_id: str) -> None:
     account_base = order.get("payment_callback_base") or os.environ["PUBLIC_SITE_URL"].rstrip("/")
     html = (
         '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
-        f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your GST invoice is ready.</h1>'
+        f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your invoice is ready.</h1>'
         f'<p>Invoice <strong>{escape(invoice["number"])}</strong> for order <strong>{escape(order["request_number"])}</strong> is stored privately in My Account.</p>'
         f'<p><a href="{escape(account_base)}/account">Open My Account</a></p>'
         f'<p style="font-size:12px;color:#715b52">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for passwords or card details by email.</p>'
         '</td></tr></table>'
     )
     try:
-        email_id = await send_email(to=str(order["email"]), subject=f"GST invoice ready for SAFYRA order {order['request_number']}", html=html)
+        email_id = await send_email(to=str(order["email"]), subject=f"Invoice ready for SAFYRA order {order['request_number']}", html=html)
         await db.invoice_notifications.update_one({"invoice_id": invoice_id}, {"$set": {"delivery_status": "Sent", "email_id": email_id, "sent_at": datetime.now(timezone.utc)}})
     except Exception as exc:
         logger.error("Invoice-ready email failed for %s: %s", invoice_id, exc)

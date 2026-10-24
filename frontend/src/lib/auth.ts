@@ -84,3 +84,4 @@ export interface RecoveryQuestionResponse {
 
 export interface VerificationResponse { verified: boolean; claimed_orders: number }
 export interface VerificationSendResponse { accepted: boolean }
+export interface PasswordResetResponse { accepted: boolean }

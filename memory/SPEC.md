@@ -84,3 +84,14 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 - GST invoice: credit is a payment method; taxable value and GST stay on the full total. The PDF adds "Paid via SAFYRA Credit" and "Paid online (PayU)" rows, and emails show the split.
 - On payment confirmation the purchased lines are removed from the customer's saved bag server-side (prevents the bag reappearing after payment).
 - Fix: account `Order` snapshots coerce null courier/tracking/invoice fields to "" (previously `/api/account` returned 500 after a customer's first confirmed order).
+
+## Password reset (customer email login)
+- `/login` shows "Forgot password?" → `/forgot-password` (`POST /api/auth/password-reset/request`). Response is always generic (`{accepted:true}`) so account existence is never revealed; max 5 requests per email per 15 minutes.
+- Token: 40-byte urlsafe, stored only as SHA-256 in `password_reset_tokens` `{token_hash, user_id, email, created_at, expires_at, used_at}`. **Single use, 10-minute expiry.** Requesting again deletes the previous unused token.
+- Email (Resend) links to `/reset-password?token=…`. `POST /api/auth/password-reset/confirm {token, new_password}` validates strength, sets the hash, adds "password" to `auth_providers` (Google-only accounts can gain a password), deletes all sessions, 204. Invalid/expired/reused token → 400.
+- Frontend pages: `pages/ForgotPassword.tsx`, `pages/ResetPassword.tsx`. After a successful reset the user is sent to `/login`.
+
+## Invoices are tax-free documents (no GST)
+- Invoice/credit-note PDFs no longer print any tax content: title is "INVOICE"/"CREDIT NOTE", no GSTIN, no HSN/GST/Taxable columns, no CGST/SGST/IGST rows, no place-of-supply or reverse-charge lines, footer is "Computer-generated document.". Totals = Product subtotal, Shipping, Total (+ SAFYRA Credit / PayU split).
+- `REQUIRED_INVOICE_FIELDS` now only gates on registered address, seller state, support email/phone and authorised signatory. GST fields remain in store settings and are still stored on invoice documents, but are never rendered.
+- Storefront "Taxes included" notes removed from product, cart and checkout; emails and admin copy say "invoice", not "GST invoice".
