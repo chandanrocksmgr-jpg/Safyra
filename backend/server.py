@@ -37,6 +37,7 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 from lib.db import close_db, db, ensure_indexes, init_db
 from lib.legacy_media import migrate_legacy_media
+from lib.colors import migrate_color_options
 from lib.variants import migrate_product_variants
 
 
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI):
 async def _migrate_legacy_media_safely() -> None:
     try:
         await migrate_product_variants()
+        await migrate_color_options()
     except Exception as exc:  # never crash the app over a data backfill
         logging.getLogger(__name__).error("Product variant migration failed: %s", exc)
     try:

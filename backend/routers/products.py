@@ -10,6 +10,7 @@ from lib.db import db
 from lib.security import get_optional_user, require_admin
 from models.product import DEFAULT_PRODUCTS, Product, ProductCreate, ProductUpdate
 from lib.pricing import active_discounts, best_discount
+from lib.colors import normalize_color_options
 from lib.variants import align_variants, default_variants, legacy_stock_summary
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -165,9 +166,17 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_option
     return _clean(document, discounts)
 
 
+def _color_fields(product: dict) -> dict:
+    """Keep `colors` (names) and `color_options` (swatch + assigned photos) in step with each other."""
+    gallery = product.get("image_urls") or ([product["image_url"]] if product.get("image_url") else [])
+    colors, options = normalize_color_options(product.get("colors") or [], product.get("color_options") or [], gallery)
+    return {"colors": colors, "color_options": options}
+
+
 @router.post("", response_model=Product, status_code=201)
 async def create_product(input: ProductCreate, _: dict = Depends(require_admin)):
     document = Product(**input.model_dump()).model_dump()
+    document.update(_color_fields(document))
     if document.get("variants"):  # admin editor always sends the table; legacy API payloads keep size-level stock
         document.update(_variant_fields(document, document["variants"]))
     product = Product(**document)
@@ -185,6 +194,9 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
         raise HTTPException(status_code=404, detail="Product not found")
     changes = input.model_dump(exclude_unset=True)
     merged = {**existing, **changes}
+    if {"colors", "color_options", "image_urls", "image_url"} & changes.keys():
+        changes.update(_color_fields(merged))
+        merged.update(changes)
     if changes.get("variants") or ("variants" not in changes and existing.get("variants") and {"set_types", "sizes", "colors"} & changes.keys()):
         # Keep an existing variant table aligned when options change; never invent one for legacy size-stock updates.
         changes.update(_variant_fields(merged, merged.get("variants") or []))

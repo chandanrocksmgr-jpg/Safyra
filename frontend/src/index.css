@@ -294,6 +294,22 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .swatches, .size-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
 .swatch { width: 38px; height: 38px; padding: 4px; border: 1px solid #d6c7b2; border-radius: 99px; background: transparent; }
 .swatch span { display: block; width: 100%; height: 100%; border-radius: 99px; }
+.swatch img { display: block; width: 100%; height: 100%; border-radius: 99px; object-fit: cover; }
+.swatch { overflow: hidden; transition: border-color .18s ease, transform .18s ease; }
+.swatch:hover { transform: translateY(-1px); }
+.swatch.is-selected { box-shadow: 0 0 0 1px #2c1a14 inset; }
+
+/* Admin colour manager */
+.color-manager { display: grid; gap: 1rem; }
+.color-option-card { display: grid; gap: .65rem; padding: .85rem; border: 1px solid #e4d9c6; background: #fcfaf5; }
+.color-option-head { display: flex; align-items: flex-end; gap: .6rem; flex-wrap: wrap; }
+.color-option-head label { flex: 1 1 160px; }
+.color-option-head input[type="color"] { width: 46px; height: 38px; padding: 2px; border: 1px solid #d6c7b2; background: #fff; }
+.color-option-photos { display: flex; flex-wrap: wrap; gap: .5rem; }
+.color-photo-pick { position: relative; width: 62px; height: 78px; border: 1px solid #d6c7b2; padding: 0; overflow: hidden; background: #fff; }
+.color-photo-pick img { width: 100%; height: 100%; object-fit: cover; }
+.color-photo-pick.is-picked { border-color: #2c1a14; box-shadow: 0 0 0 2px rgba(44, 26, 20, .18); }
+.color-photo-pick em { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; font-style: normal; background: rgba(38, 28, 25, .82); color: #fff; }
 .swatch.is-selected { border-color: #2c1a14; }
 .custom-dyeing-option { margin-top: 1rem; display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; }
 .custom-dyeing-option > span { color: var(--safyra-espresso-soft); font-size: .72rem; }

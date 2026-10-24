@@ -1,3 +1,10 @@
+/** A colour option: name, approximate swatch and the photos manually assigned to it. Mirrors backend ProductColorOption. */
+export interface ProductColorOption {
+  name: string;
+  swatch: string;
+  image_urls: string[];
+}
+
 export interface ProductSetType {
   id: string;
   name: string;
@@ -32,6 +39,7 @@ export interface Product {
   stock_by_size: Record<string, number>;
   sizes: string[];
   colors: string[];
+  color_options: ProductColorOption[];
   image_url: string;
   image_urls: string[];
   description: string;
@@ -162,3 +170,46 @@ export const cartWhatsappUrl = (items: CartItem[], total: number) =>
       .map((item) => `${item.title} (${variantLabel(item)}) x${item.quantity}`)
       .join(", ")}. Estimated total: ${formatPrice(total)}.`,
   );
+
+/** Keyword → approximate swatch, mirroring backend lib/colors.py so admin previews match the storefront. */
+const SWATCH_KEYWORDS: [string[], string][] = [
+  [["ivory", "vanilla", "off white", "offwhite", "cream", "pearl"], "#EFE6D4"],
+  [["white", "chalk"], "#F6F3EC"],
+  [["blush", "rose", "pink", "petal"], "#D9A3A5"],
+  [["peach", "coral", "apricot"], "#E7B49A"],
+  [["red", "scarlet", "crimson", "maroon", "wine"], "#9B2F2A"],
+  [["mustard", "butter", "yellow", "gold", "haldi"], "#DFBB55"],
+  [["orange", "rust", "terracotta"], "#C2693C"],
+  [["mint", "sage", "olive", "green", "pista", "emerald"], "#6F8166"],
+  [["teal", "turquoise", "aqua"], "#4E8A8B"],
+  [["sky", "aster", "powder blue", "blue", "indigo", "denim"], "#8CA7BF"],
+  [["navy", "midnight", "ink"], "#2B3449"],
+  [["lilac", "lavender", "mauve", "purple", "violet"], "#B4A3C4"],
+  [["beige", "sand", "nude", "biscuit", "oat"], "#D9C7AC"],
+  [["brown", "coffee", "chocolate", "mocha", "tan"], "#7B5A42"],
+  [["grey", "gray", "silver", "steel"], "#9A9A96"],
+  [["black", "onyx", "charcoal"], "#2A2724"],
+];
+
+export function swatchFor(name: string): string {
+  const text = (name || "").trim().toLowerCase();
+  if (!text) return "#E9DFC9";
+  for (const [keywords, hex] of SWATCH_KEYWORDS) if (keywords.some((keyword) => text.includes(keyword))) return hex;
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  const channel = (shift: number) => 110 + ((hash >> shift) & 0xff) % 90;
+  return `#${[channel(0), channel(8), channel(16)].map((value) => value.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+}
+
+export const colorOption = (product: Pick<Product, "color_options">, color: string) =>
+  product.color_options?.find((option) => option.name.toLowerCase() === (color || "").toLowerCase());
+
+export const colorSwatch = (product: Pick<Product, "color_options">, color: string) =>
+  colorOption(product, color)?.swatch || swatchFor(color);
+
+/** Photos for a colour: its manually assigned images, falling back to the full product gallery. */
+export function galleryFor(product: Pick<Product, "color_options" | "image_urls" | "image_url">, color: string): string[] {
+  const assigned = colorOption(product, color)?.image_urls?.filter(Boolean) ?? [];
+  if (assigned.length) return assigned;
+  return product.image_urls?.length ? product.image_urls : [product.image_url];
+}

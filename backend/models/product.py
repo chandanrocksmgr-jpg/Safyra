@@ -33,6 +33,13 @@ class ProductImageValidation(BaseModel):
         return None if value is None else [_check_image_url(item, allow_empty=False) or "" for item in value]
 
 
+class ProductColorOption(BaseModel):
+    """A colour the product is offered in: name, approximate swatch and its manually assigned photos."""
+    name: str = Field(min_length=1, max_length=80)
+    swatch: str = Field(default="", max_length=9)
+    image_urls: list[str] = Field(default_factory=list, max_length=40)
+
+
 class ProductSetType(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str = Field(min_length=1, max_length=100)
@@ -83,6 +90,7 @@ class ProductFields(BaseModel):
     stock_by_size: dict[str, int] = Field(default_factory=dict)
     sizes: list[str] = Field(default_factory=list)
     colors: list[str] = Field(default_factory=list)
+    color_options: list[ProductColorOption] = Field(default_factory=list, max_length=60)
     image_url: str
     image_urls: list[str] = Field(default_factory=list, max_length=40)
     description: str
@@ -127,6 +135,7 @@ class ProductUpdate(ProductImageValidation):
     stock_by_size: Optional[dict[str, int]] = None
     sizes: Optional[list[str]] = None
     colors: Optional[list[str]] = None
+    color_options: Optional[list[ProductColorOption]] = Field(default=None, max_length=60)
     image_url: Optional[str] = None
     image_urls: Optional[list[str]] = Field(default=None, max_length=40)
     description: Optional[str] = None
