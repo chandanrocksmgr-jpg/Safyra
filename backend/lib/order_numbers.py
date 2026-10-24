@@ -13,12 +13,19 @@ def financial_year_label() -> str:
     return f"{start_year % 100:02d}-{(start_year + 1) % 100:02d}"
 
 
-async def next_order_number() -> str:
+async def next_document_number(prefix: str) -> tuple[str, int]:
+    """Next number in the prefix's financial-year series, e.g. ("INV26-27000001", 1)."""
     label = financial_year_label()
     counter = await db.counters.find_one_and_update(
-        {"id": f"order-number-{label}"},
+        {"id": f"{prefix.lower()}-number-{label}"},
         {"$inc": {"value": 1}},
         upsert=True,
         return_document=ReturnDocument.AFTER,
     )
-    return f"SAF{label}{int(counter['value']):06d}"
+    sequence = int(counter["value"])
+    return f"{prefix}{label}{sequence:06d}", sequence
+
+
+async def next_order_number() -> str:
+    number, _ = await next_document_number("SAF")
+    return number

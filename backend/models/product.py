@@ -92,6 +92,8 @@ class ProductFields(BaseModel):
     colors: list[str] = Field(default_factory=list)
     color_options: list[ProductColorOption] = Field(default_factory=list, max_length=60)
     video_urls: list[str] = Field(default_factory=list, max_length=2)
+    # Poster still for each film, aligned by index with video_urls.
+    video_posters: list[str] = Field(default_factory=list, max_length=2)
     image_url: str
     image_urls: list[str] = Field(default_factory=list, max_length=40)
     description: str
@@ -138,6 +140,7 @@ class ProductUpdate(ProductImageValidation):
     colors: Optional[list[str]] = None
     color_options: Optional[list[ProductColorOption]] = Field(default=None, max_length=60)
     video_urls: Optional[list[str]] = Field(default=None, max_length=2)
+    video_posters: Optional[list[str]] = Field(default=None, max_length=2)
     image_url: Optional[str] = None
     image_urls: Optional[list[str]] = Field(default=None, max_length=40)
     description: Optional[str] = None

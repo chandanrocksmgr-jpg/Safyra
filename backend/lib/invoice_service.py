@@ -4,7 +4,6 @@ from io import BytesIO
 from html import escape
 import uuid
 
-from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from reportlab.lib import colors
 
@@ -16,6 +15,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from lib.dates import now_in_app_tz
+from lib.order_numbers import financial_year_label, next_document_number
 from lib.db import db
 
 
@@ -64,18 +64,6 @@ def _tax_parts(total: int, rate: float, intra_state: bool) -> tuple[int, int, in
     return int(taxable), 0, 0, int(tax)
 
 
-async def _next_number(field: str) -> tuple[dict, int]:
-    settings = await db.store_settings.find_one_and_update(
-        {"id": "store"}, {"$inc": {field: 1}}, return_document=ReturnDocument.BEFORE,
-    )
-    if not settings:
-        settings = await get_store_settings_document()
-        settings = await db.store_settings.find_one_and_update(
-            {"id": "store"}, {"$inc": {field: 1}}, return_document=ReturnDocument.BEFORE,
-        )
-    return settings, int(settings[field])
-
-
 async def generate_invoice_for_order(order_id: str) -> dict | None:
     existing = await db.invoices.find_one({"order_id": order_id, "document_type": "invoice"})
     if existing:
@@ -90,10 +78,10 @@ async def generate_invoice_for_order(order_id: str) -> dict | None:
         await db.orders.update_one({"id": order_id}, {"$set": {"invoice_status": "blocked", "invoice_error": message}})
         await db.order_requests.update_one({"id": order["source_request_id"]}, {"$set": {"invoice_status": "blocked", "invoice_error": message}})
         return None
-    settings, sequence = await _next_number("invoice_next_number")
+    # Same financial-year series style as order numbers: INV26-27000001, restarting each 1 April.
+    number, sequence = await next_document_number("INV")
     local_issued_at = now_in_app_tz()
     issued_at = local_issued_at.astimezone(timezone.utc)
-    number = f"{settings['invoice_prefix']}/{financial_year(local_issued_at)}/{sequence:04d}"
     total = int(order.get("total") or order.get("subtotal") or 0)
     intra_state = order.get("state_region", "").strip().lower() == str(settings.get("seller_state") or "").strip().lower()
     invoice_items = []
@@ -108,7 +96,7 @@ async def generate_invoice_for_order(order_id: str) -> dict | None:
         igst += item_igst
         item_rates.append(rate)
         invoice_items.append({
-            **item, "hsn_code": item.get("hsn_code") or settings["other_hsn_code"], "gst_rate": rate,
+            **item, "hsn_code": item.get("hsn_code") or settings.get("other_hsn_code") or "", "gst_rate": rate,
             "taxable_value": item_taxable, "cgst": item_cgst, "sgst": item_sgst, "igst": item_igst,
             "tax_amount": item_cgst + item_sgst + item_igst,
         })
@@ -161,10 +149,9 @@ async def generate_credit_note_for_order(order_id: str) -> dict | None:
     invoice = await db.invoices.find_one({"order_id": order_id, "document_type": "invoice"})
     if not order or not invoice or not order.get("refund_amount"):
         return None
-    settings, sequence = await _next_number("credit_note_next_number")
+    number, sequence = await next_document_number("CN")
     local_issued_at = now_in_app_tz()
     issued_at = local_issued_at.astimezone(timezone.utc)
-    number = f"{settings['credit_note_prefix']}/{financial_year(local_issued_at)}/{sequence:04d}"
     total = min(int(order["refund_amount"]), int(invoice["total"]))
     ratio = Decimal(total) / Decimal(max(1, int(invoice["total"])))
     taxable = int((Decimal(invoice["taxable_value"]) * ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
