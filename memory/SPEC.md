@@ -153,3 +153,13 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 ## Video cover stills
 - `products.video_posters` (max 2) holds one poster per film, aligned by index with `video_urls`.
 - On upload, `components/VideoManager.tsx` captures a frame client-side (canvas grab at ~1s), uploads it through `/api/media/upload` and sets it as the cover; the admin can instead pick any gallery photo as the cover, and a pasted video link defaults to the first gallery photo. The storefront player falls back to the first gallery image if no poster is set.
+
+## First-order gift offer
+- Settings live in `site_content` id `gift_offer` (`routers/gift_offer.py`): `enabled`, `threshold` (default ₹5,000), `product_id`, headline, subtext, terms. `GET /api/gift-offer` is public; `GET/PUT /api/gift-offer/settings` and `GET /api/gift-offer/products` are Super Admin only. Enabling without an active gift, or choosing a product not marked as a gift, is rejected with 422 — so exactly one gift can be live and the offer can be paused and restarted at will.
+- Gift products are ordinary products with `is_gift: true` (ticked in Products → Merchandising, usually with category "Gift"). They are filtered out of the shop list, facets, product detail and `PUBLIC_PRODUCT_FILTER`, so they can never be browsed or bought directly (422).
+- `lib/gift_offer.gift_item_for_order()` appends a ₹0 gift line (`is_gift: true`) to the order at creation in both checkout paths (PayU and international requests) when: the shopper is signed in (registered), the offer is enabled, the bag subtotal ≥ threshold, and `order_requests` holds no earlier non-cancelled order for that email/customer. The order also records `gift_product_id`. Gift stock is not reserved — the admin watches the gift's own stock.
+- Storefront: `GiftOfferPopup` (first visit per device, remembered by gift id in `localStorage["safyra-gift-offer-seen"]`) shows the headline, the gift and its terms; `GiftCartNotice` on the cart and checkout calls `GET /api/gift-offer/eligibility?subtotal=` and shows "add ₹X more" / "sign in" / "is on us". Admin screen: `/admin/gift-offer`.
+- The header account (sign-in) icon is now visible on mobile as well as desktop.
+
+## Site icon
+- The template's default Emergent favicon was replaced with a SAFYRA mark (chocolate tile, ivory serif "S"): `favicon.svg`, `favicon.ico`, 16/32px PNGs, `apple-touch-icon.png`, plus `icon-192.png` / `icon-512.png` referenced from `index.html` (Google prefers a large square icon) and used as `og:image`. The app itself has never contained a "Made with Emergent" badge. The live domain keeps serving the old icon until the next publish, and Google refreshes it on its next crawl.

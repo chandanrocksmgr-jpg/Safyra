@@ -40,6 +40,8 @@ export interface Product {
   sizes: string[];
   colors: string[];
   color_options: ProductColorOption[];
+  /** Gift products are hidden from the storefront and only arrive via the first-order gift offer. */
+  is_gift: boolean;
   /** Up to two product films (MP4/WebM URLs or uploaded /api/media paths). */
   video_urls: string[];
   /** Poster still for each film, aligned by index with video_urls. */

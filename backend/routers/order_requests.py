@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
+from lib.gift_offer import gift_item_for_order
 from lib.order_numbers import next_order_number
 from lib.invoice_service import generate_credit_note_for_order, generate_invoice_for_order
 from lib.order_pricing import price_order_items
@@ -161,14 +162,19 @@ async def create_order_request(input: OrderRequestCreate, background_tasks: Back
     stored_items, regular_subtotal, subtotal, _ = await price_order_items(input.items, input.discount_code)
 
     received_at = datetime.now(timezone.utc)
+    customer_id = user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None
+    gift_item = await gift_item_for_order(str(input.email), customer_id, subtotal)
+    if gift_item:
+        stored_items = [*stored_items, gift_item]
     request_number = await next_order_number()
     document = input.model_dump(exclude={"items"})
     document.update({
         "id": str(uuid.uuid4()),
         "request_number": request_number,
         "received_at": received_at,
-        "customer_id": user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None,
+        "customer_id": customer_id,
         "items": stored_items,
+        "gift_product_id": gift_item["product_id"] if gift_item else None,
         "subtotal": subtotal,
         "regular_subtotal": regular_subtotal,
         "discount_total": regular_subtotal - subtotal,

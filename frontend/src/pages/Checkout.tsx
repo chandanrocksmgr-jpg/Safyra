@@ -10,6 +10,7 @@ import BrandHeader from "@/components/BrandHeader";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { GOOGLE_SIGN_IN_ENABLED } from "@/lib/features";
 import SafeProductImage from "@/components/SafeProductImage";
+import GiftCartNotice from "@/components/GiftCartNotice";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, variantLabel, whatsappUrl } from "@/lib/shop";
 import { apiGet, apiPost, apiPut, ApiError } from "@/lib/api";
@@ -385,6 +386,7 @@ export default function Checkout() {
           {isIndia && <div className={creditApplied > 0 ? "summary-line" : "summary-line checkout-payable-total"}><span>Total</span><strong data-testid="checkout-payable-total">{formatPrice(payableTotal)}</strong></div>}
           {isIndia && creditApplied > 0 && <div className="summary-line checkout-credit-line" data-testid="checkout-credit-applied"><span>SAFYRA Credit</span><strong>−{formatPrice(creditApplied)}</strong></div>}
           {isIndia && creditApplied > 0 && <div className="summary-line checkout-payable-total"><span>To pay</span><strong data-testid="checkout-amount-due">{formatPrice(amountDue)}</strong></div>}
+          <GiftCartNotice subtotal={quotePayment.data?.subtotal ?? cartTotal} />
           <small>{isIndia ? "The total is recalculated by SAFYRA before PayU opens." : "International shipping is confirmed personally before payment."}</small>
         </aside>
       </div>

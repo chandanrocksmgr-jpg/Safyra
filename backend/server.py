@@ -33,6 +33,7 @@ from routers.order_digest import router as order_digest_router
 from routers.staff import router as staff_router
 from routers.information import router as information_router
 from routers.about import router as about_router
+from routers.gift_offer import router as gift_offer_router
 from routers.password_reset import router as password_reset_router
 
 
@@ -131,6 +132,7 @@ api_router.include_router(order_digest_router)
 api_router.include_router(staff_router)
 api_router.include_router(information_router)
 api_router.include_router(about_router)
+api_router.include_router(gift_offer_router)
 
 app.add_middleware(
     CORSMiddleware,

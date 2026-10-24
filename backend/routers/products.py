@@ -72,6 +72,7 @@ async def list_products(
     await _ensure_catalog()
     is_admin = bool(user and user.get("role") == "admin")
     filters: dict = {} if is_admin else {"$and": [
+        {"is_gift": {"$ne": True}},  # gift products never appear in the storefront catalogue
         {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
         {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
     ]}
@@ -130,6 +131,7 @@ async def list_products(
 async def product_facets():
     await _ensure_catalog()
     public_filter = {"$and": [
+        {"is_gift": {"$ne": True}},
         {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
         {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
     ]}
@@ -156,6 +158,7 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_option
     filters: dict = {"$or": [{"id": product_id}, {"slug": product_id}]}
     if not user or user.get("role") != "admin":
         filters["$and"] = [
+            {"is_gift": {"$ne": True}},
             {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
             {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
         ]

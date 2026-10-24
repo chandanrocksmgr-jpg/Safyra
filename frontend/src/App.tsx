@@ -37,6 +37,8 @@ import AdminOrderAlerts from "@/components/AdminOrderAlerts";
 import AdminStaff from "@/pages/AdminStaff";
 import AdminInformation from "@/pages/AdminInformation";
 import AdminAbout from "@/pages/AdminAbout";
+import AdminGiftOffer from "@/pages/AdminGiftOffer";
+import GiftOfferPopup from "@/components/GiftOfferPopup";
 import About from "@/pages/About";
 
 function ScrollToTop() {
@@ -107,12 +109,14 @@ export default function App() {
           <Route path="/admin/customers" element={<SuperAdminRoute><AdminCustomers /></SuperAdminRoute>} />
           <Route path="/admin/abandoned-checkouts" element={<SuperAdminRoute><AdminAbandonedCheckouts /></SuperAdminRoute>} />
           <Route path="/admin/information" element={<SuperAdminRoute><AdminInformation /></SuperAdminRoute>} />
+          <Route path="/admin/gift-offer" element={<SuperAdminRoute><AdminGiftOffer /></SuperAdminRoute>} />
           <Route path="/admin/about" element={<SuperAdminRoute><AdminAbout /></SuperAdminRoute>} />
           <Route path="/admin/staff" element={<SuperAdminRoute><AdminStaff /></SuperAdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CartDrawer />
         <ProductWaitlistAction />
+        <GiftOfferPopup />
       </ShopProvider>}
     </AuthProvider>
   );

@@ -13,6 +13,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
+from lib.gift_offer import gift_item_for_order
 from lib.order_numbers import next_order_number
 from lib.invoice_service import generate_invoice_for_order
 from lib.store_credit import credit_balance, hold_credit, restore_credit
@@ -159,6 +160,10 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
         )
     customer = _credit_customer(user)
     stored_items, plans, quote = await _priced_quote(input, user)
+    gift_customer_id = customer["id"] if customer else (user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None)
+    gift_item = await gift_item_for_order(str(input.email), gift_customer_id, quote.subtotal)
+    if gift_item:
+        stored_items = [*stored_items, gift_item]
     reservations = await reserve_inventory(plans)
     now = datetime.now(timezone.utc)
     request_number = await next_order_number()
@@ -175,7 +180,7 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
     document.update({
         "id": str(uuid.uuid4()), "request_number": request_number, "received_at": now,
         # Orders paid partly with credit always belong to the signed-in customer whose credit was used.
-        "customer_id": customer["id"] if credit_allocations else user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None, "items": stored_items,
+        "customer_id": customer["id"] if credit_allocations else user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None, "items": stored_items, "gift_product_id": gift_item["product_id"] if gift_item else None,
         **quote.model_dump(exclude={"store_credit_balance", "use_store_credit"}), "record_type": "Request", "payment_status": "Payment pending",
         "credit_allocations": credit_allocations, "credit_status": "held" if credit_allocations else "none",
         "payment_provider": "SAFYRA Credit" if paid_by_credit else "PayU", "payment_transaction_id": transaction_id, "payu_payment_id": None,

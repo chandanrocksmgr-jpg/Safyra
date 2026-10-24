@@ -10,6 +10,7 @@ from lib.variants import find_variant, selected_set_type, uses_variants, variant
 
 PUBLIC_PRODUCT_FILTER = {
     "$and": [
+        {"is_gift": {"$ne": True}},
         {"title": {"$not": {"$regex": "^(tscheck|test|debug|placeholder)", "$options": "i"}}},
         {"$or": [{"status": "active"}, {"status": {"$exists": False}}]},
     ]
