@@ -63,13 +63,14 @@ export default function VariantManager({ sizes, colors, setTypes, onSetTypesChan
 
   return <div className="variant-manager" data-testid="admin-variant-manager">
     <div className="variant-block" data-testid="admin-set-types">
-      <div className="variant-block-heading"><div><strong><Layers size={15} /> Combinations</strong><small>Optional. Add the sets this product is sold as, for example Kurta only or Kurta + Dupatta, each with its own price. Leave empty if it is sold as one piece.</small></div><button type="button" className="button button-outline" onClick={addSetType} disabled={setTypes.length >= 20} data-testid="admin-set-type-add"><Plus size={14} /> Add combination</button></div>
+      <div className="variant-block-heading"><div><strong><Layers size={15} /> Combinations</strong><small>Add the sets this product is sold as — Kurta only, Kurta + Dupatta, and so on — each with its own price. “Price all its variants” applies that price to every colour and size of the combination at once, and any single variant can still be overridden below.</small></div><button type="button" className="button button-outline" onClick={addSetType} disabled={setTypes.length >= 20} data-testid="admin-set-type-add"><Plus size={14} /> Add combination</button></div>
       {setTypes.length > 0 && <div className="set-type-rows">
         <datalist id="admin-set-type-suggestions">{COMBINATION_SUGGESTIONS.map((name) => <option key={name} value={name} />)}</datalist>
         {setTypes.map((item, index) => <div className="set-type-row" key={item.id} data-testid={`admin-set-type-row-${index}`}>
           <label>Name<input list="admin-set-type-suggestions" value={item.name} onChange={(event) => updateSetType(item.id, { name: event.target.value })} placeholder="Kurta + Dupatta" required maxLength={100} data-testid={`admin-set-type-name-${index}`} /></label>
           <label>Price (₹)<input type="number" min="0" value={item.price} onChange={(event) => updateSetType(item.id, { price: Math.max(0, Number(event.target.value)) })} required data-testid={`admin-set-type-price-${index}`} /></label>
           <label>Compare-at (₹)<input type="number" min="0" value={item.mrp ?? ""} onChange={(event) => updateSetType(item.id, { mrp: event.target.value ? Math.max(0, Number(event.target.value)) : null })} data-testid={`admin-set-type-mrp-${index}`} /></label>
+          <button type="button" className="button button-outline" onClick={() => setPricePreview({ price: Math.max(0, Number(item.price) || 0), rows: rows.filter((row) => row.set_type_id === item.id) })} disabled={!rows.some((row) => row.set_type_id === item.id)} title={`Price every colour and size of ${item.name || "this combination"} at ₹${Number(item.price || 0).toLocaleString("en-IN")}`} data-testid={`admin-set-type-apply-price-${index}`}><IndianRupee size={14} /> Price all its variants</button>
           <button type="button" className="icon-button" onClick={() => removeSetType(item.id)} aria-label={`Remove ${item.name || "combination"}`} data-testid={`admin-set-type-remove-${index}`}><Trash2 size={15} /></button>
         </div>)}
       </div>}

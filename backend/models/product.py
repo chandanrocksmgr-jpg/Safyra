@@ -91,6 +91,7 @@ class ProductFields(BaseModel):
     sizes: list[str] = Field(default_factory=list)
     colors: list[str] = Field(default_factory=list)
     color_options: list[ProductColorOption] = Field(default_factory=list, max_length=60)
+    video_urls: list[str] = Field(default_factory=list, max_length=2)
     image_url: str
     image_urls: list[str] = Field(default_factory=list, max_length=40)
     description: str
@@ -136,6 +137,7 @@ class ProductUpdate(ProductImageValidation):
     sizes: Optional[list[str]] = None
     colors: Optional[list[str]] = None
     color_options: Optional[list[ProductColorOption]] = Field(default=None, max_length=60)
+    video_urls: Optional[list[str]] = Field(default=None, max_length=2)
     image_url: Optional[str] = None
     image_urls: Optional[list[str]] = Field(default=None, max_length=40)
     description: Optional[str] = None

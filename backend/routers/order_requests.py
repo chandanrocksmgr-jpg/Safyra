@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
+from lib.order_numbers import next_order_number
 from lib.invoice_service import generate_credit_note_for_order, generate_invoice_for_order
 from lib.order_pricing import price_order_items
 from lib.security import get_optional_user, require_super_admin
@@ -160,7 +161,7 @@ async def create_order_request(input: OrderRequestCreate, background_tasks: Back
     stored_items, regular_subtotal, subtotal, _ = await price_order_items(input.items, input.discount_code)
 
     received_at = datetime.now(timezone.utc)
-    request_number = f"SAF-REQ-{received_at:%Y%m%d}-{uuid.uuid4().hex[:6].upper()}"
+    request_number = await next_order_number()
     document = input.model_dump(exclude={"items"})
     document.update({
         "id": str(uuid.uuid4()),

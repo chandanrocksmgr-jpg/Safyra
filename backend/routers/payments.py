@@ -13,6 +13,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
+from lib.order_numbers import next_order_number
 from lib.invoice_service import generate_invoice_for_order
 from lib.store_credit import credit_balance, hold_credit, restore_credit
 from lib.order_pricing import india_shipping_amount, price_order_items, release_inventory, reserve_inventory
@@ -160,7 +161,7 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
     stored_items, plans, quote = await _priced_quote(input, user)
     reservations = await reserve_inventory(plans)
     now = datetime.now(timezone.utc)
-    request_number = f"SAF-REQ-{now:%Y%m%d}-{uuid.uuid4().hex[:6].upper()}"
+    request_number = await next_order_number()
     transaction_id = f"SAF{uuid.uuid4().hex[:20].upper()}"
     credit_allocations: list[dict] = []
     if quote.credit_applied:

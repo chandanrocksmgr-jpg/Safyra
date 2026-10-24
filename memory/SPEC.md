@@ -136,3 +136,13 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 
 ## Out-of-stock wording
 - The stored availability value is still `"Currently unavailable"`, but every customer- and admin-facing surface renders it through `availabilityLabel()` in `lib/shop.ts` as **"You just missed it"** — product page badge, availability line, accordion, Add-to-bag button, shop cards, shop availability filter, and the admin product list and availability dropdown.
+
+## Order numbering (financial-year series)
+- `lib/order_numbers.py`: `SAF{FY}{NNNNNN}` → e.g. `SAF26-27000001`. FY label is the Indian financial year in APP_TZ (1 Apr – 31 Mar), and the 6-digit counter lives in `counters` under `order-number-{label}`, incremented atomically, so it restarts at 000001 every 1 April. Used by both `/api/order-requests` (international) and PayU checkout. Older `SAF-REQ-…` numbers stay valid on existing orders.
+
+## Product videos
+- `products.video_urls` holds up to 2 URLs (Pydantic + TS both capped at 2; a third is rejected with 422). `POST /api/media/upload-video` (admin) accepts MP4/WebM/MOV up to 40 MB into the same GridFS bucket and is served by `GET /api/media/{id}` with its real content type; a link can be pasted instead.
+- Admin: `components/VideoManager.tsx` inside the product media card. Storefront: an "In motion" section on the product page renders the films with native controls.
+
+## Combination pricing (clarified)
+- Pricing is per **combination within one product** (set type), never per collection: each combination row has "Price all its variants", which previews and then applies that combination's price to every colour and size of it. The variant toolbar's "Price N shown" does the same for whatever the filters show. Individual variant prices remain editable as overrides.

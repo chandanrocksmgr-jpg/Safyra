@@ -23,6 +23,8 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_BYTES = 8 * 1024 * 1024
 FORMAT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+VIDEO_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
+MAX_VIDEO_BYTES = 40 * 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 40_000_000
 
 
@@ -92,6 +94,31 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
         height=quality.get("height", height),
         warnings=quality.get("warnings", []),
     )
+
+
+class MediaVideoResponse(BaseModel):
+    url: str
+    content_type: str
+    size: int
+
+
+@router.post("/upload-video", response_model=MediaVideoResponse, status_code=201)
+async def upload_video(file: UploadFile = File(...), _: dict = Depends(require_admin)):
+    """Short product films (max 2 per product), stored in the same GridFS bucket as photos."""
+    if file.content_type not in VIDEO_TYPES:
+        raise HTTPException(status_code=415, detail="Upload an MP4, WebM or MOV video")
+    content = await file.read(MAX_VIDEO_BYTES + 1)
+    await file.close()
+    if not content:
+        raise HTTPException(status_code=400, detail="The uploaded video is empty")
+    if len(content) > MAX_VIDEO_BYTES:
+        raise HTTPException(status_code=413, detail="Videos must be 40 MB or smaller")
+    media_id = await _media_bucket().upload_from_stream(
+        f"{uuid.uuid4()}{VIDEO_TYPES[file.content_type]}",
+        content,
+        metadata={"content_type": file.content_type, "size": len(content), "kind": "video"},
+    )
+    return MediaVideoResponse(url=f"/api/media/{media_id}", content_type=file.content_type, size=len(content))
 
 
 def _safe_analysis(content: bytes) -> dict:

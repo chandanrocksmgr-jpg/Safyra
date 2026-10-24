@@ -40,6 +40,8 @@ export interface Product {
   sizes: string[];
   colors: string[];
   color_options: ProductColorOption[];
+  /** Up to two product films (MP4/WebM URLs or uploaded /api/media paths). */
+  video_urls: string[];
   image_url: string;
   image_urls: string[];
   description: string;
