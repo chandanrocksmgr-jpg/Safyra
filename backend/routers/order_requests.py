@@ -8,7 +8,7 @@ from pymongo.errors import DuplicateKeyError
 from lib.db import db
 from lib.invoice_service import generate_credit_note_for_order, generate_invoice_for_order
 from lib.order_pricing import price_order_items
-from lib.security import get_optional_user, require_admin
+from lib.security import get_optional_user, require_super_admin
 from models.order_request import (
     OrderCancellationRequest,
     OrderConversionResponse,
@@ -218,7 +218,7 @@ async def list_order_requests(
     fulfilment_status: str | None = Query(default=None),
     cancelled: bool | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_super_admin),
 ):
     conditions: list[dict] = []
     if q.strip():
@@ -243,12 +243,12 @@ async def list_order_requests(
 
 
 @router.get("/{request_id}", response_model=OrderRequestAdmin)
-async def get_order_request(request_id: str, _: dict = Depends(require_admin)):
+async def get_order_request(request_id: str, _: dict = Depends(require_super_admin)):
     return OrderRequestAdmin(**await _find_request(request_id))
 
 
 @router.patch("/{request_id}", response_model=OrderRequestAdmin)
-async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, background_tasks: BackgroundTasks, admin: dict = Depends(require_admin)):
+async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, background_tasks: BackgroundTasks, admin: dict = Depends(require_super_admin)):
     existing = await _find_request(request_id)
     if existing["cancelled"]:
         raise HTTPException(status_code=409, detail="Cancelled orders cannot be updated")
@@ -321,7 +321,7 @@ async def update_order_request(request_id: str, input: OrderRequestAdminUpdate, 
 
 
 @router.post("/{request_id}/cancel", response_model=OrderRequestAdmin)
-async def cancel_order_request(request_id: str, input: OrderCancellationRequest, admin: dict = Depends(require_admin)):
+async def cancel_order_request(request_id: str, input: OrderCancellationRequest, admin: dict = Depends(require_super_admin)):
     existing = await _find_request(request_id)
     if existing["cancelled"]:
         return OrderRequestAdmin(**existing)
@@ -386,7 +386,7 @@ async def _convert_request_document(request_document: dict, actor_id: str | None
 
 
 @router.post("/{request_id}/convert", response_model=OrderConversionResponse)
-async def convert_order_request(request_id: str, admin: dict = Depends(require_admin)):
+async def convert_order_request(request_id: str, admin: dict = Depends(require_super_admin)):
     request_document = await _find_request(request_id)
     if request_document["cancelled"]:
         raise HTTPException(status_code=409, detail="Cancelled requests cannot be converted")

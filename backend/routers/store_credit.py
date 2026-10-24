@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from lib.db import db
 from lib.email_service import send_email
-from lib.security import get_current_user, require_admin
+from lib.security import get_current_user, require_super_admin
 from lib.store_credit import balances_for, credit_summary, issue_credit
 from models.store_credit import AdminCustomerDetail, AdminCustomerRow, StoreCreditIssue, StoreCreditSummary
 
@@ -35,7 +35,7 @@ def _customer_query(q: str) -> dict:
 
 
 @router.get("/admin/customers", response_model=list[AdminCustomerRow])
-async def search_customers(q: str = Query(default="", max_length=120), _: dict = Depends(require_admin)):
+async def search_customers(q: str = Query(default="", max_length=120), _: dict = Depends(require_super_admin)):
     users = await db.users.find(_customer_query(q), CUSTOMER_FIELDS).sort("created_at", -1).to_list(50)
     balances = await balances_for([user["id"] for user in users])
     return [AdminCustomerRow(**user, credit_balance=balances.get(user["id"], 0)) for user in users]
@@ -59,12 +59,12 @@ async def _customer(customer_id: str) -> dict:
 
 
 @router.get("/admin/customers/{customer_id}", response_model=AdminCustomerDetail)
-async def customer_detail(customer_id: str, _: dict = Depends(require_admin)):
+async def customer_detail(customer_id: str, _: dict = Depends(require_super_admin)):
     return await _detail(await _customer(customer_id))
 
 
 @router.post("/admin/customers/{customer_id}/store-credit", response_model=AdminCustomerDetail, status_code=201)
-async def issue_store_credit(customer_id: str, input: StoreCreditIssue, background_tasks: BackgroundTasks, admin: dict = Depends(require_admin)):
+async def issue_store_credit(customer_id: str, input: StoreCreditIssue, background_tasks: BackgroundTasks, admin: dict = Depends(require_super_admin)):
     customer = await _customer(customer_id)
     grant = await issue_credit(customer["id"], input.amount, admin.get("id"))
     background_tasks.add_task(_email_customer, customer, grant)

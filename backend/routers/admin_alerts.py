@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from lib.admin_alerts import alert_recipient
 from lib.db import get_db
-from lib.security import require_admin
+from lib.security import require_super_admin
 
 router = APIRouter(prefix="/admin/order-alerts", tags=["admin-alerts"])
 
@@ -39,13 +39,13 @@ class AdminOrderAlertAckResult(BaseModel):
 
 
 @router.get("", response_model=AdminOrderAlertList)
-async def list_order_alerts(_: dict = Depends(require_admin)):
+async def list_order_alerts(_: dict = Depends(require_super_admin)):
     cursor = get_db().admin_order_alerts.find({"acknowledged_at": None}).sort("created_at", -1).limit(20)
     return AdminOrderAlertList(alerts=[AdminOrderAlert(**document) async for document in cursor], alert_email=alert_recipient())
 
 
 @router.post("/ack", response_model=AdminOrderAlertAckResult)
-async def acknowledge_order_alerts(input: AdminOrderAlertAck, admin: dict = Depends(require_admin)):
+async def acknowledge_order_alerts(input: AdminOrderAlertAck, admin: dict = Depends(require_super_admin)):
     """Empty alert_ids clears every pending alert (the 'dismiss all' action)."""
     query: dict = {"acknowledged_at": None}
     if input.alert_ids:

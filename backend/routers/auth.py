@@ -28,6 +28,8 @@ async def _login(input: LoginRequest, response: Response, role: str) -> AuthResp
     user = await db.users.find_one({"email": email, "role": role})
     if not user or not verify_secret(input.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email or password is incorrect")
+    if user.get("status") == "deactivated":
+        raise HTTPException(status_code=403, detail="This account has been deactivated. Ask the Super Admin to restore it.")
     await start_session(user["id"], response)
     return AuthResponse(user=_public(user))
 

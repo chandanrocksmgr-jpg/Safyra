@@ -1,15 +1,32 @@
 import { MessageCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import BrandHeader from "@/components/BrandHeader";
 import Seo from "@/components/Seo";
+import { apiGet } from "@/lib/api";
+import type { InformationContent } from "@/lib/information";
 import { whatsappUrl } from "@/lib/shop";
 
-const sections = [
-  { id: "delivery", label: "Dispatch & delivery", title: "Clear timing, piece by piece.", text: "Making and dispatch information is shown on each product whenever it has been verified. Delivery time can vary by destination. International orders are supported, with shipping options and charges confirmed personally before payment." },
-  { id: "exchange", label: "Exchange / store credit", title: "Confirm the right option before ordering.", text: "Eligibility can depend on the garment, customisation and order status. Ask SAFYRA for the current exchange or store-credit terms for the exact piece you are considering." },
-  { id: "care", label: "Garment care", title: "Care for the textile and embroidery.", text: "Follow the care guidance displayed on the product page. Where care information has not yet been approved, SAFYRA will confirm it before purchase rather than making a general claim." },
-  { id: "craft", label: "Chikankari", title: "Lucknowi Chikankari at SAFYRA.", text: "The current catalogue documents the fabric and embroidery work product by product, including French knot Chikankari, Resham silk Chikankari, Mukaish and Badla where applicable." },
-];
-
 export default function Information() {
-  return <div className="page-shell"><Seo title="Delivery, Care & Chikankari Information | SAFYRA" description="Read SAFYRA guidance for product details, Chikankari work, dispatch, delivery, garment care, exchanges and customer support." canonicalPath="/information" /><BrandHeader /><main className="information-page"><header><span className="eyebrow">SAFYRA care & information</span><h1>Product, delivery<br /><em>and care guidance.</em></h1><p>Clear product information and personal help when the answer depends on your piece or destination.</p></header><nav className="information-nav">{sections.map((section) => <a href={`#${section.id}`} key={section.id} data-testid={`information-nav-${section.id}`}>{section.label}</a>)}<a href="#faq" data-testid="information-nav-faq">FAQ</a></nav>{sections.map((section) => <section id={section.id} className="information-section" key={section.id}><span className="eyebrow">{section.label}</span><h2>{section.title}</h2><p>{section.text}</p></section>)}<section id="faq" className="information-section faq-section"><span className="eyebrow">Frequently asked questions</span><h2>Helpful answers.</h2><details open><summary>How is the embroidery described?</summary><p>Each product page shows the Chikankari or additional work documented for that specific piece. Missing information is omitted until confirmed.</p></details><details><summary>Do you ship internationally?</summary><p>Yes. Connect with SAFYRA on WhatsApp for current options, timing and pricing for your destination.</p></details><details><summary>What support is available after ordering?</summary><p>SAFYRA offers personal support before dispatch and after delivery, with direct guidance when you need it.</p></details></section><a className="information-help" href={whatsappUrl("Hello SAFYRA, I need help with product information, shipping or care.")} target="_blank" rel="noreferrer" data-testid="information-whatsapp"><MessageCircle size={17} /> Ask SAFYRA directly</a></main></div>;
+  // Content is editable by the Super Admin in Admin → Care & information.
+  const { data } = useQuery({ queryKey: ["information"], queryFn: () => apiGet<InformationContent>("/information") });
+  if (!data) return <div className="page-shell"><BrandHeader /><main className="information-page"><p className="route-loading" data-testid="information-loading">Loading guidance…</p></main></div>;
+  return <div className="page-shell">
+    <Seo title="Delivery, Care & Chikankari Information | SAFYRA" description="Read SAFYRA guidance for product details, Chikankari work, dispatch, delivery, garment care, exchanges and customer support." canonicalPath="/information" />
+    <BrandHeader />
+    <main className="information-page">
+      <header><span className="eyebrow">{data.eyebrow}</span><h1>{data.title}{data.title_emphasis && <><br /><em>{data.title_emphasis}</em></>}</h1><p>{data.intro}</p></header>
+      <nav className="information-nav">
+        {data.sections.map((section) => <a href={`#${section.id}`} key={section.id} data-testid={`information-nav-${section.id}`}>{section.label}</a>)}
+        {data.faqs.length > 0 && <a href="#faq" data-testid="information-nav-faq">FAQ</a>}
+      </nav>
+      {data.sections.map((section) => <section id={section.id} className="information-section" key={section.id} data-testid={`information-section-${section.id}`}>
+        <span className="eyebrow">{section.label}</span><h2>{section.title}</h2><p>{section.text}</p>
+      </section>)}
+      {data.faqs.length > 0 && <section id="faq" className="information-section faq-section" data-testid="information-faq">
+        <span className="eyebrow">Frequently asked questions</span><h2>{data.faq_title}</h2>
+        {data.faqs.map((faq, index) => <details key={faq.question} open={index === 0} data-testid={`information-faq-${index}`}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
+      </section>}
+      <a className="information-help" href={whatsappUrl(data.help_message)} target="_blank" rel="noreferrer" data-testid="information-whatsapp"><MessageCircle size={17} /> {data.help_label}</a>
+    </main>
+  </div>;
 }

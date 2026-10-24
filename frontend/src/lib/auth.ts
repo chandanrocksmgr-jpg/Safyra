@@ -5,6 +5,8 @@ export interface User {
   email: string;
   name: string;
   role: "customer" | "admin";
+  /** Staff level — "junior" admins may manage the catalogue only. Customers and legacy admins read as "super". */
+  admin_role: "super" | "junior";
   phone: string;
   email_verified: boolean;
   email_verified_at: string | null;

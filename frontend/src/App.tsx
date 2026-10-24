@@ -34,6 +34,8 @@ import AdminSettings from "@/pages/AdminSettings";
 import VerifyEmail from "@/pages/VerifyEmail";
 import GoogleAuthCallback from "@/pages/GoogleAuthCallback";
 import AdminOrderAlerts from "@/components/AdminOrderAlerts";
+import AdminStaff from "@/pages/AdminStaff";
+import AdminInformation from "@/pages/AdminInformation";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -53,6 +55,16 @@ function AdminRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <div className="route-loading" data-testid="admin-route-loading">Verifying secure access…</div>;
   if (!user || user.role !== "admin") return <Navigate to="/admin-login" replace />;
+  // New-order alerts carry customer and payment data, so only Super Admins receive them.
+  return <>{children}{user.admin_role !== "junior" && <AdminOrderAlerts />}</>;
+}
+
+/** Super Admin only: orders, customers, payments, settings, staff and storefront content. */
+function SuperAdminRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="route-loading" data-testid="admin-route-loading">Verifying secure access…</div>;
+  if (!user || user.role !== "admin") return <Navigate to="/admin-login" replace />;
+  if (user.admin_role === "junior") return <Navigate to="/admin/products" replace />;
   return <>{children}<AdminOrderAlerts /></>;
 }
 
@@ -82,15 +94,17 @@ export default function App() {
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
-          <Route path="/admin/collections" element={<AdminRoute><AdminCollections /></AdminRoute>} />
-          <Route path="/admin/homepage" element={<AdminRoute><AdminHomepage /></AdminRoute>} />
-          <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
-          <Route path="/admin/offers" element={<AdminRoute><AdminOffers /></AdminRoute>} />
-          <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
-          <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-          <Route path="/admin/waitlist" element={<AdminRoute><AdminWaitlist /></AdminRoute>} />
-          <Route path="/admin/customers" element={<AdminRoute><AdminCustomers /></AdminRoute>} />
-          <Route path="/admin/abandoned-checkouts" element={<AdminRoute><AdminAbandonedCheckouts /></AdminRoute>} />
+          <Route path="/admin/collections" element={<SuperAdminRoute><AdminCollections /></SuperAdminRoute>} />
+          <Route path="/admin/homepage" element={<SuperAdminRoute><AdminHomepage /></SuperAdminRoute>} />
+          <Route path="/admin/orders" element={<SuperAdminRoute><AdminOrders /></SuperAdminRoute>} />
+          <Route path="/admin/offers" element={<SuperAdminRoute><AdminOffers /></SuperAdminRoute>} />
+          <Route path="/admin/analytics" element={<SuperAdminRoute><AdminAnalytics /></SuperAdminRoute>} />
+          <Route path="/admin/settings" element={<SuperAdminRoute><AdminSettings /></SuperAdminRoute>} />
+          <Route path="/admin/waitlist" element={<SuperAdminRoute><AdminWaitlist /></SuperAdminRoute>} />
+          <Route path="/admin/customers" element={<SuperAdminRoute><AdminCustomers /></SuperAdminRoute>} />
+          <Route path="/admin/abandoned-checkouts" element={<SuperAdminRoute><AdminAbandonedCheckouts /></SuperAdminRoute>} />
+          <Route path="/admin/information" element={<SuperAdminRoute><AdminInformation /></SuperAdminRoute>} />
+          <Route path="/admin/staff" element={<SuperAdminRoute><AdminStaff /></SuperAdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CartDrawer />

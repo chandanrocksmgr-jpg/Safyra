@@ -13,7 +13,7 @@ from pymongo.errors import DuplicateKeyError
 from lib.db import db
 from lib.email_service import EMAIL_FROM_NAME, send_email
 from lib.pricing import active_discounts, resolve_product_selection
-from lib.security import require_admin
+from lib.security import require_super_admin
 from models.checkout_session import (
     CheckoutActivity,
     CheckoutSessionAdmin,
@@ -134,7 +134,7 @@ async def list_checkout_sessions(
     sort: str = Query(default="newest"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_super_admin),
 ):
     await _mark_abandoned()
     conditions: list[dict] = []
@@ -157,7 +157,7 @@ async def list_checkout_sessions(
 
 
 @router.get("/checkout-sessions/{session_id}", response_model=CheckoutSessionAdmin)
-async def get_checkout_session(session_id: str, _: dict = Depends(require_admin)):
+async def get_checkout_session(session_id: str, _: dict = Depends(require_super_admin)):
     await _mark_abandoned()
     document = await db.checkout_sessions.find_one({"id": session_id})
     if not document:
@@ -166,7 +166,7 @@ async def get_checkout_session(session_id: str, _: dict = Depends(require_admin)
 
 
 @router.patch("/checkout-sessions/{session_id}", response_model=CheckoutSessionAdmin)
-async def update_checkout_session(session_id: str, input: CheckoutSessionAdminUpdate, _: dict = Depends(require_admin)):
+async def update_checkout_session(session_id: str, input: CheckoutSessionAdminUpdate, _: dict = Depends(require_super_admin)):
     now = datetime.now(timezone.utc)
     document = await db.checkout_sessions.find_one_and_update(
         {"id": session_id},

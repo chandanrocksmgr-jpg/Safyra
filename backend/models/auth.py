@@ -10,6 +10,7 @@ class UserPublic(BaseModel):
     email: EmailStr
     name: str
     role: Literal["customer", "admin"]
+    admin_role: Literal["super", "junior"] = "super"
     phone: str = ""
     email_verified: bool = False
     email_verified_at: Optional[datetime] = None

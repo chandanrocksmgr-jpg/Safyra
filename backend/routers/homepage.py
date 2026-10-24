@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 
 from lib.db import db
-from lib.security import require_admin
+from lib.security import require_super_admin
 from models.homepage import HomepageSettings, HomepageUpdate
 
 
@@ -26,7 +26,7 @@ async def get_homepage():
 
 
 @router.put("", response_model=HomepageSettings)
-async def update_homepage(input: HomepageUpdate, _: dict = Depends(require_admin)):
+async def update_homepage(input: HomepageUpdate, _: dict = Depends(require_super_admin)):
     settings = HomepageSettings(**input.model_dump(), updated_at=datetime.now(timezone.utc))
     await db.site_content.replace_one({"id": "homepage"}, settings.model_dump(), upsert=True)
     return settings

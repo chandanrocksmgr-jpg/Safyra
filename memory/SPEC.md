@@ -114,3 +114,14 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 
 ## Colour dots on shop cards
 - `ProductCard` shows up to 5 colour dots (the colour's first assigned photo, else its swatch) with a `+N` overflow, only when a product has more than one colour. Each dot links to `/product/{slug}?color={name}`, and the product page pre-selects that shade from the `color` query param.
+
+## Role-based access control (Super Admin / Junior Admin)
+- Staff accounts are `users.role == "admin"` with `admin_role` = `"super"` or `"junior"` and `status` = `"active"` / `"deactivated"`. Legacy admins were migrated to super/active at startup.
+- `lib/security.py`: `require_admin` = any active staff; `require_super_admin` = super only; `get_current_user` kills the session of a deactivated account, and `_login` refuses it with 403.
+- Junior Admins reach only the products API (`routers/products.py`) and media uploads (`routers/media.py`). Everything else — order_requests, store_credit/customers, checkout_sessions, discounts, waitlist, analytics, store_settings, homepage, catalog_groups writes, admin_alerts, order_digest, staff and information writes — is `require_super_admin`, and invoices require `is_super_admin`. Verified: a junior session gets 403 on every one of those and 200 on products.
+- `routers/staff.py` (`/api/admin/staff`, super only): list, create (hard-coded to junior — no API path creates or promotes a super), rename, activate/deactivate (deletes the account's sessions), reset password, delete. Super Admin rows are rejected by `_junior()` so they can never be demoted, deactivated or deleted through the API.
+- Frontend: `User.admin_role` drives everything — `SuperAdminRoute` bounces juniors to `/admin/products`, `AdminShell` hides non-catalogue nav, the dashboard hides order/waitlist metrics and cards, and the new-order alert widget only mounts for supers. Admin → Staff access = `pages/AdminStaff.tsx`.
+
+## Editable care & information page
+- `GET /api/information` is public, `PUT /api/information` is Super Admin only (`routers/information.py`, defaults in `DEFAULT_CONTENT`, stored in `site_content` under id `information`).
+- Editable: eyebrow, two-line headline, intro, every section (tab label, anchor id, headline, body — add/remove), FAQ heading and Q&A pairs (add/remove), and the WhatsApp button label plus its pre-filled message. Admin screen: `pages/AdminInformation.tsx` at `/admin/information`; the storefront page reads it live.

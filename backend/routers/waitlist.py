@@ -10,7 +10,7 @@ from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
 from lib.email_service import send_email
-from lib.security import require_admin
+from lib.security import require_super_admin
 from lib.variants import find_variant, is_sellable, selected_set_type, uses_variants, variant_label
 from models.waitlist import WaitlistAdminUpdate, WaitlistCreate, WaitlistRequestAdmin, WaitlistStatus, WaitlistSubmission
 
@@ -199,7 +199,7 @@ async def list_waitlist_requests(
     q: str = Query(default="", max_length=160),
     status_filter: WaitlistStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=200),
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_super_admin),
 ):
     conditions: list[dict] = []
     if q.strip():
@@ -218,12 +218,12 @@ async def list_waitlist_requests(
 
 
 @router.get("/{request_id}", response_model=WaitlistRequestAdmin)
-async def get_waitlist_request(request_id: str, _: dict = Depends(require_admin)):
+async def get_waitlist_request(request_id: str, _: dict = Depends(require_super_admin)):
     return WaitlistRequestAdmin(**await _find_request(request_id))
 
 
 @router.patch("/{request_id}", response_model=WaitlistRequestAdmin)
-async def update_waitlist_request(request_id: str, input: WaitlistAdminUpdate, _: dict = Depends(require_admin)):
+async def update_waitlist_request(request_id: str, input: WaitlistAdminUpdate, _: dict = Depends(require_super_admin)):
     existing = await _find_request(request_id)
     now = datetime.now(timezone.utc)
     set_changes: dict = {"updated_at": now}

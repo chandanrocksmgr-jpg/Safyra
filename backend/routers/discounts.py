@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from lib.db import db
 from lib.pricing import discount_amount, effective_discount_status
-from lib.security import require_admin
+from lib.security import require_super_admin
 from models.discount import Discount, DiscountCreate, DiscountUpdate
 
 
@@ -47,13 +47,13 @@ async def _response(document: dict) -> Discount:
 
 
 @router.get("", response_model=list[Discount])
-async def list_discounts(_: dict = Depends(require_admin)):
+async def list_discounts(_: dict = Depends(require_super_admin)):
     documents = await db.discounts.find({}).sort("created_at", -1).to_list(500)
     return [await _response(document) for document in documents]
 
 
 @router.post("/preview", response_model=DiscountPreview)
-async def preview_discount(input: DiscountCreate, _: dict = Depends(require_admin)):
+async def preview_discount(input: DiscountCreate, _: dict = Depends(require_super_admin)):
     conditions: list[dict] = []
     if input.product_ids:
         conditions.append({"id": {"$in": input.product_ids}})
@@ -68,7 +68,7 @@ async def preview_discount(input: DiscountCreate, _: dict = Depends(require_admi
 
 
 @router.post("", response_model=Discount, status_code=201)
-async def create_discount(input: DiscountCreate, _: dict = Depends(require_admin)):
+async def create_discount(input: DiscountCreate, _: dict = Depends(require_super_admin)):
     now = datetime.now(timezone.utc)
     values = input.model_dump()
     if values.get("code"):
@@ -81,7 +81,7 @@ async def create_discount(input: DiscountCreate, _: dict = Depends(require_admin
 
 
 @router.patch("/{discount_id}", response_model=Discount)
-async def update_discount(discount_id: str, input: DiscountUpdate, _: dict = Depends(require_admin)):
+async def update_discount(discount_id: str, input: DiscountUpdate, _: dict = Depends(require_super_admin)):
     existing = await db.discounts.find_one({"id": discount_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Discount not found")

@@ -30,6 +30,8 @@ from routers.google_auth import router as google_auth_router
 from routers.store_credit import router as store_credit_router
 from routers.admin_alerts import router as admin_alerts_router
 from routers.order_digest import router as order_digest_router
+from routers.staff import router as staff_router
+from routers.information import router as information_router
 from routers.password_reset import router as password_reset_router
 
 
@@ -62,6 +64,7 @@ async def _migrate_legacy_media_safely() -> None:
     try:
         await migrate_product_variants()
         await migrate_color_options()
+        await db.users.update_many({"role": "admin", "admin_role": {"$exists": False}}, {"$set": {"admin_role": "super", "status": "active"}})
     except Exception as exc:  # never crash the app over a data backfill
         logging.getLogger(__name__).error("Product variant migration failed: %s", exc)
     try:
@@ -124,6 +127,8 @@ api_router.include_router(google_auth_router)
 api_router.include_router(password_reset_router)
 api_router.include_router(admin_alerts_router)
 api_router.include_router(order_digest_router)
+api_router.include_router(staff_router)
+api_router.include_router(information_router)
 
 app.add_middleware(
     CORSMiddleware,

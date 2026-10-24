@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
-from lib.security import get_optional_user, require_admin
+from lib.security import get_optional_user, require_super_admin
 from models.catalog_group import CatalogGroup, CatalogGroupCreate, CatalogGroupUpdate
 
 
@@ -80,7 +80,7 @@ async def list_catalog_groups(
 
 
 @router.post("", response_model=CatalogGroup, status_code=201)
-async def create_catalog_group(input: CatalogGroupCreate, _: dict = Depends(require_admin)):
+async def create_catalog_group(input: CatalogGroupCreate, _: dict = Depends(require_super_admin)):
     group = CatalogGroup(**input.model_dump())
     try:
         await db.catalog_groups.insert_one(group.model_dump())
@@ -90,7 +90,7 @@ async def create_catalog_group(input: CatalogGroupCreate, _: dict = Depends(requ
 
 
 @router.patch("/{group_id}", response_model=CatalogGroup)
-async def update_catalog_group(group_id: str, input: CatalogGroupUpdate, _: dict = Depends(require_admin)):
+async def update_catalog_group(group_id: str, input: CatalogGroupUpdate, _: dict = Depends(require_super_admin)):
     if not await db.catalog_groups.find_one({"id": group_id}):
         raise HTTPException(status_code=404, detail="Catalog group not found")
     changes = input.model_dump(exclude_unset=True)
@@ -104,7 +104,7 @@ async def update_catalog_group(group_id: str, input: CatalogGroupUpdate, _: dict
 
 
 @router.delete("/{group_id}", status_code=204)
-async def delete_catalog_group(group_id: str, _: dict = Depends(require_admin)):
+async def delete_catalog_group(group_id: str, _: dict = Depends(require_super_admin)):
     # Retained for backwards compatibility, but deletion is deliberately soft:
     # catalog relationships and merchandising data must never be destroyed here.
     result = await db.catalog_groups.update_one(

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
 
 from lib.db import db
-from lib.security import require_admin
+from lib.security import require_super_admin
 from models.analytics import DiscountPerformance, SalesAnalytics, SalesMetrics, SalesTrendPoint, TopProduct
 
 
@@ -31,7 +31,7 @@ async def _metrics(start: datetime, end: datetime) -> tuple[SalesMetrics, list[d
 
 
 @router.get("/sales", response_model=SalesAnalytics)
-async def sales_analytics(days: int = Query(default=30, ge=7, le=365), _: dict = Depends(require_admin)):
+async def sales_analytics(days: int = Query(default=30, ge=7, le=365), _: dict = Depends(require_super_admin)):
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
     previous_start = start - timedelta(days=days)

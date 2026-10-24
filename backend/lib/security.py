@@ -96,6 +96,9 @@ async def get_current_user(request: Request) -> dict:
     user = await db.users.find_one({"id": session["user_id"]})
     if not user:
         raise HTTPException(status_code=401, detail="Account not found")
+    if user.get("status") == "deactivated":  # a deactivated staff account can never act, even with a live cookie
+        await db.sessions.delete_many({"user_id": user["id"]})
+        raise HTTPException(status_code=401, detail="This account has been deactivated")
     return user
 
 
@@ -106,7 +109,24 @@ async def get_optional_user(request: Request) -> dict | None:
         return None
 
 
+def admin_level(user: dict) -> str:
+    """Staff level: "super" (full control) or "junior" (catalogue only). Legacy admins without the field are super."""
+    return "junior" if user.get("admin_role") == "junior" else "super"
+
+
+def is_super_admin(user: dict) -> bool:
+    return user.get("role") == "admin" and admin_level(user) == "super"
+
+
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    """Any active staff account — super admins and junior (catalogue-only) admins."""
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Administrator access required")
+    return user
+
+
+async def require_super_admin(user: dict = Depends(require_admin)) -> dict:
+    """Super Admin only: orders, customers, payments, store settings, staff and anything holding personal data."""
+    if not is_super_admin(user):
+        raise HTTPException(status_code=403, detail="Super Admin access required")
     return user
