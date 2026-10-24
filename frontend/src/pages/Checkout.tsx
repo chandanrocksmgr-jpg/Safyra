@@ -7,6 +7,8 @@ import { ArrowLeft, Check, CreditCard, MessageCircle, ShieldCheck } from "lucide
 import { Link } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import BrandHeader from "@/components/BrandHeader";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+import { GOOGLE_SIGN_IN_ENABLED } from "@/lib/features";
 import SafeProductImage from "@/components/SafeProductImage";
 import { useShop } from "@/components/ShopProvider";
 import { formatPrice, whatsappUrl } from "@/lib/shop";
@@ -271,7 +273,11 @@ export default function Checkout() {
                 <span><strong>Use a different address</strong><small>Enter or edit delivery details below</small></span>
               </label>
             </fieldset>}
-            {!user && <p className="checkout-signin-hint" data-testid="checkout-signin-hint">Have a SAFYRA account? <Link to="/login" className="underlined-link" data-testid="checkout-signin-link">Sign in</Link> to use your saved addresses.</p>}
+            {!user && (GOOGLE_SIGN_IN_ENABLED ? <div className="checkout-express-signin" data-testid="checkout-express-signin">
+              <div><strong>Returning to SAFYRA?</strong><small>Sign in and your saved delivery address fills in by itself. Your bag stays as it is.</small></div>
+              <GoogleSignInButton returnTo="/checkout" testId="checkout-google-signin" />
+              <p className="checkout-signin-hint" data-testid="checkout-signin-hint">or <Link to="/login" className="underlined-link" data-testid="checkout-signin-link">sign in with email</Link> · or continue below as a guest</p>
+            </div> : <p className="checkout-signin-hint" data-testid="checkout-signin-hint">Have a SAFYRA account? <Link to="/login" className="underlined-link" data-testid="checkout-signin-link">Sign in</Link> to use your saved addresses.</p>)}
             <div className="checkout-fields">
               <label>Full name
                 <input value={form.name} onChange={(event) => setField("name", event.target.value)} onBlur={() => { showFieldError("name"); trackCurrentCheckout(); }} autoComplete="name" required aria-invalid={Boolean(errors.name)} data-testid="checkout-name" />

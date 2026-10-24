@@ -35,6 +35,18 @@ const readStored = <T,>(key: string, fallback: T): T => {
 };
 
 const ShopContext = createContext<ShopContextValue | null>(null);
+// Which account the bag in localStorage was last synced to; anything else is a guest bag to merge on sign-in.
+const CART_OWNER_KEY = "safyra-cart-owner";
+
+const mergeCarts = (accountCart: CartItem[], guestCart: CartItem[]): CartItem[] => {
+  const merged = new Map(accountCart.map((item) => [item.key, item]));
+  for (const item of guestCart) {
+    const existing = merged.get(item.key);
+    // Max, not sum: a bag that was already synced to this account must not double its quantities.
+    merged.set(item.key, existing ? { ...existing, quantity: Math.max(existing.quantity, item.quantity) } : item);
+  }
+  return [...merged.values()];
+};
 
 export function ShopProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -57,12 +69,25 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   useEffect(() => { window.localStorage.setItem("safyra-wishlist", JSON.stringify(wishlistIds)); }, [wishlistIds]);
   useEffect(() => {
     if (account && user) {
-      setCart(account.cart);
-      setWishlistIds(account.wishlist_ids);
+      if (window.localStorage.getItem(CART_OWNER_KEY) === user.id) {
+        setCart(account.cart);
+        setWishlistIds(account.wishlist_ids);
+      } else {
+        // First sync after signing in (e.g. Google from checkout): keep the guest bag and wishlist.
+        const nextCart = mergeCarts(account.cart, readStored<CartItem[]>("safyra-cart", []));
+        const nextWishlist = [...new Set([...account.wishlist_ids, ...readStored<string[]>("safyra-wishlist", [])])];
+        setCart(nextCart);
+        setWishlistIds(nextWishlist);
+        if (nextCart.length !== account.cart.length || nextCart.some((item, index) => item.quantity !== account.cart[index]?.quantity) || nextWishlist.length !== account.wishlist_ids.length) {
+          saveState.mutate({ cart: nextCart, wishlist_ids: nextWishlist });
+        }
+        window.localStorage.setItem(CART_OWNER_KEY, user.id);
+      }
       previousUserId.current = user.id;
     } else if (!user && previousUserId.current) {
       setCart([]);
       setWishlistIds([]);
+      window.localStorage.setItem(CART_OWNER_KEY, "guest");
       previousUserId.current = null;
     }
   }, [account, user]);

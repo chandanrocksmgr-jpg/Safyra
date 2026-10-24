@@ -19,7 +19,8 @@ export default function GoogleAuthCallback() {
     apiPost<GoogleAuthResponse>("/auth/google/session", { session_id: sessionId })
       .then(({ user }) => {
         beginSession(user);
-        navigate("/account", { replace: true });
+        // Stay on the page Google returned to (/account or /checkout); only the hash is dropped.
+        navigate(location.pathname === "/checkout" ? "/checkout" : "/account", { replace: true });
       })
       .catch(() => {
         // Drop the single-use session_id from the address bar; this screen stays mounted to show the retry state.
