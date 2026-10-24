@@ -159,6 +159,16 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("active_mobile_key", ASCENDING)], name="active_mobile_key", unique=True, sparse=True),
         IndexModel([("active_email_key", ASCENDING)], name="active_email_key", unique=True, sparse=True),
     ],
+    "admin_order_alerts": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("request_id", ASCENDING)], name="request_id", unique=True),
+        IndexModel([("acknowledged_at", ASCENDING), ("created_at", DESCENDING)], name="pending_created"),
+    ],
+    "password_reset_tokens": [
+        IndexModel([("token_hash", ASCENDING)], name="token_hash", unique=True),
+        IndexModel([("user_id", ASCENDING), ("used_at", ASCENDING)], name="user_used"),
+        IndexModel([("expires_at", ASCENDING)], name="reset_token_ttl", expireAfterSeconds=86400),
+    ],
     "orders": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("order_number", ASCENDING)], name="order_number", unique=True),

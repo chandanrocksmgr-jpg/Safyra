@@ -28,6 +28,7 @@ from routers.analytics import router as analytics_router
 from routers.email_verification import router as email_verification_router
 from routers.google_auth import router as google_auth_router
 from routers.store_credit import router as store_credit_router
+from routers.admin_alerts import router as admin_alerts_router
 from routers.password_reset import router as password_reset_router
 
 
@@ -120,6 +121,7 @@ api_router.include_router(analytics_router)
 api_router.include_router(email_verification_router)
 api_router.include_router(google_auth_router)
 api_router.include_router(password_reset_router)
+api_router.include_router(admin_alerts_router)
 
 app.add_middleware(
     CORSMiddleware,

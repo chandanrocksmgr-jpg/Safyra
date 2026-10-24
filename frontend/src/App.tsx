@@ -33,6 +33,7 @@ import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminSettings from "@/pages/AdminSettings";
 import VerifyEmail from "@/pages/VerifyEmail";
 import GoogleAuthCallback from "@/pages/GoogleAuthCallback";
+import AdminOrderAlerts from "@/components/AdminOrderAlerts";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -52,7 +53,7 @@ function AdminRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <div className="route-loading" data-testid="admin-route-loading">Verifying secure access…</div>;
   if (!user || user.role !== "admin") return <Navigate to="/admin-login" replace />;
-  return children;
+  return <>{children}<AdminOrderAlerts /></>;
 }
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.

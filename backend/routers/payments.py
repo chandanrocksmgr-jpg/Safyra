@@ -19,6 +19,7 @@ from lib.order_pricing import india_shipping_amount, price_order_items, release_
 from lib.security import get_optional_user
 from models.checkout_session import CronEnvelope
 from models.payment import PaymentQuoteRequest, PaymentQuoteResponse, PaymentStatusResponse, PayUCheckoutResponse
+from lib.admin_alerts import notify_admin_new_order
 from routers.order_emails import send_order_email
 from routers.order_requests import _convert_request_document, _history_event
 
@@ -211,6 +212,7 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
     if paid_by_credit:
         await _mark_paid(document, "store_credit", None)
         background_tasks.add_task(send_order_email, document["id"], "payment_confirmed")
+        background_tasks.add_task(notify_admin_new_order, document["id"])
         return PayUCheckoutResponse(**quote.model_dump(), action="", fields={}, request_number=request_number, transaction_id=transaction_id, completed=True)
     background_tasks.add_task(send_order_email, document["id"], "request_received")
     return PayUCheckoutResponse(
@@ -362,6 +364,7 @@ async def reconcile_transaction(transaction_id: str) -> None:
         became_paid = await _mark_paid(document, gateway_status, str(detail.get("mihpayid") or "") or None)
         if became_paid:
             await send_order_email(document["id"], "payment_confirmed")
+            await notify_admin_new_order(document["id"])
     elif gateway_status in {"failure", "failed", "cancelled", "canceled"}:
         await _mark_failed(document, gateway_status, str(detail.get("error_Message") or detail.get("error") or "Payment failed"))
     else:

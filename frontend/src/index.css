@@ -302,6 +302,23 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .swatch:hover { transform: translateY(-1px); }
 .swatch.is-selected { box-shadow: 0 0 0 1px #2c1a14 inset; }
 
+/* Admin new-order alerts */
+.order-alert-stack { position: fixed; right: 1rem; bottom: 1rem; z-index: 70; width: min(360px, calc(100vw - 2rem)); background: #fffdf8; border: 1px solid #2c1a14; box-shadow: 0 18px 40px rgba(38, 28, 25, .22); }
+.order-alert-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .7rem .85rem; background: #2c1a14; color: #f7f1e6; }
+.order-alert-title { display: flex; align-items: center; gap: .45rem; font-size: .78rem; letter-spacing: .09em; text-transform: uppercase; }
+.order-alert-tools { display: flex; gap: .25rem; }
+.order-alert-tools button { background: transparent; border: 0; color: #f7f1e6; padding: .25rem; cursor: pointer; transition: opacity .18s ease; }
+.order-alert-tools button:hover { opacity: .7; }
+.order-alert-stack ul { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
+.order-alert-stack li { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem .85rem; border-bottom: 1px solid #ece1cd; }
+.order-alert-stack li strong { display: block; font-size: .9rem; }
+.order-alert-stack li span { font-size: .76rem; color: #715b52; }
+.order-alert-actions { display: flex; align-items: center; gap: .5rem; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; }
+.order-alert-actions a { border-bottom: 1px solid #2c1a14; }
+.order-alert-actions button { background: transparent; border: 0; color: #715b52; cursor: pointer; }
+.order-alert-muted-note { margin: 0; padding: .5rem .85rem; font-size: .72rem; color: #715b52; background: #f6efe2; }
+@media (max-width: 640px) { .order-alert-stack { right: .5rem; left: .5rem; bottom: .5rem; width: auto; } }
+
 /* Admin colour manager */
 .color-manager { display: grid; gap: 1rem; }
 .color-option-card { display: grid; gap: .65rem; padding: .85rem; border: 1px solid #e4d9c6; background: #fcfaf5; }
