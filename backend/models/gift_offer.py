@@ -7,6 +7,7 @@ class GiftOfferSettings(BaseModel):
     """Admin-controlled first-order gift offer. Exactly one gift product can be active."""
     enabled: bool = False
     threshold: int = Field(default=5000, ge=0, le=1_000_000)
+    low_stock_threshold: int = Field(default=5, ge=0, le=1000)
     product_id: str = ""
     headline: str = Field(default="A surprise gift on your first order", min_length=1, max_length=120)
     subtext: str = Field(default="Spend ₹5,000 or more on your first SAFYRA order and a handcrafted gift joins your parcel.", min_length=1, max_length=400)
@@ -18,11 +19,13 @@ class GiftProductSummary(BaseModel):
     title: str
     image_url: str
     value: int
+    stock: int = 0
 
 
 class GiftOfferPublic(BaseModel):
     enabled: bool
     threshold: int
+    low_stock_threshold: int = 5
     headline: str
     subtext: str
     terms: str
@@ -32,6 +35,7 @@ class GiftOfferPublic(BaseModel):
 class GiftOfferUpdate(BaseModel):
     enabled: Optional[bool] = None
     threshold: Optional[int] = Field(default=None, ge=0, le=1_000_000)
+    low_stock_threshold: Optional[int] = Field(default=None, ge=0, le=1000)
     product_id: Optional[str] = None
     headline: Optional[str] = Field(default=None, min_length=1, max_length=120)
     subtext: Optional[str] = Field(default=None, min_length=1, max_length=400)

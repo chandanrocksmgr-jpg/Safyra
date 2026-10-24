@@ -4,11 +4,13 @@ export interface GiftProductSummary {
   title: string;
   image_url: string;
   value: number;
+  stock: number;
 }
 
 export interface GiftOfferPublic {
   enabled: boolean;
   threshold: number;
+  low_stock_threshold: number;
   headline: string;
   subtext: string;
   terms: string;
@@ -18,6 +20,7 @@ export interface GiftOfferPublic {
 export interface GiftOfferSettings {
   enabled: boolean;
   threshold: number;
+  low_stock_threshold: number;
   product_id: string;
   headline: string;
   subtext: string;

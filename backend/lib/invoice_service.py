@@ -227,7 +227,8 @@ def render_invoice_pdf(document: dict, sample: bool = False) -> bytes:
     rows = [["Description", "Qty", "Unit price", "Amount"]]
     for item in document["items"]:
         unit_price = int(item.get("price") or 0)
-        rows.append([Paragraph(f"{escape(str(item['title']))}<br/><font size=7>{escape(variant_label(item.get('set_type'), item.get('size'), item.get('color')))}</font>", small), str(item["quantity"]), f"INR {unit_price:,}", f"INR {item['line_total']:,}"])
+        gift_note = "<br/><font size=7 color='#4B6B4F'>Complimentary first-order gift</font>" if item.get("is_gift") else ""
+        rows.append([Paragraph(f"{escape(str(item['title']))}<br/><font size=7>{escape(variant_label(item.get('set_type'), item.get('size'), item.get('color')))}</font>{gift_note}", small), str(item["quantity"]), "Free" if item.get("is_gift") else f"INR {unit_price:,}", "Free" if item.get("is_gift") else f"INR {item['line_total']:,}"])
     table = Table(rows, colWidths=[94 * mm, 16 * mm, 29 * mm, 29 * mm], repeatRows=1)
     table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#261C19")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, -1), 8), ("GRID", (0, 0), (-1, -1), .35, colors.HexColor("#D6C7B2")), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (2, 1), (-1, -1), "RIGHT"), ("PADDING", (0, 0), (-1, -1), 6)]))
     story.extend([table, Spacer(1, 6 * mm)])

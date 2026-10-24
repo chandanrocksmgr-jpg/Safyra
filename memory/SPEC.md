@@ -163,3 +163,8 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 
 ## Site icon
 - The template's default Emergent favicon was replaced with a SAFYRA mark (chocolate tile, ivory serif "S"): `favicon.svg`, `favicon.ico`, 16/32px PNGs, `apple-touch-icon.png`, plus `icon-192.png` / `icon-512.png` referenced from `index.html` (Google prefers a large square icon) and used as `og:image`. The app itself has never contained a "Made with Emergent" badge. The live domain keeps serving the old icon until the next publish, and Google refreshes it on its next crawl.
+
+## Gift stock control & gift in documents
+- Granting a gift now **claims one piece atomically** (`$inc stock -1` guarded by `stock >= 1`). If the gift is out of stock no gift is added, and eligibility replies "This gift is fully claimed for now."
+- `low_stock_threshold` (default 5) in the gift settings: when a claim leaves the gift at or below it, `notify_low_gift_stock()` emails `ADMIN_ALERT_EMAIL` (once a day, always when it hits zero, deduped by `site_content.gift_offer.low_stock_alert_date`). The admin screen also shows a red banner ("Only N left" / "is out of stock") and each gift card shows its stock.
+- The gift appears as a line in customer documents: the request-received email tags it "Complimentary gift" with the amount shown as Free, the payment-confirmed email adds a "With our compliments" line, and the invoice PDF prints the item with "Complimentary first-order gift" and Free in the price columns (so the total is unaffected).

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Gift, Save } from "lucide-react";
+import { AlertTriangle, Gift, Save } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/AdminShell";
 import SafeProductImage from "@/components/SafeProductImage";
@@ -29,6 +29,9 @@ export default function AdminGiftOffer() {
     onError: (reason) => toast.error(reason instanceof ApiError ? String((reason.body as { detail?: string } | null)?.detail || "Could not save the offer") : "Could not save the offer"),
   });
 
+  const activeGift = products.find((product) => product.id === draft?.product_id);
+  const lowStock = Boolean(activeGift && draft && activeGift.stock <= draft.low_stock_threshold);
+
   if (!draft) return <AdminShell eyebrow="Offers" title="First-order gift" description="Loading the gift offer…"><p>Loading…</p></AdminShell>;
 
   const update = (changes: Partial<GiftOfferSettings>) => setDraft({ ...draft, ...changes });
@@ -39,6 +42,14 @@ export default function AdminGiftOffer() {
     description="One gift product can be live at a time. It is added automatically to a registered customer's first qualifying order."
     actions={<button type="button" className="button button-dark" onClick={() => save.mutate(draft)} disabled={save.isPending} data-testid="admin-gift-save"><Save size={15} /> {save.isPending ? "Saving…" : "Save offer"}</button>}
   >
+    {lowStock && activeGift && <div className="gift-stock-warning" data-testid="admin-gift-low-stock">
+      <AlertTriangle size={16} />
+      <div>
+        <strong>{activeGift.stock === 0 ? `${activeGift.title} is out of stock` : `Only ${activeGift.stock} left of ${activeGift.title}`}</strong>
+        <span>{activeGift.stock === 0 ? "No order will receive a gift until you restock it or choose another gift." : "Restock it in Products, or switch the active gift, before the offer runs dry."}</span>
+      </div>
+    </div>}
+
     <section className="admin-editor-card" data-testid="admin-gift-status">
       <h3><Gift size={16} /> Offer status</h3>
       <label className="admin-toggle-row">
@@ -47,6 +58,7 @@ export default function AdminGiftOffer() {
       </label>
       <div className="admin-form-grid">
         <label>Cart value needed (₹)<input type="number" min="0" value={draft.threshold} onChange={(event) => update({ threshold: Math.max(0, Number(event.target.value)) })} data-testid="admin-gift-threshold" /><small>The gift is added when the bag reaches this value, before shipping.</small></label>
+        <label>Warn me when stock reaches<input type="number" min="0" value={draft.low_stock_threshold} onChange={(event) => update({ low_stock_threshold: Math.max(0, Number(event.target.value)) })} data-testid="admin-gift-low-stock-threshold" /><small>You get an email alert when the live gift drops to this many pieces.</small></label>
       </div>
     </section>
 
@@ -58,7 +70,7 @@ export default function AdminGiftOffer() {
           {products.map((product) => <button type="button" key={product.id} className={draft.product_id === product.id ? "gift-product-card is-active" : "gift-product-card"} onClick={() => update({ product_id: draft.product_id === product.id ? "" : product.id })} data-testid={`admin-gift-product-${product.id}`}>
             <SafeProductImage src={product.image_url} alt={product.title} productName={product.title} />
             <strong>{product.title}</strong>
-            <span>{product.value > 0 ? `Worth ${formatPrice(product.value)}` : "No stated value"}</span>
+            <span>{product.value > 0 ? `Worth ${formatPrice(product.value)}` : "No stated value"} · <b data-testid={`admin-gift-stock-${product.id}`}>{product.stock} in stock</b></span>
             {draft.product_id === product.id && <em data-testid={`admin-gift-product-active-${product.id}`}>Active gift</em>}
           </button>)}
         </div>}

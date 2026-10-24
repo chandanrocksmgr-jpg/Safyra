@@ -31,6 +31,8 @@ async def gift_eligibility(subtotal: int = Query(default=0, ge=0), user: dict | 
     summary: GiftProductSummary | None = gift_summary(product) if product else None
     if not settings.get("enabled") or not product:
         return GiftEligibility(eligible=False, reason="The gift offer is not running right now.", threshold=threshold)
+    if int(product.get("stock") or 0) < 1:
+        return GiftEligibility(eligible=False, reason="This gift is fully claimed for now.", threshold=threshold, product=summary)
     if not user or user.get("role") != "customer":
         return GiftEligibility(eligible=False, reason="Sign in or create an account to claim the first-order gift.", threshold=threshold, product=summary)
     if await has_previous_order(str(user.get("email") or ""), user.get("id")):

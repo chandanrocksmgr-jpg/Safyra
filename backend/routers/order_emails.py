@@ -17,15 +17,19 @@ router = APIRouter(tags=["order emails"])
 logger = logging.getLogger(__name__)
 
 
+_GIFT_TAG = ' <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4b6b4f">Complimentary gift</span>'
+
+
 def _money(value: int) -> str:
     return f"₹{value:,.0f}"
 
 
 def _request_received_html(order: dict) -> str:
     items = "".join(
-        f'<tr><td style="padding:10px 0;border-bottom:1px solid #e6dec8"><strong>{escape(item["title"])}</strong><br>'
+        f'<tr><td style="padding:10px 0;border-bottom:1px solid #e6dec8"><strong>{escape(item["title"])}</strong>'
+        f'{_GIFT_TAG if item.get("is_gift") else ""}<br>'
         f'<span style="font-size:12px;color:#715b52">{escape(item.get("set_type") or "")} {escape(item["size"])} · {escape(item["color"])} · Qty {item["quantity"]}</span></td>'
-        f'<td style="padding:10px 0;border-bottom:1px solid #e6dec8;text-align:right">{escape(_money(item["line_total"]))}</td></tr>'
+        f'<td style="padding:10px 0;border-bottom:1px solid #e6dec8;text-align:right">{"Free" if item.get("is_gift") else escape(_money(item["line_total"]))}</td></tr>'
         for item in order["items"]
     )
     address = "<br>".join(escape(str(value)) for value in [order["address"], f'{order["city"]}, {order["state_region"]} {order["postal_code"]}', order["country"]] if value)
@@ -58,6 +62,7 @@ def _payment_confirmed_html(order: dict) -> str:
         f'<p>SAFYRA has independently verified payment for <strong>{escape(order["request_number"])}</strong>.</p>'
         f'<p><strong>Confirmed total: {escape(_money(order.get("total") or order["subtotal"]))}</strong></p>'
         + (f'<p>Paid with SAFYRA Credit: {escape(_money(order["credit_applied"]))} · Paid online: {escape(_money(order.get("amount_due", 0)))}</p>' if order.get("credit_applied") else "")
+        + (f'<p style="margin:0 0 6px"><strong>With our compliments:</strong> {escape(next(item["title"] for item in order["items"] if item.get("is_gift")))} — your complimentary first-order gift travels with this parcel.</p>' if any(item.get("is_gift") for item in order.get("items") or []) else "")
         + '<p>Your order will now move through SAFYRA’s recorded fulfilment process. Courier and tracking details are shared only after they are entered and verified by the team.</p>'
         f'{invoice_note}'
         f'<p style="font-size:12px;color:#715b52">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for passwords or card details by email.</p>'
