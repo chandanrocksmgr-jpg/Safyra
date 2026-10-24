@@ -14,6 +14,7 @@ from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
 from lib.invoice_service import generate_invoice_for_order
+from lib.store_credit import credit_balance, hold_credit, restore_credit
 from lib.order_pricing import india_shipping_amount, price_order_items, release_inventory, reserve_inventory
 from lib.security import get_optional_user
 from models.checkout_session import CronEnvelope
@@ -76,7 +77,7 @@ def _fields(document: dict) -> dict[str, str]:
     fields = {
         "key": PAYU_KEY,
         "txnid": document["payment_transaction_id"],
-        "amount": _money(document["total"]),
+        "amount": _money(_amount_due(document)),
         "productinfo": document["payu_productinfo"],
         "firstname": document["name"],
         "email": str(document["email"]),
@@ -91,14 +92,24 @@ def _fields(document: dict) -> dict[str, str]:
     return fields
 
 
+def _amount_due(document: dict) -> int:
+    """What PayU must collect: the order total minus any SAFYRA Credit applied (older requests have no credit)."""
+    return int(document.get("amount_due", document["total"]))
+
+
 def _quote(document: dict) -> PaymentQuoteResponse:
     return PaymentQuoteResponse(
         regular_subtotal=document["regular_subtotal"], discount_total=document["discount_total"],
         subtotal=document["subtotal"], shipping_amount=document["shipping_amount"], total=document["total"],
+        credit_applied=document.get("credit_applied", 0), amount_due=_amount_due(document),
     )
 
 
-async def _priced_quote(input: PaymentQuoteRequest) -> tuple[list[dict], list[dict], PaymentQuoteResponse]:
+def _credit_customer(user: dict | None) -> dict | None:
+    return user if user and user.get("role") == "customer" else None
+
+
+async def _priced_quote(input: PaymentQuoteRequest, user: dict | None = None) -> tuple[list[dict], list[dict], PaymentQuoteResponse]:
     if input.country_code != "IN" or input.shipping != "india":
         raise HTTPException(status_code=422, detail="PayU checkout is currently available for India delivery only")
     items, regular_subtotal, subtotal, plans = await price_order_items(input.items, input.discount_code)
@@ -109,12 +120,19 @@ async def _priced_quote(input: PaymentQuoteRequest) -> tuple[list[dict], list[di
     )
     if quote.total <= 0:
         raise HTTPException(status_code=422, detail="The payable total must be greater than zero")
+    customer = _credit_customer(user)
+    balance = await credit_balance(customer["id"]) if customer else 0
+    # SAFYRA Credit is a payment method: it covers the full total (products, GST and shipping) and never changes tax.
+    applied = min(balance, quote.total) if input.use_store_credit else 0
+    quote.store_credit_balance = balance
+    quote.credit_applied = applied
+    quote.amount_due = quote.total - applied
     return items, plans, quote
 
 
 @router.post("/payments/quote", response_model=PaymentQuoteResponse)
-async def quote_payment(input: PaymentQuoteRequest):
-    _, _, quote = await _priced_quote(input)
+async def quote_payment(input: PaymentQuoteRequest, request: Request):
+    _, _, quote = await _priced_quote(input, await get_optional_user(request))
     return quote
 
 
@@ -128,22 +146,37 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
             "checkout_session_id": input.checkout_session_id, "payment_provider": "PayU",
             "payment_status": "Payment pending",
         })
+    if existing and (existing.get("credit_applied") or input.use_store_credit):
+        # Never reuse a pending attempt when credit is involved: release its stock and credit, then start fresh.
+        await _mark_failed(existing, "superseded", "Replaced by a new checkout attempt")
+        existing = None
     if existing:
         return PayUCheckoutResponse(
             **_quote(existing).model_dump(), action=PAYU_PAYMENT_URL, fields=_fields(existing),
             request_number=existing["request_number"], transaction_id=existing["payment_transaction_id"],
         )
-    stored_items, plans, quote = await _priced_quote(input)
+    customer = _credit_customer(user)
+    stored_items, plans, quote = await _priced_quote(input, user)
     reservations = await reserve_inventory(plans)
     now = datetime.now(timezone.utc)
     request_number = f"SAF-REQ-{now:%Y%m%d}-{uuid.uuid4().hex[:6].upper()}"
     transaction_id = f"SAF{uuid.uuid4().hex[:20].upper()}"
+    credit_allocations: list[dict] = []
+    if quote.credit_applied:
+        try:
+            credit_allocations = await hold_credit(customer["id"], quote.credit_applied, request_number)
+        except ValueError as exc:
+            await release_inventory(reservations)
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+    paid_by_credit = quote.credit_applied > 0 and quote.amount_due == 0
     document = input.model_dump(exclude={"items"})
     document.update({
         "id": str(uuid.uuid4()), "request_number": request_number, "received_at": now,
-        "customer_id": user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None, "items": stored_items,
-        **quote.model_dump(), "record_type": "Request", "payment_status": "Payment pending",
-        "payment_provider": "PayU", "payment_transaction_id": transaction_id, "payu_payment_id": None,
+        # Orders paid partly with credit always belong to the signed-in customer whose credit was used.
+        "customer_id": customer["id"] if credit_allocations else user.get("id") if user and user.get("email_verified") and user.get("email") == str(input.email).lower() else None, "items": stored_items,
+        **quote.model_dump(exclude={"store_credit_balance", "use_store_credit"}), "record_type": "Request", "payment_status": "Payment pending",
+        "credit_allocations": credit_allocations, "credit_status": "held" if credit_allocations else "none",
+        "payment_provider": "SAFYRA Credit" if paid_by_credit else "PayU", "payment_transaction_id": transaction_id, "payu_payment_id": None,
         "payment_gateway_status": "initiated", "payment_error": "", "payment_created_at": now,
         "payment_verified_at": None, "payu_productinfo": f"SAFYRA order {request_number}",
         "payment_callback_base": payment_callback_base,
@@ -151,16 +184,18 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
         "discount_ids": list(dict.fromkeys(item["discount_id"] for item in stored_items if item.get("discount_id"))),
         "inventory_reservation_status": "reserved" if reservations else "not_required",
         "fulfilment_status": "Request received", "refund_status": "Not initiated", "cancelled": False,
-        "request_received_email_status": "Scheduled", "request_received_email_sent_at": None,
+        "request_received_email_status": "Not scheduled" if paid_by_credit else "Scheduled", "request_received_email_sent_at": None,
         "request_received_email_id": None, "paid_email_status": "Not scheduled",
         "paid_email_sent_at": None, "paid_email_id": None, "converted_order_id": None,
-        "history": [_history_event("payment_initiated", "Secure PayU payment initiated.", created_at=now)],
+        "history": [_history_event("payment_initiated", f"SAFYRA Credit of ₹{quote.credit_applied:,} applied to the full order total." if paid_by_credit else "Secure PayU payment initiated." + (f" SAFYRA Credit of ₹{quote.credit_applied:,} held." if credit_allocations else ""), created_at=now)],
         "updated_at": now,
     })
     try:
         await db.order_requests.insert_one(document)
     except Exception:
         await release_inventory(reservations)
+        if credit_allocations:
+            await restore_credit(customer["id"], credit_allocations, request_number)
         raise
     if input.checkout_session_id:
         await db.checkout_sessions.update_one(
@@ -170,9 +205,13 @@ async def create_payment(input: PaymentQuoteRequest, background_tasks: Backgroun
                 "completed_request_number": request_number, "completed_at": now, "updated_at": now,
                 "reminder_status": "Not scheduled",
             }, "$push": {"activity": {
-                "event": "payment_initiated", "message": f"PayU payment initiated for {request_number}.", "created_at": now,
+                "event": "payment_initiated", "message": f"{'Paid with SAFYRA Credit' if paid_by_credit else 'PayU payment initiated'} for {request_number}.", "created_at": now,
             }}},
         )
+    if paid_by_credit:
+        await _mark_paid(document, "store_credit", None)
+        background_tasks.add_task(send_order_email, document["id"], "payment_confirmed")
+        return PayUCheckoutResponse(**quote.model_dump(), action="", fields={}, request_number=request_number, transaction_id=transaction_id, completed=True)
     background_tasks.add_task(send_order_email, document["id"], "request_received")
     return PayUCheckoutResponse(
         **quote.model_dump(), action=PAYU_PAYMENT_URL, fields=_fields(document),
@@ -193,7 +232,7 @@ async def _validated_document(payload: dict[str, str]) -> dict:
         received = Decimal(payload.get("amount", "")).quantize(Decimal("0.01"))
     except InvalidOperation as exc:
         raise HTTPException(status_code=400, detail="Invalid PayU payment amount") from exc
-    if received != Decimal(document["total"]).quantize(Decimal("0.01")):
+    if received != Decimal(_amount_due(document)).quantize(Decimal("0.01")):
         raise HTTPException(status_code=400, detail="PayU payment amount mismatch")
     return document
 
@@ -232,6 +271,17 @@ async def _mark_failed(document: dict, gateway_status: str, message: str) -> Non
     )
     if updated:
         await _release_reservation(updated)
+        await _restore_held_credit(updated)
+
+
+async def _restore_held_credit(document: dict) -> None:
+    claimed = await db.order_requests.find_one_and_update(
+        {"id": document["id"], "credit_status": "held"},
+        {"$set": {"credit_status": "restored", "updated_at": datetime.now(timezone.utc)}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if claimed:
+        await restore_credit(claimed["customer_id"], claimed.get("credit_allocations", []), claimed["request_number"])
 
 
 async def _mark_paid(document: dict, gateway_status: str, payu_id: str | None) -> bool:
@@ -255,19 +305,33 @@ async def _mark_paid(document: dict, gateway_status: str, payu_id: str | None) -
             "payment_gateway_status": gateway_status, "payu_payment_id": payu_id,
             "payment_error": "", "fulfilment_status": "Confirmed", "paid_email_status": "Scheduled",
             "inventory_reservation_status": reservation_status, "updated_at": now,
+            **({"credit_status": "redeemed"} if document.get("credit_status") == "held" else {}),
         }, "$push": {"history": {"$each": [
-            _history_event("payment_verified", "PayU payment verified server-side.", created_at=now),
+            _history_event("payment_verified", "Paid in full with SAFYRA Credit." if gateway_status == "store_credit" else "PayU payment verified server-side.", created_at=now),
             _history_event("fulfilment_status", "Fulfilment status changed to Confirmed.", created_at=now),
         ]}}},
         return_document=ReturnDocument.AFTER,
     )
     current = updated or await db.order_requests.find_one({"id": document["id"]})
+    if updated and current and current.get("customer_id"):
+        await _remove_purchased_from_saved_bag(current)
     if current and current.get("payment_status") == "Paid":
         conversion = await _convert_request_document(current, actor_id=None, message="PayU-confirmed order created automatically.")
         await generate_invoice_for_order(conversion.order_id)
         if updated and current.get("discount_ids"):
             await db.discounts.update_many({"id": {"$in": current["discount_ids"]}}, {"$inc": {"usage_count": 1}})
     return bool(updated)
+
+
+async def _remove_purchased_from_saved_bag(order: dict) -> None:
+    """Drop the ordered lines from the customer's saved bag so no page can restore them after payment."""
+    user = await db.users.find_one({"id": order["customer_id"]}, {"cart": 1})
+    if not user or not user.get("cart"):
+        return
+    bought = {(item["product_id"], item.get("size", ""), item.get("color", "")) for item in order.get("items", [])}
+    remaining = [line for line in user["cart"] if (line.get("productId"), line.get("size", ""), line.get("color", "")) not in bought]
+    if len(remaining) != len(user["cart"]):
+        await db.users.update_one({"id": order["customer_id"]}, {"$set": {"cart": remaining, "updated_at": datetime.now(timezone.utc)}})
 
 
 async def reconcile_transaction(transaction_id: str) -> None:
@@ -291,7 +355,7 @@ async def reconcile_transaction(transaction_id: str) -> None:
         return
     gateway_status = str(detail.get("status") or detail.get("unmappedstatus") or "").lower()
     amount = detail.get("amt") or detail.get("amount")
-    if amount is not None and Decimal(str(amount)).quantize(Decimal("0.01")) != Decimal(document["total"]).quantize(Decimal("0.01")):
+    if amount is not None and Decimal(str(amount)).quantize(Decimal("0.01")) != Decimal(_amount_due(document)).quantize(Decimal("0.01")):
         logger.error("PayU verify amount mismatch for %s", transaction_id)
         return
     if gateway_status == "success":
@@ -361,7 +425,7 @@ async def payment_status(transaction_id: str):
     updated = document.get("updated_at", document["received_at"])
     return PaymentStatusResponse(
         transaction_id=transaction_id, request_number=document["request_number"], status=state,
-        amount=document["total"], updated_at=updated,
+        amount=_amount_due(document), credit_applied=document.get("credit_applied", 0), total=document["total"], updated_at=updated,
     )
 
 

@@ -350,7 +350,7 @@ async def _convert_request_document(request_document: dict, actor_id: str | None
     copy_fields = [
         "request_number", "customer_id", "name", "email", "phone", "address", "city", "state_region",
         "postal_code", "country", "country_code", "shipping", "note", "items", "subtotal", "regular_subtotal",
-        "discount_total", "discount_code", "discount_ids", "shipping_amount", "tax_amount", "total", "record_type", "payment_status",
+        "discount_total", "discount_code", "discount_ids", "shipping_amount", "tax_amount", "total", "credit_applied", "amount_due", "record_type", "payment_status",
         "payment_verified_at", "payment_provider", "payment_transaction_id", "payu_payment_id", "payment_gateway_status",
         "fulfilment_status", "courier_name", "shipping_details", "tracking_number", "tracking_link", "internal_notes",
         "cancelled", "cancellation_reason", "cancelled_at", "refund_status", "refund_reason", "refund_amount",

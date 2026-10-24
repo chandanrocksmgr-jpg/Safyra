@@ -17,6 +17,7 @@ import AdminLogin from "@/pages/AdminLogin";
 import Checkout from "@/pages/Checkout";
 import Information from "@/pages/Information";
 import AdminWaitlist from "@/pages/AdminWaitlist";
+import AdminCustomers from "@/pages/AdminCustomers";
 import { ShopProvider } from "@/components/ShopProvider";
 import CartDrawer from "@/components/CartDrawer";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           <Route path="/admin/waitlist" element={<AdminRoute><AdminWaitlist /></AdminRoute>} />
+          <Route path="/admin/customers" element={<AdminRoute><AdminCustomers /></AdminRoute>} />
           <Route path="/admin/abandoned-checkouts" element={<AdminRoute><AdminAbandonedCheckouts /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BadgePercent, BarChart3, BellRing, Home, Image, LayoutDashboard, LogOut, Package, ReceiptText, Settings, ShieldCheck, ShoppingBag, Tags } from "lucide-react";
+import { BadgePercent, BarChart3, BellRing, Home, Image, LayoutDashboard, LogOut, Package, ReceiptText, Settings, ShieldCheck, ShoppingBag, Tags, Users } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { endSession } from "@/lib/session";
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/admin/collections", label: "Collections", icon: Tags },
   { to: "/admin/homepage", label: "Homepage", icon: Image },
   { to: "/admin/orders", label: "Orders", icon: ReceiptText },
+  { to: "/admin/customers", label: "Customers", icon: Users },
   { to: "/admin/offers", label: "Offers", icon: BadgePercent },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/settings", label: "Settings", icon: Settings },

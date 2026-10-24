@@ -7,7 +7,7 @@ from models.order_request import OrderRequestCreate
 
 
 class PaymentQuoteRequest(OrderRequestCreate):
-    pass
+    use_store_credit: bool = False
 
 
 class PaymentQuoteResponse(BaseModel):
@@ -16,6 +16,9 @@ class PaymentQuoteResponse(BaseModel):
     subtotal: int
     shipping_amount: int
     total: int
+    credit_applied: int = 0
+    amount_due: int = 0
+    store_credit_balance: int = 0
     currency: Literal["INR"] = "INR"
 
 
@@ -24,6 +27,7 @@ class PayUCheckoutResponse(PaymentQuoteResponse):
     fields: dict[str, str]
     request_number: str
     transaction_id: str
+    completed: bool = False  # True when SAFYRA Credit covered the whole total and no PayU step is needed
 
 
 class PaymentStatusResponse(BaseModel):
@@ -31,5 +35,7 @@ class PaymentStatusResponse(BaseModel):
     request_number: str
     status: Literal["pending", "paid", "failed"]
     amount: int
+    credit_applied: int = 0
+    total: int = 0
     currency: Literal["INR"] = "INR"
     updated_at: datetime

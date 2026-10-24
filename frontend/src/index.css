@@ -1603,3 +1603,56 @@ select,
 .variant-table th, .variant-table td { padding-left: .5rem; padding-right: .5rem; }
 @media (max-width: 767px) { .variant-table { min-width: 600px; } }
 .variant-table td:last-child, .variant-table th:last-child { white-space: nowrap; }
+
+/* ---------- SAFYRA Credit ---------- */
+.store-credit-panel { display: grid; gap: 1rem; }
+.store-credit-balance { padding: 1.1rem 1.2rem; display: flex; align-items: center; gap: 1rem; background: var(--safyra-espresso); color: var(--safyra-ivory); }
+.store-credit-balance > div { display: grid; gap: .15rem; }
+.store-credit-balance small { font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
+.store-credit-balance strong { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 2.2rem; font-weight: 500; line-height: 1.05; }
+.store-credit-balance span { font-size: .76rem; opacity: .85; }
+.store-credit-hint { margin: 0; color: #715b52; font-size: .82rem; line-height: 1.55; }
+.store-credit-table-wrap { overflow-x: auto; border: 1px solid #e6dec8; }
+.store-credit-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: .78rem; }
+.store-credit-table th { padding: .55rem .7rem; background: #f7f3eb; color: #5c463d; font-size: .6rem; font-weight: 700; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+.store-credit-table td { padding: .55rem .7rem; border-top: 1px solid #efe8da; }
+.store-credit-status { padding: .18rem .45rem; font-size: .6rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.store-credit-status.is-active { background: #e6efe1; color: #3e5a35; }
+.store-credit-status.is-used { background: #ece7df; color: #6b5a51; }
+.store-credit-status.is-expired { background: #f6e3dc; color: #8f3b2e; }
+.store-credit-activity ul { margin: .5rem 0 0; padding: 0; list-style: none; display: grid; }
+.store-credit-activity li { padding: .65rem 0; display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #efe8da; font-size: .8rem; }
+.store-credit-activity li > span { display: grid; gap: .1rem; }
+.store-credit-activity li > span:last-child { text-align: right; font-weight: 600; }
+.store-credit-activity small { color: #8c746a; font-size: .7rem; font-weight: 400; }
+.store-credit-activity .is-debit { color: #8f3b2e; }
+.store-credit-activity .is-credit { color: #3e5a35; }
+.checkout-credit-toggle { margin: 0 0 1rem; padding: 1rem; display: flex; align-items: flex-start; gap: .75rem; border: 1px solid #d6c7b2; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.checkout-credit-toggle.is-selected { border-color: var(--safyra-espresso); background: #f9f6f0; }
+.checkout-credit-toggle input { margin-top: .2rem; width: 16px; height: 16px; accent-color: var(--safyra-espresso); }
+.checkout-credit-toggle span { display: grid; gap: .2rem; }
+.checkout-credit-toggle strong { font-size: .88rem; }
+.checkout-credit-toggle small { color: #8c746a; font-size: .76rem; }
+.checkout-credit-toggle .checkout-credit-outcome { color: #3e5a35; font-weight: 600; }
+.checkout-credit-line strong { color: #3e5a35; }
+.admin-customer-detail { display: grid; gap: 1.25rem; }
+.admin-customer-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
+.admin-customer-header h2 { margin: .3rem 0; font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.9rem; font-weight: 500; }
+.admin-customer-header p { margin: 0; color: #5c463d; font-size: .85rem; }
+.admin-customer-header small { color: #8c746a; font-size: .72rem; }
+.admin-customer-balance { padding: .8rem 1rem; display: grid; justify-items: end; gap: .1rem; border: 1px solid #e6dec8; background: #fdfbf7; }
+.admin-customer-balance span { font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: #8c746a; }
+.admin-customer-balance strong { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-size: 1.7rem; font-weight: 500; }
+.issue-credit-form { padding: 1rem 1.1rem; display: grid; gap: .8rem; border: 1px solid #d6c7b2; border-left: 3px solid var(--safyra-espresso); background: #fdfbf7; }
+.issue-credit-form p { margin: .25rem 0 0; color: #715b52; font-size: .8rem; }
+.issue-credit-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; }
+.issue-credit-row label { display: grid; gap: .35rem; font-size: .7rem; font-weight: 600; color: #5c463d; }
+.issue-credit-row input { width: 180px; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d6c7b2; background: #fff; font: inherit; font-size: .95rem; transition: border-color .2s ease, box-shadow .2s ease; }
+.issue-credit-row input:focus { border-color: #9e7b3b; box-shadow: 0 0 0 3px rgb(197 160 89 / .14); outline: 0; }
+.issue-credit-form .issue-credit-confirm { margin: 0; padding: .6rem .75rem; background: #fbf4e6; color: #4d3720; font-size: .78rem; }
+.admin-customer-orders ul { margin: .5rem 0 0; padding: 0; list-style: none; }
+.admin-customer-orders li { padding: .6rem 0; display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #efe8da; font-size: .8rem; }
+.admin-customer-orders li > span { display: grid; gap: .1rem; }
+.admin-customer-orders li > span:last-child { text-align: right; font-weight: 600; }
+.admin-customer-orders small { color: #8c746a; font-size: .7rem; font-weight: 400; }
+.admin-customer-orders p { color: #8c746a; font-size: .8rem; }

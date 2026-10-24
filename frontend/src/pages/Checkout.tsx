@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { getCountryByCode, validatePostalCode } from "postal-code-checker";
-import { ArrowLeft, Check, CreditCard, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, MessageCircle, ShieldCheck, WalletCards } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import BrandHeader from "@/components/BrandHeader";
@@ -15,7 +15,8 @@ import { formatPrice, variantLabel, whatsappUrl } from "@/lib/shop";
 import { apiGet, apiPost, apiPut, ApiError } from "@/lib/api";
 import { formatAddressLine } from "@/lib/address";
 import type { AccountResponse, SavedAddress, SavedAddressInput } from "@/lib/auth";
-import type { OrderRequestCreate, OrderRequestResponse, PaymentQuoteResponse, PayUCheckoutResponse } from "@/lib/checkout";
+import type { OrderRequestCreate, OrderRequestResponse, PaymentQuoteRequest, PaymentQuoteResponse, PayUCheckoutResponse } from "@/lib/checkout";
+import { formatCreditDate, type StoreCreditSummary } from "@/lib/storeCredit";
 import type { CheckoutSessionSummary, CheckoutSessionUpsert } from "@/lib/abandonedCheckout";
 
 type CheckoutStep = "details" | "review" | "complete";
@@ -60,6 +61,9 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState("new");
   const [prefilled, setPrefilled] = useState(false);
   const [saveAddress, setSaveAddress] = useState(true);
+  const [useCredit, setUseCredit] = useState(true);
+  const { data: storeCredit } = useQuery({ queryKey: ["store-credit", user?.id], queryFn: () => apiGet<StoreCreditSummary>("/account/store-credit"), enabled: isCustomer, retry: false });
+  const creditBalance = storeCredit?.balance ?? 0;
   const saveAddressMutation = useMutation({
     mutationFn: (input: SavedAddressInput) => apiPost<SavedAddress[]>("/account/addresses", input),
     onSuccess: async (addresses, input) => {
@@ -96,10 +100,15 @@ export default function Checkout() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
   });
-  const quotePayment = useMutation({ mutationFn: (payload: OrderRequestCreate) => apiPost<PaymentQuoteResponse>("/payments/quote", payload) });
+  const quotePayment = useMutation({ mutationFn: (payload: PaymentQuoteRequest) => apiPost<PaymentQuoteResponse>("/payments/quote", payload) });
   const createPayment = useMutation({
-    mutationFn: (payload: OrderRequestCreate) => apiPost<PayUCheckoutResponse>("/payments/create", payload),
+    mutationFn: (payload: PaymentQuoteRequest) => apiPost<PayUCheckoutResponse>("/payments/create", payload),
     onSuccess: (response) => {
+      if (response.completed) {
+        // Fully paid with SAFYRA Credit: the order is confirmed server-side; show the same result page PayU returns to.
+        window.location.assign(`/payment-result?txnid=${encodeURIComponent(response.transaction_id)}`);
+        return;
+      }
       const paymentForm = document.createElement("form");
       paymentForm.method = "POST";
       paymentForm.action = response.action;
@@ -232,7 +241,7 @@ export default function Checkout() {
       });
     }
     const showReview = () => { setStep("review"); window.scrollTo({ top: 0, behavior: "smooth" }); };
-    if (payload.country_code === "IN") quotePayment.mutate(payload, { onSuccess: showReview }); else showReview();
+    if (payload.country_code === "IN") quotePayment.mutate({ ...payload, use_store_credit: creditBalance > 0 && useCredit }, { onSuccess: showReview }); else showReview();
   };
   const orderSummary = cart.map((item) => `${item.title} — ${variantLabel(item)}, Qty ${item.quantity}`).join("; ");
   const handoff = whatsappUrl(`Hello SAFYRA, my order request${request ? ` ${request.request_number}` : ""} is ready for review. Items: ${orderSummary}. Total before shipping: ${formatPrice(cartTotal)}. Shipping: ${shipping === "india" ? "India delivery" : "International shipping quote"}. Deliver to: ${form.name}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.country}. Contact: ${form.phone}, ${form.email}.${form.note.trim() ? ` Note: ${form.note.trim()}` : ""}`);
@@ -242,12 +251,20 @@ export default function Checkout() {
   const submitOrderRequest = () => {
     const payload = buildPayload();
     if (!payload) return;
-    if (payload.country_code === "IN") createPayment.mutate(payload); else submitRequest.mutate(payload);
+    if (payload.country_code === "IN") createPayment.mutate({ ...payload, use_store_credit: creditBalance > 0 && useCredit }); else submitRequest.mutate(payload);
   };
   const isIndia = selectedCountry?.isoCode === "IN";
   const estimatedShipping = isIndia ? (cartTotal >= 1000 ? 0 : 120) : 0;
   const shippingAmount = quotePayment.data?.shipping_amount ?? estimatedShipping;
   const payableTotal = quotePayment.data?.total ?? cartTotal + shippingAmount;
+  const creditApplied = quotePayment.data?.credit_applied ?? 0;
+  const amountDue = quotePayment.data?.amount_due ?? payableTotal;
+  const paidInFullByCredit = creditApplied > 0 && amountDue === 0;
+  const toggleCredit = (next: boolean) => {
+    setUseCredit(next);
+    const payload = buildPayload();
+    if (payload) quotePayment.mutate({ ...payload, use_store_credit: next });
+  };
   if (!cart.length) return <div className="page-shell"><BrandHeader /><main className="checkout-empty"><h1>Your bag is empty.</h1><Link to="/shop" className="button button-dark" data-testid="checkout-empty-shop">Return to shop</Link></main></div>;
   return <div className="page-shell">
     <BrandHeader />
@@ -335,9 +352,14 @@ export default function Checkout() {
             <div className="checkout-step"><span><Check size={15} /></span><div><strong>Delivery details</strong><small>{form.name} · {form.city}, {form.country}</small></div><button onClick={() => setStep("details")} data-testid="checkout-edit-address">Edit</button></div>
             <div className="review-address"><p>{form.address}</p><p>{form.city}, {form.state} {form.postalCode}</p><p>{form.phone} · {form.email}</p>{form.note && <p data-testid="checkout-review-note">{form.note}</p>}</div>
             {discountCode && <p className="checkout-applied-code" data-testid="checkout-applied-code">Offer code checked: <strong>{discountCode}</strong></p>}
-            <div className="handoff-note"><ShieldCheck size={20} /><p><strong>{isIndia ? "PayU Hosted Checkout" : "Personal shipping confirmation"}</strong>{isIndia ? "Your card or UPI details are entered only on PayU. SAFYRA verifies the payment server-to-server before confirming fulfilment." : "SAFYRA will confirm the international shipping charge before requesting payment."}</p></div>
+            {isIndia && isCustomer && creditBalance > 0 && <label className={useCredit ? "checkout-credit-toggle is-selected" : "checkout-credit-toggle"} data-testid="checkout-use-credit">
+              <input type="checkbox" checked={useCredit} disabled={quotePayment.isPending} onChange={(event) => toggleCredit(event.target.checked)} data-testid="checkout-use-credit-checkbox" />
+              <WalletCards size={20} />
+              <span><strong>Use my SAFYRA Credit</strong><small data-testid="checkout-credit-available">{formatPrice(creditBalance)} available{storeCredit?.next_expiry ? ` · ${formatPrice(storeCredit.next_expiry_amount)} expires ${formatCreditDate(storeCredit.next_expiry)}` : ""}</small>{useCredit && creditApplied > 0 && <small className="checkout-credit-outcome" data-testid="checkout-credit-outcome">{formatPrice(creditApplied)} applied{creditBalance - creditApplied > 0 ? ` · ${formatPrice(creditBalance - creditApplied)} stays in your account` : ""}</small>}</span>
+            </label>}
+            {paidInFullByCredit ? <div className="handoff-note"><WalletCards size={20} /><p><strong>Paid in full with SAFYRA Credit</strong>No card or UPI payment is needed. Your order is confirmed as soon as you place it.</p></div> : <div className="handoff-note"><ShieldCheck size={20} /><p><strong>{isIndia ? "PayU Hosted Checkout" : "Personal shipping confirmation"}</strong>{isIndia ? "Your card or UPI details are entered only on PayU. SAFYRA verifies the payment server-to-server before confirming fulfilment." : "SAFYRA will confirm the international shipping charge before requesting payment."}</p></div>}
             {(submitRequest.isError || createPayment.isError) && <div className="form-error" data-testid="checkout-request-error">We couldn’t begin checkout. No payment was taken. Please review your details and try again.</div>}
-            <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending || createPayment.isPending} data-testid="checkout-submit-request">{submitRequest.isPending || createPayment.isPending ? "Preparing secure checkout…" : isIndia ? <><CreditCard size={17} /> Pay securely with PayU · {formatPrice(payableTotal)}</> : "Submit international order request"}</button>
+            <button type="button" className="button button-dark button-full" onClick={submitOrderRequest} disabled={submitRequest.isPending || createPayment.isPending} data-testid="checkout-submit-request">{submitRequest.isPending || createPayment.isPending ? "Preparing secure checkout…" : paidInFullByCredit ? <><WalletCards size={17} /> Place order with SAFYRA Credit</> : isIndia ? <><CreditCard size={17} /> Pay securely with PayU · {formatPrice(amountDue)}</> : "Submit international order request"}</button>
             <a href={checkoutHelpUrl} target="_blank" rel="noreferrer" className="button button-outline button-full" data-testid="checkout-support-whatsapp">Need checkout help?</a>
           </div>}
 
@@ -360,7 +382,9 @@ export default function Checkout() {
           {quotePayment.data && quotePayment.data.discount_total > 0 && <div className="summary-line" data-testid="checkout-discount-total"><span>Automatic savings</span><strong>−{formatPrice(quotePayment.data.discount_total)}</strong></div>}
           <div className="summary-line"><span>Product subtotal</span><strong data-testid="checkout-subtotal">{formatPrice(quotePayment.data?.subtotal ?? cartTotal)}</strong></div>
           {isIndia && <div className="summary-line"><span>India shipping</span><strong data-testid="checkout-shipping-total">{shippingAmount === 0 ? "Free" : formatPrice(shippingAmount)}</strong></div>}
-          {isIndia && <div className="summary-line checkout-payable-total"><span>Total</span><strong data-testid="checkout-payable-total">{formatPrice(payableTotal)}</strong></div>}
+          {isIndia && <div className={creditApplied > 0 ? "summary-line" : "summary-line checkout-payable-total"}><span>Total</span><strong data-testid="checkout-payable-total">{formatPrice(payableTotal)}</strong></div>}
+          {isIndia && creditApplied > 0 && <div className="summary-line checkout-credit-line" data-testid="checkout-credit-applied"><span>SAFYRA Credit</span><strong>−{formatPrice(creditApplied)}</strong></div>}
+          {isIndia && creditApplied > 0 && <div className="summary-line checkout-payable-total"><span>To pay</span><strong data-testid="checkout-amount-due">{formatPrice(amountDue)}</strong></div>}
           <small>{isIndia ? "Taxes included. The total is recalculated by SAFYRA before PayU opens." : "International shipping is confirmed personally before payment."}</small>
         </aside>
       </div>

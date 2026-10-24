@@ -146,12 +146,19 @@ export interface OrderConversionResponse {
   converted_at: string;
 }
 
+export interface PaymentQuoteRequest extends OrderRequestCreate {
+  use_store_credit: boolean;
+}
+
 export interface PaymentQuoteResponse {
   regular_subtotal: number;
   discount_total: number;
   subtotal: number;
   shipping_amount: number;
   total: number;
+  credit_applied: number;
+  amount_due: number;
+  store_credit_balance: number;
   currency: "INR";
 }
 
@@ -160,6 +167,8 @@ export interface PayUCheckoutResponse extends PaymentQuoteResponse {
   fields: Record<string, string>;
   request_number: string;
   transaction_id: string;
+  /** SAFYRA Credit covered the full total; the order is already confirmed and no PayU step follows. */
+  completed: boolean;
 }
 
 export interface PaymentStatusResponse {
@@ -167,6 +176,8 @@ export interface PaymentStatusResponse {
   request_number: string;
   status: "pending" | "paid" | "failed";
   amount: number;
+  credit_applied: number;
+  total: number;
   currency: "INR";
   updated_at: string;
 }

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 import uuid
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserPublic(BaseModel):
@@ -112,6 +112,12 @@ class Order(BaseModel):
     is_demo: bool = False
     items: list[OrderItem] = Field(default_factory=list)
     tracking: list[TrackingStep] = Field(default_factory=list)
+
+    @field_validator("courier_name", "tracking_number", "tracking_link", "invoice_number", mode="before")
+    @classmethod
+    def _blank_when_missing(cls, value: object) -> object:
+        # Order snapshots copied at confirmation store null until courier/tracking details are entered.
+        return "" if value is None else value
 
 
 class SavedAddressInput(BaseModel):

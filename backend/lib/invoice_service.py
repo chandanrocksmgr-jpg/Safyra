@@ -137,6 +137,8 @@ async def generate_invoice_for_order(order_id: str) -> dict | None:
         "place_of_supply": order.get("state_region", ""), "reverse_charge": "No",
         "regular_subtotal": order.get("regular_subtotal", order["subtotal"]), "discount_total": order.get("discount_total", 0),
         "subtotal": order["subtotal"], "shipping_amount": shipping_amount, "total": total,
+        # SAFYRA Credit is recorded as a payment method only; taxable value and GST are on the full total.
+        "credit_applied": int(order.get("credit_applied") or 0), "amount_paid_online": total - int(order.get("credit_applied") or 0),
         "taxable_value": taxable, "cgst": cgst, "sgst": sgst, "igst": igst, "status": "issued",
     }
     try:
@@ -252,7 +254,10 @@ def render_invoice_pdf(document: dict, sample: bool = False) -> bytes:
     if document.get("cgst"): totals += [["CGST included", f"INR {document['cgst']:,}"], ["SGST included", f"INR {document['sgst']:,}"]]
     if document.get("igst"): totals += [["IGST included", f"INR {document['igst']:,}"]]
     totals.append(["Total", f"INR {document['total']:,}"])
-    totals_table = Table(totals, colWidths=[55 * mm, 35 * mm], hAlign="RIGHT", style=TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"), ("LINEABOVE", (0, -1), (-1, -1), .75, colors.HexColor("#261C19")), ("FONTSIZE", (0, 0), (-1, -1), 8), ("PADDING", (0, 0), (-1, -1), 5)]))
+    if document.get("credit_applied"):
+        totals += [["Paid via SAFYRA Credit", f"INR {document['credit_applied']:,}"], ["Paid online (PayU)", f"INR {document.get('amount_paid_online', 0):,}"]]
+    total_row = next(index for index, row in enumerate(totals) if row[0] == "Total")
+    totals_table = Table(totals, colWidths=[55 * mm, 35 * mm], hAlign="RIGHT", style=TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTNAME", (0, total_row), (-1, total_row), "Helvetica-Bold"), ("LINEABOVE", (0, total_row), (-1, total_row), .75, colors.HexColor("#261C19")), ("FONTSIZE", (0, 0), (-1, -1), 8), ("PADDING", (0, 0), (-1, -1), 5)]))
     story.extend([totals_table, Spacer(1, 12 * mm), Paragraph(f"Authorised signatory: {escape(str(seller['authorised_signatory']))}", right), Paragraph(f"Support: {escape(str(seller['support_email']))} · {escape(str(seller['support_phone']))}", small), Paragraph("Computer-generated document. Prices are GST-inclusive.", small)])
     pdf.build(story)
     return output.getvalue()

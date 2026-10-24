@@ -27,6 +27,7 @@ from routers.invoices import router as invoices_router
 from routers.analytics import router as analytics_router
 from routers.email_verification import router as email_verification_router
 from routers.google_auth import router as google_auth_router
+from routers.store_credit import router as store_credit_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -109,6 +110,7 @@ api_router.include_router(discounts_router)
 api_router.include_router(checkout_sessions_router)
 api_router.include_router(order_emails_router)
 api_router.include_router(payments_router)
+api_router.include_router(store_credit_router)
 api_router.include_router(store_settings_router)
 api_router.include_router(invoices_router)
 api_router.include_router(analytics_router)

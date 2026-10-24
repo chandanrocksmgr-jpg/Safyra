@@ -145,6 +145,11 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("payment_provider", ASCENDING), ("payment_status", ASCENDING), ("payment_created_at", ASCENDING)], name="provider_payment_created"),
         IndexModel([("checkout_session_id", ASCENDING), ("payment_status", ASCENDING)], name="checkout_payment_status", sparse=True),
     ],
+    "store_credits": [
+        IndexModel([("id", ASCENDING)], name="store_credit_id", unique=True),
+        IndexModel([("customer_id", ASCENDING), ("expires_at", ASCENDING)], name="store_credit_customer_expiry"),
+    ],
+    "store_credit_activity": [IndexModel([("customer_id", ASCENDING), ("created_at", DESCENDING)], name="store_credit_activity_customer")],
     "waitlist_requests": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),

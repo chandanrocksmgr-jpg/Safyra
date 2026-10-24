@@ -29,11 +29,14 @@ def _request_received_html(order: dict) -> str:
         for item in order["items"]
     )
     address = "<br>".join(escape(str(value)) for value in [order["address"], f'{order["city"]}, {order["state_region"]} {order["postal_code"]}', order["country"]] if value)
-    is_payu = order.get("payment_provider") == "PayU"
+    is_payu = order.get("payment_provider") in {"PayU", "SAFYRA Credit"}
     intro = "Your secure PayU payment is awaiting server verification." if is_payu else "No payment is confirmed by this email."
     next_step = "We will email you again as soon as PayU confirms the payment." if is_payu else "SAFYRA will verify product availability and shipping details before providing the next payment step."
     shipping_row = f'<tr><td style="padding-top:8px">India shipping</td><td style="padding-top:8px;text-align:right">{escape(_money(order.get("shipping_amount") or 0))}</td></tr>' if is_payu else ""
     total_row = f'<tr><td style="padding-top:10px"><strong>Total</strong></td><td style="padding-top:10px;text-align:right"><strong>{escape(_money(order.get("total") or order["subtotal"]))}</strong></td></tr>' if is_payu else ""
+    if is_payu and order.get("credit_applied"):
+        total_row += (f'<tr><td style="padding-top:6px">Paid with SAFYRA Credit</td><td style="padding-top:6px;text-align:right">−{escape(_money(order["credit_applied"]))}</td></tr>'
+                      f'<tr><td style="padding-top:6px"><strong>Paid online</strong></td><td style="padding-top:6px;text-align:right"><strong>{escape(_money(order.get("amount_due", 0)))}</strong></td></tr>')
     return (
         '<table role="presentation" width="100%"><tr><td style="padding:28px;font-family:Arial,sans-serif;color:#261c19">'
         f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">We received your SAFYRA order request.</h1>'
@@ -54,7 +57,8 @@ def _payment_confirmed_html(order: dict) -> str:
         f'<p>Hi {escape(order["name"])},</p><h1 style="font:30px Georgia,serif">Your payment is confirmed.</h1>'
         f'<p>SAFYRA has independently verified payment for <strong>{escape(order["request_number"])}</strong>.</p>'
         f'<p><strong>Confirmed total: {escape(_money(order.get("total") or order["subtotal"]))}</strong></p>'
-        '<p>Your order will now move through SAFYRA’s recorded fulfilment process. Courier and tracking details are shared only after they are entered and verified by the team.</p>'
+        + (f'<p>Paid with SAFYRA Credit: {escape(_money(order["credit_applied"]))} · Paid online: {escape(_money(order.get("amount_due", 0)))}</p>' if order.get("credit_applied") else "")
+        + '<p>Your order will now move through SAFYRA’s recorded fulfilment process. Courier and tracking details are shared only after they are entered and verified by the team.</p>'
         f'{invoice_note}'
         f'<p style="font-size:12px;color:#715b52">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for passwords or card details by email.</p>'
         '</td></tr></table>'
