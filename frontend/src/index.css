@@ -357,6 +357,13 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
   .about-founder { grid-template-columns: .7fr 1.3fr; }
 }
 
+.admin-image-manager { transition: outline-color .18s ease, background-color .18s ease; outline: 2px dashed transparent; outline-offset: 4px; }
+.admin-image-manager.is-drop-active { outline-color: #2c1a14; background: #fdf7ec; }
+.admin-dropzone-hint { margin: .2rem 0 .7rem; font-size: .78rem; color: #715b52; }
+.admin-dropzone-hint b { color: #2c1a14; }
+.admin-image-item { cursor: grab; }
+.admin-image-item.is-dragging { opacity: .45; cursor: grabbing; }
+
 /* First-order gift */
 .gift-stock-warning { display: flex; align-items: flex-start; gap: .6rem; padding: .85rem 1rem; border: 1px solid #9b2f2a; background: #fdf1ee; color: #7d2621; margin-bottom: 1rem; }
 .gift-stock-warning strong { display: block; font-size: .92rem; }
@@ -1411,6 +1418,8 @@ select,
 .admin-image-inputs > label:first-child svg { position: absolute; left: .7rem; }
 .admin-image-inputs > label:first-child input { padding-left: 2.1rem; }
 .admin-upload-button { position: relative; overflow: hidden; cursor: pointer; }
+/* A <label> styled as a dark button inherits the muted form-label colour, which made the text invisible. */
+label.admin-upload-button.button-dark { color: var(--safyra-ivory); display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
 .admin-upload-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .admin-image-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; }
 .admin-image-item { position: relative; aspect-ratio: 3/4; overflow: hidden; background: #e7ded2; }

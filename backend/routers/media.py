@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from gridfs.errors import NoFile
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
 
 from lib.db import get_db
@@ -21,7 +21,12 @@ router = APIRouter(prefix="/media", tags=["media"])
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-MAX_BYTES = 60 * 1024 * 1024  # generous ceiling for full-resolution studio photography
+# Effectively no limit for photography: anything larger than this is almost certainly not a product photo.
+MAX_BYTES = 200 * 1024 * 1024
+# Studio originals are kept at up to this long edge (far beyond any screen, good for deep zoom) and
+# re-encoded so pages stay fast. Anything smaller is stored byte-for-byte.
+OPTIMISE_LONG_EDGE = 4000
+OPTIMISE_OVER_BYTES = 6 * 1024 * 1024
 FORMAT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 VIDEO_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 MAX_VIDEO_BYTES = 40 * 1024 * 1024
@@ -66,7 +71,7 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     if not content:
         raise HTTPException(status_code=400, detail="The uploaded image is empty")
     if len(content) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Images must be 60 MB or smaller")
+        raise HTTPException(status_code=413, detail="Images must be 200 MB or smaller")
     try:
         with Image.open(BytesIO(content)) as image:
             image.verify()
@@ -78,8 +83,11 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     detected_type = FORMAT_TYPES.get(image_format)
     if not detected_type or detected_type != file.content_type:
         raise HTTPException(status_code=415, detail="The image format does not match its file type")
+    optimise_note: list[str] = []
+    if len(content) > OPTIMISE_OVER_BYTES or max(width, height) > OPTIMISE_LONG_EDGE:
+        content, width, height, detected_type, optimise_note = _optimised(content, detected_type, width, height)
     quality = _safe_analysis(content)
-    filename = f"{uuid.uuid4()}{ALLOWED_TYPES[file.content_type]}"
+    filename = f"{uuid.uuid4()}{ALLOWED_TYPES[detected_type]}"
     media_id = await _media_bucket().upload_from_stream(
         filename,
         content,
@@ -92,7 +100,7 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
         size=len(content),
         width=quality.get("width", width),
         height=quality.get("height", height),
-        warnings=quality.get("warnings", []),
+        warnings=[*optimise_note, *quality.get("warnings", [])],
     )
 
 
@@ -119,6 +127,38 @@ async def upload_video(file: UploadFile = File(...), _: dict = Depends(require_a
         metadata={"content_type": file.content_type, "size": len(content), "kind": "video"},
     )
     return MediaVideoResponse(url=f"/api/media/{media_id}", content_type=file.content_type, size=len(content))
+
+
+def _optimised(content: bytes, content_type: str, width: int, height: int) -> tuple[bytes, int, int, str, list[str]]:
+    """Re-encode an oversized studio original: honour EXIF rotation, cap the long edge, keep near-lossless quality.
+
+    JPEG decoding uses draft mode so a 100 MP original never has to be expanded in memory at full size.
+    """
+    original_mp = round((width * height) / 1_000_000)
+    try:
+        with Image.open(BytesIO(content)) as image:
+            if image.format == "JPEG":
+                image.draft("RGB", (OPTIMISE_LONG_EDGE, OPTIMISE_LONG_EDGE))
+            image = ImageOps.exif_transpose(image)
+            image.thumbnail((OPTIMISE_LONG_EDGE, OPTIMISE_LONG_EDGE), Image.LANCZOS)
+            buffer = BytesIO()
+            if content_type == "image/png" and image.mode in {"RGBA", "LA", "P"}:
+                image.save(buffer, format="PNG", optimize=True)
+                new_type = "image/png"
+            elif content_type == "image/webp":
+                image.save(buffer, format="WEBP", quality=92, method=5)
+                new_type = "image/webp"
+            else:
+                image.convert("RGB").save(buffer, format="JPEG", quality=92, optimize=True, progressive=True)
+                new_type = "image/jpeg"
+            optimised = buffer.getvalue()
+            new_width, new_height = image.size
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        return content, width, height, content_type, []
+    if len(optimised) >= len(content):
+        return content, width, height, content_type, []
+    note = f"Optimised from {original_mp} MP for fast loading; stored at {new_width}×{new_height}."
+    return optimised, new_width, new_height, new_type, [note]
 
 
 def _safe_analysis(content: bytes) -> dict:
