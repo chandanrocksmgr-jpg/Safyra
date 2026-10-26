@@ -21,11 +21,11 @@ router = APIRouter(prefix="/media", tags=["media"])
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-MAX_BYTES = 8 * 1024 * 1024
+MAX_BYTES = 40 * 1024 * 1024
 FORMAT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 VIDEO_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 MAX_VIDEO_BYTES = 40 * 1024 * 1024
-Image.MAX_IMAGE_PIXELS = 40_000_000
+Image.MAX_IMAGE_PIXELS = 200_000_000
 
 
 def _media_bucket() -> AsyncIOMotorGridFSBucket:
@@ -66,7 +66,7 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     if not content:
         raise HTTPException(status_code=400, detail="The uploaded image is empty")
     if len(content) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Images must be 8 MB or smaller")
+        raise HTTPException(status_code=413, detail="Images must be 40 MB or smaller")
     try:
         with Image.open(BytesIO(content)) as image:
             image.verify()

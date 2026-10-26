@@ -42,6 +42,13 @@ export default function AdminGiftOffer() {
     description="One gift product can be live at a time. It is added automatically to a registered customer's first qualifying order."
     actions={<button type="button" className="button button-dark" onClick={() => save.mutate(draft)} disabled={save.isPending} data-testid="admin-gift-save"><Save size={15} /> {save.isPending ? "Saving…" : "Save offer"}</button>}
   >
+    {draft?.enabled && !draft.product_id && <div className="gift-stock-warning" data-testid="admin-gift-no-product">
+      <AlertTriangle size={16} />
+      <div>
+        <strong>No gift is chosen yet</strong>
+        <span>The announcement is showing to shoppers, but no gift will be added to orders until you pick one below.</span>
+      </div>
+    </div>}
     {lowStock && activeGift && <div className="gift-stock-warning" data-testid="admin-gift-low-stock">
       <AlertTriangle size={16} />
       <div>

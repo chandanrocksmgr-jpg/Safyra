@@ -168,3 +168,11 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 - Granting a gift now **claims one piece atomically** (`$inc stock -1` guarded by `stock >= 1`). If the gift is out of stock no gift is added, and eligibility replies "This gift is fully claimed for now."
 - `low_stock_threshold` (default 5) in the gift settings: when a claim leaves the gift at or below it, `notify_low_gift_stock()` emails `ADMIN_ALERT_EMAIL` (once a day, always when it hits zero, deduped by `site_content.gift_offer.low_stock_alert_date`). The admin screen also shows a red banner ("Only N left" / "is out of stock") and each gift card shows its stock.
 - The gift appears as a line in customer documents: the request-received email tags it "Complimentary gift" with the amount shown as Free, the payment-confirmed email adds a "With our compliments" line, and the invoice PDF prints the item with "Complimentary first-order gift" and Free in the price columns (so the total is unaffected).
+
+## Gift offer: announcement without a chosen gift (bug fix, Oct 2026)
+- The live site reported "no popup on the landing page" after publishing: production has its own database where the offer had never been enabled and no gift product existed. The popup required `enabled && product`, so it stayed hidden.
+- Fix: `PUT /api/gift-offer/settings` now accepts `enabled: true` with an empty `product_id` (a non-gift product id is still 422), the popup renders with a gift-box placeholder and no product line, eligibility reports "the gift for this offer is being chosen", and the admin screen shows `admin-gift-no-product` while the announcement runs without a gift. Gift lines still only attach when a gift product is active and in stock.
+- Production data must still be switched on in the live admin (Admin → Gift offer) or via the live API after each fresh environment.
+
+## Media upload limits
+- Product images: up to 40 MB each (was 8 MB), with Pillow's decompression guard raised to 200 MP; videos stay at 40 MB. Verified: a ~14 MB JPEG uploads (201), a 41 MB file is refused (413).

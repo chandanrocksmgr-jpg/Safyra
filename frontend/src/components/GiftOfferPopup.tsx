@@ -26,29 +26,31 @@ export default function GiftOfferPopup() {
   });
 
   useEffect(() => {
-    if (onAdminScreen || !data?.enabled || !data.product) return;
+    if (onAdminScreen || !data?.enabled) return;
     if (user?.role === "admin") return;
-    if (window.localStorage.getItem(SEEN_KEY) === data.product.id) return;
+    // Remembered per gift, so a new gift announces itself again.
+    if (window.localStorage.getItem(SEEN_KEY) === (data.product?.id ?? "surprise")) return;
     const timer = setTimeout(() => setOpen(true), 1200);
     return () => clearTimeout(timer);
   }, [data, onAdminScreen, user]);
 
   const dismiss = () => {
-    if (data?.product) window.localStorage.setItem(SEEN_KEY, data.product.id);
+    if (data?.enabled) window.localStorage.setItem(SEEN_KEY, data.product?.id ?? "surprise");
     setOpen(false);
   };
 
-  if (!open || !data?.product) return null;
+  if (!open || !data?.enabled) return null;
 
   return <div className="gift-popup-backdrop" role="dialog" aria-modal="true" aria-label={data.headline} data-testid="gift-offer-popup">
     <div className="gift-popup">
       <button type="button" className="gift-popup-close" onClick={dismiss} aria-label="Close" data-testid="gift-offer-close"><X size={18} /></button>
-      <div className="gift-popup-art"><SafeProductImage src={data.product.image_url} alt={data.product.title} productName={data.product.title} /></div>
+      {data.product ? <div className="gift-popup-art"><SafeProductImage src={data.product.image_url} alt={data.product.title} productName={data.product.title} /></div>
+        : <div className="gift-popup-art is-placeholder" aria-hidden="true"><Gift size={64} strokeWidth={1} /></div>}
       <div className="gift-popup-copy">
         <span className="eyebrow"><Gift size={14} /> With our compliments</span>
         <h2 data-testid="gift-offer-headline">{data.headline}</h2>
         <p>{data.subtext}</p>
-        <p className="gift-popup-product" data-testid="gift-offer-product">{data.product.title}{data.product.value > 0 && <span> · worth {formatPrice(data.product.value)}</span>}</p>
+        {data.product && <p className="gift-popup-product" data-testid="gift-offer-product">{data.product.title}{data.product.value > 0 && <span> · worth {formatPrice(data.product.value)}</span>}</p>}
         <div className="gift-popup-actions">
           <Link to="/shop" className="button button-dark" onClick={dismiss} data-testid="gift-offer-shop-link">Start shopping</Link>
           {!user && <Link to="/signup" className="button button-outline" onClick={dismiss} data-testid="gift-offer-signup-link">Create an account</Link>}

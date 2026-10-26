@@ -1,0 +1,77 @@
+{
+  "iteration": 31,
+  "mode": "generate",
+  "summary": "Gift offer popup/eligibility fix, admin warning, junior-admin boundaries, large image upload limit, and free gift-on-qualifying-order all verified. 10 passed, 0 failed.",
+  "passed": 10,
+  "failed": 0,
+  "checks": [
+    {
+      "criterion": "First-visit gift popup appears when the offer is enabled AND a gift product is chosen",
+      "name": "gift-popup-first-visit",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Fresh context visit to / showed gift-offer-popup with headline 'A surprise gift on your first order' and product 'Chikankari Potli Pouch'; terms toggle revealed 'greater than or equal to ₹5,000'; close hid it and reload did not re-show it. Re-verified against public preview URL https://lucknowi-craft.preview.emergentagent.com."
+    },
+    {
+      "criterion": "Popup also appears when offer enabled but NO gift product chosen (reported bug)",
+      "name": "gift-popup-no-chosen-product",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "PUT /api/gift-offer/settings {enabled:true,product_id:''} -> 200; fresh signed-out context visit to / showed gift-offer-popup with headline/terms and no gift-offer-product node; settings restored to product_id 1325fb86-7c54-4b4a-9258-9d568e6102fc afterwards (confirmed via GET /api/gift-offer)."
+    },
+    {
+      "criterion": "Enabling offer without a chosen gift accepted by API; eligibility reports not-eligible; non-gift product_id still rejected 422",
+      "name": "test_tscheck_gift_offer_settings_eligibility.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "PUT /api/gift-offer/settings {enabled:true,product_id:''} -> 200 {enabled:true,product_id:''}; GET /api/gift-offer/eligibility?subtotal=9000 -> 200 {eligible:false, reason mentions gift needing to be chosen, no product}; PUT with a non-gift product_id -> 422. 2 tests passed."
+    },
+    {
+      "criterion": "Admin warned when announcement running with no gift chosen; warning disappears after selecting+saving",
+      "name": "admin-gift-no-product-warning",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "At /admin/gift-offer (Super Admin) with product_id cleared, admin-gift-no-product was visible with 'No gift is chosen yet'; after clicking the Chikankari Potli Pouch card and Save, the warning disappeared. Settings restored afterwards."
+    },
+    {
+      "criterion": "Product image uploads accept files >8MB (limit raised to 40MB); still reject >40MB",
+      "name": "test_tscheck_media_upload_size_limit.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/media/upload with a ~14MB noisy JPEG (3000x2600) -> 201, url starting /api/media/, width=3000 height=2600; POST with a 41MB file -> 413. 2 tests passed."
+    },
+    {
+      "criterion": "Gift added free to qualifying first order, total unchanged",
+      "name": "test_tscheck_gift_free_order.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Signed up tscheck-gift-<suffix>@resend.dev; GET /api/gift-offer/eligibility?subtotal=5950 -> eligible:true; POST /api/payments/create for an India order of the ₹5,950 Angrakha (M/Blush petal) -> 201; order_requests doc items included the gift product at price 0; total == non-gift subtotal + shipping_amount."
+    },
+    {
+      "criterion": "Gift cart notice shown on /cart for qualifying bag",
+      "name": "cart-gift-notice-qualifying-order",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Signed up a fresh @resend.dev customer, added the ₹5,950 Angrakha (Blush petal / M) to the bag, /cart showed gift-cart-notice with gift-cart-title containing 'Chikankari Potli Pouch'."
+    },
+    {
+      "criterion": "Super Admin / Junior Admin boundaries hold for gift offer APIs",
+      "name": "test_tscheck_gift_offer_admin_boundary.py",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Junior admin session: PUT /api/gift-offer/settings -> 403; GET /api/gift-offer/products -> 403. Super admin: GET /api/gift-offer/products -> 200. 1 test passed."
+    },
+    {
+      "criterion": "Super Admin / Junior Admin boundaries hold for /admin/gift-offer UI route",
+      "name": "junior-admin-gift-offer-redirect",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Junior admin login lands on /admin; navigating to /admin/gift-offer redirects to /admin/products (SuperAdminRoute guard)."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Pre-existing backend test suite instability noted but out of scope: running the FULL suite (python -m pytest tests/) under xdist shows ~22-33 unrelated pre-existing failures (catalog counts, GST invoice flows, session isolation, etc.) that reproduce identically with or without the new gift-offer/media test files added this iteration -- confirmed by re-running the suite with the 4 new files excluded. Not a regression caused by this work; likely shared-state/test-isolation flakiness in the existing suite under parallel workers. Recommend a separate investigation pass on tests/test_tscheck_catalog_integrity.py, test_tscheck_genuine_data_preserved.py, and friends."
+  ],
+  "retest_needed": false
+}

@@ -29,8 +29,10 @@ async def gift_eligibility(subtotal: int = Query(default=0, ge=0), user: dict | 
     product = await active_gift_product(settings)
     threshold = int(settings.get("threshold") or 0)
     summary: GiftProductSummary | None = gift_summary(product) if product else None
-    if not settings.get("enabled") or not product:
+    if not settings.get("enabled"):
         return GiftEligibility(eligible=False, reason="The gift offer is not running right now.", threshold=threshold)
+    if not product:
+        return GiftEligibility(eligible=False, reason="The gift for this offer is being chosen — nothing is added yet.", threshold=threshold)
     if int(product.get("stock") or 0) < 1:
         return GiftEligibility(eligible=False, reason="This gift is fully claimed for now.", threshold=threshold, product=summary)
     if not user or user.get("role") != "customer":
@@ -56,8 +58,7 @@ async def update_gift_settings(input: GiftOfferUpdate, _: dict = Depends(require
         product = await db.products.find_one({"id": merged.product_id, "is_gift": True})
         if not product:
             raise HTTPException(status_code=422, detail="Choose a product marked as a gift product")
-    if merged.enabled and not merged.product_id:
-        raise HTTPException(status_code=422, detail="Choose the active gift product before starting the offer")
+    # The announcement can run before a gift is chosen; the gift only attaches to orders once one is active and in stock.
     await db.site_content.update_one(
         {"id": "gift_offer"},
         {"$set": {**merged.model_dump(), "updated_at": datetime.now(timezone.utc)}, "$setOnInsert": {"id": "gift_offer"}},
