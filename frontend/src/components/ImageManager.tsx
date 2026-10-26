@@ -55,7 +55,7 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
         if (uploaded.warnings.length) toast.warning(`Check ${file.name}`, { description: uploaded.warnings.join(" "), duration: 9000 });
       } catch (reason) {
         failed += 1;
-        toast.error(reason instanceof ApiError && reason.status === 413 ? `${file.name} must be 40 MB or smaller` : `${file.name} could not be uploaded`);
+        toast.error(reason instanceof ApiError && reason.status === 413 ? `${file.name} must be 60 MB or smaller` : `${file.name} could not be uploaded`);
       }
     }
     if (uploadedUrls.length) {

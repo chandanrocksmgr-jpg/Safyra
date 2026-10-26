@@ -175,4 +175,4 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 - Production data must still be switched on in the live admin (Admin → Gift offer) or via the live API after each fresh environment.
 
 ## Media upload limits
-- Product images: up to 40 MB each (was 8 MB), with Pillow's decompression guard raised to 200 MP; videos stay at 40 MB. Verified: a ~14 MB JPEG uploads (201), a 41 MB file is refused (413).
+- Product images: up to 60 MB each (was 8 MB), with Pillow's decompression guard raised to 200 MP; videos stay at 40 MB. Verified: 20 MB and ~48 MB JPEGs upload (201); the ingress passes bodies of that size through unchanged.
