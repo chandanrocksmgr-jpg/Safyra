@@ -36,6 +36,9 @@ class ProductBulkUpdate(BaseModel):
     price_value: Optional[int] = Field(default=None, ge=0)
     include_set_types: bool = False
     include_variant_overrides: bool = False
+    # Fills Care / Origin only where the product's existing value is blank; never overwrites a value already set.
+    care_value: Optional[str] = Field(default=None, max_length=200)
+    origin_value: Optional[str] = Field(default=None, max_length=120)
 
 
 async def _ensure_catalog() -> None:
@@ -234,8 +237,8 @@ async def bulk_update_products(input: ProductBulkUpdate, _: dict = Depends(requi
         raise HTTPException(status_code=422, detail="Invalid product status")
     if input.price_mode and input.price_mode not in {"set", "increase_percent", "decrease_percent"}:
         raise HTTPException(status_code=422, detail="Invalid price update mode")
-    if not input.status and not input.price_mode:
-        raise HTTPException(status_code=422, detail="Choose a status or price update")
+    if not input.status and not input.price_mode and not input.care_value and not input.origin_value:
+        raise HTTPException(status_code=422, detail="Choose a status, price update, or Care/Origin fill-in")
 
     def changed_price(value: int) -> int:
         if input.price_value is None:
@@ -257,6 +260,10 @@ async def bulk_update_products(input: ProductBulkUpdate, _: dict = Depends(requi
             if input.include_variant_overrides:
                 changes["variant_overrides"] = [{**item, **({"price": changed_price(item["price"])} if item.get("price") is not None else {})} for item in document.get("variant_overrides", [])]
                 changes["variants"] = [{**item, **({"price": changed_price(item["price"])} if item.get("price") is not None else {})} for item in document.get("variants", [])]
+        if input.care_value and not (document.get("care") or "").strip():
+            changes["care"] = input.care_value
+        if input.origin_value and not (document.get("origin") or "").strip():
+            changes["origin"] = input.origin_value
         await db.products.update_one({"id": document["id"]}, {"$set": changes})
     updated = await db.products.find({"id": {"$in": input.product_ids}}).to_list(len(input.product_ids))
     return [_clean(document) for document in updated]
