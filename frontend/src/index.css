@@ -398,10 +398,15 @@ h1, h2, h3 { font-family: 'Cormorant Garamond Variable', Georgia, serif; font-we
 .gift-product-card em { font-style: normal; font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: #4b6b4f; }
 .admin-toggle-row { display: flex; align-items: center; gap: .6rem; font-size: .88rem; cursor: pointer; }
 .admin-toggle-row input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 18px; accent-color: #2c1a14; margin: 0; }
-.gift-cart-line { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border: 1px dashed #2c1a14; background: #fdf7ec; font-size: .84rem; margin: .8rem 0; }
-.gift-cart-line img { width: 42px; height: 52px; object-fit: cover; }
-.gift-cart-line strong { display: block; }
-.gift-cart-line span { color: #715b52; font-size: .78rem; }
+.gift-cart-line { position: relative; display: flex; align-items: center; gap: .75rem; padding: .85rem .9rem; border: 1px solid #b49861; border-radius: 2px; background: linear-gradient(135deg, #fdf3dd 0%, #fbeccb 100%); box-shadow: 0 2px 10px rgba(180,152,97,.22); font-size: .84rem; margin: .8rem 0; overflow: hidden; animation: gift-cart-pop .4s ease-out; }
+.gift-cart-line::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: #8b261d; }
+.gift-cart-icon { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-content: center; border-radius: 99px; background: #2c1a14; color: #f3d99b; }
+.gift-cart-line img { width: 42px; height: 52px; object-fit: cover; margin-left: auto; flex-shrink: 0; border: 1px solid #e9d9ab; }
+.gift-cart-tag { display: block; color: #8b261d; font-size: .64rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .15rem; }
+.gift-cart-line strong { display: block; color: #2c1a14; font-size: .92rem; }
+.gift-cart-line span[data-testid="gift-cart-reason"] { color: #715b52; font-size: .78rem; }
+.gift-cart-login-link { display: inline-flex; margin-top: .3rem; font-size: .76rem; font-weight: 700; letter-spacing: .03em; color: #8b261d; border-bottom: 1px solid #8b261d; }
+@keyframes gift-cart-pop { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 /* Staff access & role tags */
 .admin-role-tag { margin-left: .6rem; padding: .2rem .5rem; border: 1px solid currentColor; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; }

@@ -18,12 +18,13 @@ export default function GiftCartNotice({ subtotal }: { subtotal: number }) {
   if (!data?.product) return null;
 
   return <div className="gift-cart-line" data-testid="gift-cart-notice">
-    <SafeProductImage src={data.product.image_url} alt={data.product.title} productName={data.product.title} />
+    <span className="gift-cart-icon"><Gift size={18} /></span>
     <div>
+      <span className="gift-cart-tag">{data.eligible ? "Free gift unlocked" : "First-order gift"}</span>
       <strong data-testid="gift-cart-title">{data.eligible ? `${data.product.title} is on us` : data.product.title}</strong>
       <span data-testid="gift-cart-reason">{data.reason}</span>
-      {!user && <> <Link to="/login" className="underlined-link" data-testid="gift-cart-login-link">Sign in</Link></>}
+      {!user && <Link to="/login" className="gift-cart-login-link" data-testid="gift-cart-login-link">Sign in →</Link>}
     </div>
-    <Gift size={16} />
+    <SafeProductImage src={data.product.image_url} alt={data.product.title} productName={data.product.title} />
   </div>;
 }
