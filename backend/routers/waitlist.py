@@ -53,11 +53,11 @@ def _active_key(product_id: str, size_value: str | None, color_value: str | None
 
 
 def _is_genuinely_unavailable(product: dict) -> bool:
-    if product.get("availability") == "Currently unavailable" or not product.get("sizes"):
+    if product.get("availability") == "Currently unavailable":
         return True
     if product.get("availability", "").strip().casefold() == "made to order":
         return False
-    sizes = product.get("sizes", [])
+    sizes = product.get("sizes") or [""]
     size_stock = product.get("stock_by_size", {})
     fallback = max(0, product.get("stock", 0))
     return all(max(0, size_stock.get(size, fallback)) < 1 for size in sizes)

@@ -37,6 +37,8 @@ export interface Product {
   mrp: number | null;
   stock: number;
   stock_by_size: Record<string, number>;
+  /** False for unstitched / no-size products (e.g. fabric by the metre) — size selection and the size guide never apply then. */
+  size_required: boolean;
   sizes: string[];
   colors: string[];
   color_options: ProductColorOption[];
@@ -116,22 +118,25 @@ export const findVariant = (product: StockInput, setTypeId: string, size: string
 
 export const isVariantSellable = (variant: ProductVariant | undefined) => Boolean(variant && variant.available && variant.stock > 0);
 
-/** Units a customer may add. With a variant table, stock is exact per combination × colour × size for every product. */
+/** Units a customer may add. With a variant table, stock is exact per combination × colour × size for every product.
+ *  A product with no sizes (unstitched) is not unavailable because of that — its stock lives under size "". */
 export const availableQuantity = (product: StockInput, size: string, color = "", setTypeId = "") => {
-  if (product.availability === "Currently unavailable" || !product.sizes.length) return 0;
+  if (product.availability === "Currently unavailable") return 0;
   if (hasVariants(product)) {
     const variant = findVariant(product, setTypeId, size, color);
     return variant && variant.available ? Math.max(0, variant.stock) : 0;
   }
   if (isMadeToOrder(product)) return Number.POSITIVE_INFINITY;
+  if (!product.sizes.length) return Math.max(0, product.stock);
   if (Object.hasOwn(product.stock_by_size, size)) return Math.max(0, product.stock_by_size[size]);
   return Math.max(0, product.stock);
 };
 
 export const isProductUnavailable = (product: StockInput) => {
-  if (product.availability === "Currently unavailable" || !product.sizes.length) return true;
+  if (product.availability === "Currently unavailable") return true;
   if (hasVariants(product)) return !product.variants?.some(isVariantSellable);
   if (isMadeToOrder(product)) return false;
+  if (!product.sizes.length) return availableQuantity(product, "") < 1;
   return product.sizes.every((size) => availableQuantity(product, size) < 1);
 };
 

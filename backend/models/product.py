@@ -88,6 +88,8 @@ class ProductFields(BaseModel):
     mrp: Optional[int] = None
     stock: int = 0
     stock_by_size: dict[str, int] = Field(default_factory=dict)
+    # False for unstitched/no-size products (e.g. fabric by the metre); size selection and the size guide never apply then.
+    size_required: bool = True
     sizes: list[str] = Field(default_factory=list)
     colors: list[str] = Field(default_factory=list)
     color_options: list[ProductColorOption] = Field(default_factory=list, max_length=60)
@@ -138,6 +140,7 @@ class ProductUpdate(ProductImageValidation):
     mrp: Optional[int] = None
     stock: Optional[int] = None
     stock_by_size: Optional[dict[str, int]] = None
+    size_required: Optional[bool] = None
     sizes: Optional[list[str]] = None
     colors: Optional[list[str]] = None
     color_options: Optional[list[ProductColorOption]] = Field(default=None, max_length=60)
@@ -285,6 +288,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         mrp=7600,
         stock=0,
         stock_by_size={},
+        size_required=False,
         sizes=[],
         colors=["Rose"],
         image_url="/api/media/shopify/136112B1-2A2D-4DF5-A6A7-E890FF9B97FF.jpg",

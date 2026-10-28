@@ -24,7 +24,7 @@ export default function ProductWaitlistAction() {
   }, [productId]);
 
   // Variant products handle "Notify me" per colour and size on the product page itself.
-  if (!product || !isProductUnavailable(product) || (hasVariants(product) && product.availability !== "Currently unavailable" && product.sizes.length > 0)) return null;
+  if (!product || !isProductUnavailable(product) || (hasVariants(product) && product.availability !== "Currently unavailable")) return null;
   return <>
     {target && createPortal(<button className="button button-dark button-large waitlist-product-trigger" onClick={() => setOpen(true)} data-testid="join-waitlist-button"><BellRing size={17} /> Limited availability · Join the waitlist</button>, target)}
     {open && createPortal(<WaitlistModal product={product} onClose={() => setOpen(false)} />, document.body)}

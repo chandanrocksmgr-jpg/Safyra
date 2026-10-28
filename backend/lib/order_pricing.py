@@ -74,7 +74,7 @@ async def price_order_items(items: Iterable, discount_code: str | None = None) -
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=f"{exc} for {product['title']}") from exc
         made_to_order = pricing["availability"].strip().lower() == "made to order" and not pricing["uses_variants"]
-        if pricing["availability"] == "Currently unavailable" or not product.get("sizes"):
+        if pricing["availability"] == "Currently unavailable":
             raise HTTPException(status_code=409, detail=f"{product['title']} is currently unavailable")
         if not made_to_order and pricing["stock"] < item.quantity:
             selection = variant_label(pricing["set_type"], item.size, item.color)
