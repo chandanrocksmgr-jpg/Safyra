@@ -11,16 +11,21 @@ from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
 
+import pillow_heif
+
 from lib.db import get_db
 from lib.image_quality import analyse_image
 from lib.legacy_media import get_legacy_image, is_safe_legacy_path
 from lib.security import require_admin
 
+pillow_heif.register_heif_opener()  # lets Pillow.open() read iPhone HEIC/HEIF photos directly
 
 router = APIRouter(prefix="/media", tags=["media"])
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+# iPhones shoot HEIC/HEIF by default; these are accepted and transcoded to JPEG below (browsers can't render HEIC).
+HEIF_TYPES = {"image/heic", "image/heif"}
 # Effectively no limit for photography: anything larger than this is almost certainly not a product photo.
 MAX_BYTES = 200 * 1024 * 1024
 # Studio originals are kept at up to this long edge (far beyond any screen, good for deep zoom) and
@@ -64,8 +69,9 @@ class MediaQualityResponse(BaseModel):
 
 @router.post("/upload", response_model=MediaUploadResponse, status_code=201)
 async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_admin)):
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=415, detail="Upload a JPG, PNG or WebP image")
+    is_heif_upload = file.content_type in HEIF_TYPES or (file.filename or "").lower().endswith((".heic", ".heif"))
+    if file.content_type not in ALLOWED_TYPES and not is_heif_upload:
+        raise HTTPException(status_code=415, detail="Upload a JPG, PNG, WebP or iPhone HEIC/HEIF image")
     content = await file.read(MAX_BYTES + 1)
     await file.close()
     if not content:
@@ -79,13 +85,28 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
             image_format = image.format or ""
             width, height = image.size
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise HTTPException(status_code=415, detail="The file is not a valid JPG, PNG or WebP image") from exc
-    detected_type = FORMAT_TYPES.get(image_format)
-    if not detected_type or detected_type != file.content_type:
-        raise HTTPException(status_code=415, detail="The image format does not match its file type")
+        raise HTTPException(status_code=415, detail="The file is not a valid JPG, PNG, WebP or HEIC/HEIF image") from exc
     optimise_note: list[str] = []
+    if image_format == "HEIF":
+        # iPhone photos shoot HEIC/HEIF by default; browsers can't render it, so transcode to JPEG once on upload.
+        try:
+            with Image.open(BytesIO(content)) as image:
+                image = ImageOps.exif_transpose(image).convert("RGB")
+                buffer = BytesIO()
+                image.save(buffer, format="JPEG", quality=92, optimize=True, progressive=True)
+                content = buffer.getvalue()
+                width, height = image.size
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            raise HTTPException(status_code=415, detail="This HEIC/HEIF photo could not be converted") from exc
+        detected_type = "image/jpeg"
+        optimise_note = ["Converted from HEIC to JPEG so it displays on every device."]
+    else:
+        detected_type = FORMAT_TYPES.get(image_format)
+        if not detected_type or detected_type != file.content_type:
+            raise HTTPException(status_code=415, detail="The image format does not match its file type")
     if len(content) > OPTIMISE_OVER_BYTES or max(width, height) > OPTIMISE_LONG_EDGE:
-        content, width, height, detected_type, optimise_note = _optimised(content, detected_type, width, height)
+        content, width, height, detected_type, resize_note = _optimised(content, detected_type, width, height)
+        optimise_note = [*optimise_note, *resize_note]
     quality = _safe_analysis(content)
     filename = f"{uuid.uuid4()}{ALLOWED_TYPES[detected_type]}"
     media_id = await _media_bucket().upload_from_stream(

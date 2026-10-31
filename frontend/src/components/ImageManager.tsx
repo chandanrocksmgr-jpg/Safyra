@@ -32,6 +32,14 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
   });
   const warningsFor = (image: string) => quality?.items.find((item) => item.url === image)?.warnings ?? [];
   const flagged = images.map((image, index) => ({ index, warnings: warningsFor(image) })).filter((item) => item.warnings.length > 0);
+  // Surfaces the backend's actual reason (e.g. "Upload a JPG, PNG, WebP or iPhone HEIC/HEIF image") instead of a generic failure.
+  const errorDetail = (reason: unknown): string | null => {
+    if (reason instanceof ApiError && reason.body && typeof reason.body === "object" && "detail" in reason.body) {
+      const detail = (reason.body as { detail?: unknown }).detail;
+      if (typeof detail === "string") return detail;
+    }
+    return null;
+  };
   const addUrl = () => {
     const next = url.trim();
     if (!next || images.length >= limit) return;
@@ -58,7 +66,8 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
         if (uploaded.warnings.length) toast.warning(`Check ${file.name}`, { description: uploaded.warnings.join(" "), duration: 9000 });
       } catch (reason) {
         failed += 1;
-        toast.error(reason instanceof ApiError && reason.status === 413 ? `${file.name} is too large even for a studio original` : `${file.name} could not be uploaded`);
+        const detail = errorDetail(reason);
+        toast.error(reason instanceof ApiError && reason.status === 413 ? `${file.name} is too large even for a studio original` : detail ? `${file.name}: ${detail}` : `${file.name} could not be uploaded`);
       }
       setProgress((current) => current && { ...current, done: current.done + 1 });
     }
@@ -98,7 +107,7 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
     <div className="admin-image-inputs">
       <label><LinkIcon size={15} /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="Paste image URL" data-testid={`${testId}-url-input`} /></label>
       <button type="button" className="button button-outline" onClick={addUrl} disabled={!url.trim() || images.length >= limit} data-testid={`${testId}-add-url`}><ImagePlus size={15} /> Add URL</button>
-      <label className="button button-dark admin-upload-button"><Upload size={15} /> {uploading ? "Uploading…" : "Upload images"}<input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => upload(event.target.files)} disabled={uploading || images.length >= limit} data-testid={`${testId}-file-input`} /></label>
+      <label className="button button-dark admin-upload-button"><Upload size={15} /> {uploading ? "Uploading…" : "Upload images"}<input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={(event) => upload(event.target.files)} disabled={uploading || images.length >= limit} data-testid={`${testId}-file-input`} /></label>
     </div>
     {images.length > 0 && <div className="admin-image-grid" data-testid={`${testId}-gallery`}>{images.map((image, index) => <div className={dragIndex === index ? "admin-image-item is-dragging" : "admin-image-item"} key={`${image}-${index}`} draggable onDragStart={() => setDragIndex(index)} onDragEnd={() => setDragIndex(null)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); event.stopPropagation(); if (dragIndex !== null) reorder(dragIndex, index); setDragIndex(null); }} data-testid={`${testId}-item-${index}`}><SafeProductImage src={image} alt={`${label} ${index + 1}`} productName={label} /><span>{index === 0 ? "Primary" : `${index + 1}`}</span>{warningsFor(image).length > 0 && <em className="admin-image-warning" title={warningsFor(image).join("\n")} data-testid={`${testId}-warning-${index}`}><AlertTriangle size={12} /> Check photo</em>}<div>{index > 0 && <button type="button" onClick={() => onChange([image, ...images.filter((_, itemIndex) => itemIndex !== index)])} aria-label="Make primary image" title="Make primary" data-testid={`${testId}-make-primary-${index}`}><Star size={14} /></button>}<button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move image earlier" data-testid={`${testId}-move-up-${index}`}><ArrowUp size={14} /></button><button type="button" onClick={() => move(index, 1)} disabled={index === images.length - 1} aria-label="Move image later" data-testid={`${testId}-move-down-${index}`}><ArrowDown size={14} /></button><button type="button" onClick={() => onChange(images.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove image" data-testid={`${testId}-remove-${index}`}><Trash2 size={14} /></button></div></div>)}</div>}
     {flagged.length > 0 && <div className="admin-image-quality" role="status" data-testid={`${testId}-quality-notes`}><strong><AlertTriangle size={14} /> Photo checks</strong><small>Suggestions only. You can still save these images.</small><ul>{flagged.map((item) => <li key={item.index} data-testid={`${testId}-quality-note-${item.index}`}><b>{item.index === 0 ? "Primary" : `Image ${item.index + 1}`}:</b> {item.warnings.join(" ")}</li>)}</ul></div>}
