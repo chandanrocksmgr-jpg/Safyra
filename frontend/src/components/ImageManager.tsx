@@ -14,6 +14,34 @@ interface ImageManagerProps {
   limit?: number;
 }
 
+// Mirrors the backend's own re-compression thresholds (routers/media.py) so a big phone photo is shrunk to the
+// same ballpark before it leaves the device — this is what the server would store anyway, but doing it client-side
+// first avoids uploading the full multi-MB original over a slow mobile connection, where the upload can time out.
+const CLIENT_OPTIMISE_OVER_BYTES = 6 * 1024 * 1024;
+const CLIENT_OPTIMISE_LONG_EDGE = 4000;
+
+async function prepareForUpload(file: File): Promise<File> {
+  // HEIC/HEIF (and anything the browser can't decode) is left as-is for the backend to convert/optimise.
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size <= CLIENT_OPTIMISE_OVER_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const longEdge = Math.max(bitmap.width, bitmap.height);
+    if (longEdge <= CLIENT_OPTIMISE_LONG_EDGE) return file;
+    const scale = CLIENT_OPTIMISE_LONG_EDGE / longEdge;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+  } catch {
+    return file; // if client-side decoding fails for any reason, fall back to the original upload path
+  }
+}
+
 export default function ImageManager({ images, onChange, label, testId, limit = 40 }: ImageManagerProps) {
   const [url, setUrl] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -59,7 +87,7 @@ export default function ImageManager({ images, onChange, label, testId, limit = 
     let failed = 0;
     for (const file of selected) {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", await prepareForUpload(file));
       try {
         const uploaded = await apiUpload<MediaUploadResponse>("/media/upload", formData);
         uploadedUrls.push(uploaded.url);

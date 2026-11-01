@@ -32,7 +32,7 @@ MAX_BYTES = 200 * 1024 * 1024
 # re-encoded so pages stay fast. Anything smaller is stored byte-for-byte.
 OPTIMISE_LONG_EDGE = 4000
 OPTIMISE_OVER_BYTES = 6 * 1024 * 1024
-FORMAT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+FORMAT_TYPES = {"JPEG": "image/jpeg", "MPO": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 VIDEO_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 MAX_VIDEO_BYTES = 40 * 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 200_000_000
@@ -69,8 +69,11 @@ class MediaQualityResponse(BaseModel):
 
 @router.post("/upload", response_model=MediaUploadResponse, status_code=201)
 async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_admin)):
-    is_heif_upload = file.content_type in HEIF_TYPES or (file.filename or "").lower().endswith((".heic", ".heif"))
-    if file.content_type not in ALLOWED_TYPES and not is_heif_upload:
+    # Some phones/apps send "image/jpg" (not a real MIME type) or label an iPhone HDR/Live-Photo JPEG as MPO —
+    # both decode to a perfectly valid photo, so normalize instead of rejecting a clean image outright.
+    declared_type = "image/jpeg" if file.content_type == "image/jpg" else file.content_type
+    is_heif_upload = declared_type in HEIF_TYPES or (file.filename or "").lower().endswith((".heic", ".heif"))
+    if declared_type not in ALLOWED_TYPES and not is_heif_upload:
         raise HTTPException(status_code=415, detail="Upload a JPG, PNG, WebP or iPhone HEIC/HEIF image")
     content = await file.read(MAX_BYTES + 1)
     await file.close()
@@ -101,8 +104,10 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
         detected_type = "image/jpeg"
         optimise_note = ["Converted from HEIC to JPEG so it displays on every device."]
     else:
+        # PIL's own decoded format is the source of truth for storage/serving — a declared-vs-detected
+        # mismatch (e.g. "image/jpg", or a browser mislabeling an MPO/JPEG) is not a reason to reject a valid photo.
         detected_type = FORMAT_TYPES.get(image_format)
-        if not detected_type or detected_type != file.content_type:
+        if not detected_type:
             raise HTTPException(status_code=415, detail="The image format does not match its file type")
     if len(content) > OPTIMISE_OVER_BYTES or max(width, height) > OPTIMISE_LONG_EDGE:
         content, width, height, detected_type, resize_note = _optimised(content, detected_type, width, height)
