@@ -1,10 +1,12 @@
 from io import BytesIO
 from pathlib import Path
+import asyncio
 import re
 import uuid
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from gridfs.errors import NoFile
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
@@ -35,7 +37,14 @@ OPTIMISE_OVER_BYTES = 6 * 1024 * 1024
 FORMAT_TYPES = {"JPEG": "image/jpeg", "MPO": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 VIDEO_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 MAX_VIDEO_BYTES = 40 * 1024 * 1024
-Image.MAX_IMAGE_PIXELS = 200_000_000
+# A decoded RGB buffer costs ~3 bytes/pixel in memory; this cap (covers any phone or studio camera in practical
+# use) keeps a single decode well within the server's memory budget. Pillow raises DecompressionBombError above it.
+Image.MAX_IMAGE_PIXELS = 60_000_000
+# Decoding + re-encoding a large photo is CPU/memory heavy; this bounds how many run at once so a burst of
+# uploads can't stack peak memory past the server's limit, and keeps it off the event loop (see run_in_threadpool
+# below) so health checks never stall behind it.
+_UPLOAD_SLOTS = asyncio.Semaphore(2)
+_UPLOAD_SLOT_WAIT_SECONDS = 25
 
 
 def _media_bucket() -> AsyncIOMotorGridFSBucket:
@@ -67,20 +76,12 @@ class MediaQualityResponse(BaseModel):
     items: list[MediaQualityItem] = Field(default_factory=list)
 
 
-@router.post("/upload", response_model=MediaUploadResponse, status_code=201)
-async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_admin)):
-    # Some phones/apps send "image/jpg" (not a real MIME type) or label an iPhone HDR/Live-Photo JPEG as MPO —
-    # both decode to a perfectly valid photo, so normalize instead of rejecting a clean image outright.
-    declared_type = "image/jpeg" if file.content_type == "image/jpg" else file.content_type
-    is_heif_upload = declared_type in HEIF_TYPES or (file.filename or "").lower().endswith((".heic", ".heif"))
-    if declared_type not in ALLOWED_TYPES and not is_heif_upload:
-        raise HTTPException(status_code=415, detail="Upload a JPG, PNG, WebP or iPhone HEIC/HEIF image")
-    content = await file.read(MAX_BYTES + 1)
-    await file.close()
-    if not content:
-        raise HTTPException(status_code=400, detail="The uploaded image is empty")
-    if len(content) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Images must be 200 MB or smaller")
+def _decode_and_prepare_image(content: bytes) -> tuple[bytes, str, int, int, list[str]]:
+    """All the CPU/memory-heavy Pillow decode/convert/optimise work for one upload.
+
+    Runs inside run_in_threadpool (see caller) so it never blocks the event loop — that blocking was what
+    stalled /health checks and triggered OOM-restart-driven 520s in production under concurrent uploads.
+    """
     try:
         with Image.open(BytesIO(content)) as image:
             image.verify()
@@ -92,9 +93,11 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     optimise_note: list[str] = []
     if image_format == "HEIF":
         # iPhone photos shoot HEIC/HEIF by default; browsers can't render it, so transcode to JPEG once on upload.
+        # Downscaling immediately (not waiting for the later size check) bounds peak memory for these often-huge originals.
         try:
             with Image.open(BytesIO(content)) as image:
                 image = ImageOps.exif_transpose(image).convert("RGB")
+                image.thumbnail((OPTIMISE_LONG_EDGE, OPTIMISE_LONG_EDGE), Image.LANCZOS)
                 buffer = BytesIO()
                 image.save(buffer, format="JPEG", quality=92, optimize=True, progressive=True)
                 content = buffer.getvalue()
@@ -112,7 +115,32 @@ async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_a
     if len(content) > OPTIMISE_OVER_BYTES or max(width, height) > OPTIMISE_LONG_EDGE:
         content, width, height, detected_type, resize_note = _optimised(content, detected_type, width, height)
         optimise_note = [*optimise_note, *resize_note]
-    quality = _safe_analysis(content)
+    return content, detected_type, width, height, optimise_note
+
+
+@router.post("/upload", response_model=MediaUploadResponse, status_code=201)
+async def upload_image(file: UploadFile = File(...), _: dict = Depends(require_admin)):
+    # Some phones/apps send "image/jpg" (not a real MIME type) or label an iPhone HDR/Live-Photo JPEG as MPO —
+    # both decode to a perfectly valid photo, so normalize instead of rejecting a clean image outright.
+    declared_type = "image/jpeg" if file.content_type == "image/jpg" else file.content_type
+    is_heif_upload = declared_type in HEIF_TYPES or (file.filename or "").lower().endswith((".heic", ".heif"))
+    if declared_type not in ALLOWED_TYPES and not is_heif_upload:
+        raise HTTPException(status_code=415, detail="Upload a JPG, PNG, WebP or iPhone HEIC/HEIF image")
+    content = await file.read(MAX_BYTES + 1)
+    await file.close()
+    if not content:
+        raise HTTPException(status_code=400, detail="The uploaded image is empty")
+    if len(content) > MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Images must be 200 MB or smaller")
+    try:
+        await asyncio.wait_for(_UPLOAD_SLOTS.acquire(), timeout=_UPLOAD_SLOT_WAIT_SECONDS)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=429, detail="The server is busy processing other photos — please try again in a few seconds")
+    try:
+        content, detected_type, width, height, optimise_note = await run_in_threadpool(_decode_and_prepare_image, content)
+    finally:
+        _UPLOAD_SLOTS.release()
+    quality = await run_in_threadpool(_safe_analysis, content)
     filename = f"{uuid.uuid4()}{ALLOWED_TYPES[detected_type]}"
     media_id = await _media_bucket().upload_from_stream(
         filename,
