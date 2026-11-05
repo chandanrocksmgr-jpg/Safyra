@@ -1,5 +1,5 @@
 export type PublishingStatus = "draft" | "active" | "archived";
-export type CatalogGroupType = "category" | "collection";
+export type CatalogGroupType = "category" | "collection" | "fabric";
 
 export interface CatalogGroup {
   id: string;
@@ -41,7 +41,8 @@ export interface HomepageHero {
   title: string;
   emphasis: string;
   body: string;
-  image_url: string;
+  /** Up to 5 photos; the homepage cycles through them automatically. */
+  image_urls: string[];
   primary_label: string;
   primary_url: string;
   secondary_label: string;
@@ -99,7 +100,7 @@ export const defaultHomepage: HomepageSettings = {
     title: "Chikankari,",
     emphasis: "made to be remembered.",
     body: "Handcrafted Chikankari, created by skilled artisans in Lucknow.",
-    image_url: "/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png",
+    image_urls: ["/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png"],
     primary_label: "Shop new arrivals",
     primary_url: "/shop?new=true&sort=newest",
     secondary_label: "Shop SAFYRA Luxury",

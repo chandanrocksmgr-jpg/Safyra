@@ -46,7 +46,7 @@ export default function BrandHeader() {
   const location = useLocation();
   const { cartCount, wishlistIds, openDrawer } = useShop();
   const { user } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<"shop" | "collections" | false>(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const { data: navigationProducts } = useQuery({ queryKey: ["products", "navigation"], queryFn: () => apiGet<Product[]>("/products"), retry: false });
@@ -57,12 +57,19 @@ export default function BrandHeader() {
   const catalogGroupsReady = catalogGroupsLoaded && !catalogGroupsFetching;
   const collectionIsActive = (name: string) => catalogGroupsUnavailable || (catalogGroupsReady && managedCollections.some((group) => group.value === name));
   const itemHasProducts = (item: MenuItem) => item.type === "static" || Boolean(navigationProducts?.some((product) => item.type === "category" ? product.category === item.value : item.type === "collection" ? product.collection === item.value && collectionIsActive(item.value) : item.type === "new" ? product.new_arrival : item.type === "best" ? product.best_seller : product.sizes.includes(item.value)));
-  const visibleMenuGroups: MenuGroup[] = catalogGroupsReady ? [
-    { title: "Shop by category", items: managedCategories },
+  const visibleMenuGroups: MenuGroup[] = menuOpen === "collections" ? (catalogGroupsReady ? [
     { title: "Collections", items: managedCollections },
-    { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter(itemHasProducts) },
+  ].filter((group) => group.items.length) : [
+    { title: "Collections", items: fallbackMenuGroups[1].items.filter((item) => item.type === "collection" && itemHasProducts(item)) },
+  ].filter((group) => group.items.length)) : catalogGroupsReady ? [
+    { title: "Shop by category", items: managedCategories },
+    { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter((item) => item.type !== "collection" && itemHasProducts(item)) },
     { title: "About SAFYRA", items: fallbackMenuGroups[2].items },
-  ].filter((group) => group.items.length) : catalogGroupsUnavailable ? fallbackMenuGroups.map((group) => ({ ...group, items: group.items.filter(itemHasProducts) })).filter((group) => group.items.length) : [
+  ].filter((group) => group.items.length) : catalogGroupsUnavailable ? [
+    { title: "Shop by category", items: fallbackMenuGroups[0].items.filter(itemHasProducts) },
+    { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter((item) => item.type !== "collection" && itemHasProducts(item)) },
+    { title: "About SAFYRA", items: fallbackMenuGroups[2].items },
+  ].filter((group) => group.items.length) : [
     { title: "Shop the edit", items: fallbackMenuGroups[1].items.filter((item) => item.type !== "collection" && itemHasProducts(item)) },
     { title: "About SAFYRA", items: fallbackMenuGroups[2].items },
   ].filter((group) => group.items.length);
@@ -83,12 +90,12 @@ export default function BrandHeader() {
       <div className="announcement" data-testid="announcement-bar"><span className="announcement-message" data-testid="announcement-message">{announcements[announcementIndex % announcements.length]}</span></div>
       <header className="site-header" data-testid="site-header">
         <div className="header-inner">
-          <button className="icon-button mobile-only" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu" data-testid="mobile-menu-toggle"><Menu size={20} /></button>
+          <button className="icon-button mobile-only" onClick={() => setMenuOpen((open) => (open ? false : "shop"))} aria-label="Open menu" data-testid="mobile-menu-toggle"><Menu size={20} /></button>
           <Link to="/" className="wordmark" data-testid="brand-home-link"><span>SAFYRA</span><small>CHIKANKARI</small></Link>
           <nav className="desktop-nav" aria-label="Primary navigation">
             {hasNewArrivals && <Link to="/shop?new=true&sort=newest" className="nav-link" data-testid="header-nav-new-arrivals">New Arrivals</Link>}
-            <button className="nav-link nav-menu-trigger" onClick={() => setMenuOpen((open) => !open)} data-testid="header-nav-shop">Shop <ChevronDown size={14} /></button>
-            <button className="nav-link nav-menu-trigger" onClick={() => setMenuOpen((open) => !open)} data-testid="header-nav-collections">Collections</button>
+            <button className="nav-link nav-menu-trigger" onClick={() => setMenuOpen((open) => (open === "shop" ? false : "shop"))} data-testid="header-nav-shop">Shop <ChevronDown size={14} /></button>
+            <button className="nav-link nav-menu-trigger" onClick={() => setMenuOpen((open) => (open === "collections" ? false : "collections"))} data-testid="header-nav-collections">Collections</button>
             {hasLuxury && <Link to="/shop?collection=Safyra%20Luxury" className="nav-link" data-testid="header-nav-luxury">SAFYRA Luxury</Link>}
             {hasExtendedSizes && <Link to="/shop?size=3XL" className="nav-link" data-testid="header-nav-extended-sizes">Extended Sizes</Link>}
             <Link to="/about" className="nav-link" data-testid="header-nav-about">About</Link>
@@ -101,7 +108,7 @@ export default function BrandHeader() {
           </div>
         </div>
         {searchOpen && <SearchExperience initialQuery={currentQuery} onClose={() => setSearchOpen(false)} />}
-        {menuOpen && <div className="mega-menu" data-testid="mega-menu"><div className="mega-menu-inner"><div className="mega-menu-heading"><span className="eyebrow">Shop SAFYRA</span><h2>Silhouette, fabric<br />or Chikankari detail.</h2><p>Start with what matters to you, then refine by colour, size and availability.</p><Link to="/shop" onClick={() => setMenuOpen(false)} className="underlined-link" data-testid="mega-menu-shop-link">Shop all pieces →</Link><Link to={user ? "/account" : "/login"} onClick={() => setMenuOpen(false)} className="mobile-account-link" data-testid="mobile-account-link">{user ? "My account" : "Sign in / Create account"}</Link></div>{visibleMenuGroups.map((group) => <div key={group.title} className="mega-group"><span className="eyebrow">{group.title}</span>{group.items.map((item) => <Link key={item.label} to={item.to} onClick={() => setMenuOpen(false)} data-testid={`mega-menu-link-${item.label.toLowerCase().replaceAll(" ", "-")}`}>{item.label}</Link>)}</div>)}<button className="mega-close" onClick={() => setMenuOpen(false)} aria-label="Close menu" data-testid="mega-menu-close"><X size={20} /></button></div></div>}
+        {menuOpen && <div className="mega-menu" data-testid="mega-menu"><div className="mega-menu-inner"><div className="mega-menu-heading"><span className="eyebrow">Shop SAFYRA</span><h2>{menuOpen === "collections" ? <>Curated edits,<br />shop the whole story.</> : <>Silhouette, fabric<br />or Chikankari detail.</>}</h2><p>{menuOpen === "collections" ? "Every current SAFYRA collection, in one place." : "Start with what matters to you, then refine by colour, size and availability."}</p><Link to="/shop" onClick={() => setMenuOpen(false)} className="underlined-link" data-testid="mega-menu-shop-link">Shop all pieces →</Link><Link to={user ? "/account" : "/login"} onClick={() => setMenuOpen(false)} className="mobile-account-link" data-testid="mobile-account-link">{user ? "My account" : "Sign in / Create account"}</Link></div>{visibleMenuGroups.map((group) => <div key={group.title} className="mega-group"><span className="eyebrow">{group.title}</span>{group.items.map((item) => <Link key={item.label} to={item.to} onClick={() => setMenuOpen(false)} data-testid={`mega-menu-link-${item.label.toLowerCase().replaceAll(" ", "-")}`}>{item.label}</Link>)}</div>)}<button className="mega-close" onClick={() => setMenuOpen(false)} aria-label="Close menu" data-testid="mega-menu-close"><X size={20} /></button></div></div>}
       </header>
       {showWhatsapp && <a className="whatsapp-float" href={whatsappUrl("Hello SAFYRA, I would like help choosing a Chikankari piece.")} target="_blank" rel="noreferrer" data-testid="floating-whatsapp-link"><MessageCircle size={16} /><span>Stylist help</span></a>}
     </>

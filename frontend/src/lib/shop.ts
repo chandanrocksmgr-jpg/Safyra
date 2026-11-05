@@ -38,6 +38,8 @@ export interface Product {
   stock: number;
   stock_by_size: Record<string, number>;
   /** False for unstitched / no-size products (e.g. fabric by the metre) — size selection and the size guide never apply then. */
+  /** Drives size_required automatically — set via the admin's Stitch type field, not editable directly. */
+  stitch_type: "stitched" | "semi_stitched" | "unstitched" | "other";
   size_required: boolean;
   sizes: string[];
   colors: string[];

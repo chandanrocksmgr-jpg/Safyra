@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Edit3, PackagePlus, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Archive, Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/AdminShell";
 import ColorManager from "@/components/ColorManager";
@@ -8,24 +8,44 @@ import ImageManager from "@/components/ImageManager";
 import VideoManager from "@/components/VideoManager";
 import SafeProductImage from "@/components/SafeProductImage";
 import VariantManager, { buildVariantRows } from "@/components/VariantManager";
-import { apiDelete, apiGet, apiPatch, apiPost, apiUpload, ApiError } from "@/lib/api";
-import type { CatalogGroup, MediaUploadResponse, PublishingStatus } from "@/lib/cms";
+import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "@/lib/api";
+import type { CatalogGroup, PublishingStatus } from "@/lib/cms";
 import { availabilityLabel, swatchFor, type Product, type ProductColorOption, type ProductSetType, type ProductVariant } from "@/lib/shop";
+
+type StitchType = "stitched" | "semi_stitched" | "unstitched" | "other";
 
 interface ProductForm {
   title: string; slug: string; status: PublishingStatus; category: string; collection: string; fabric: string; craft: string; hsn_code: string;
-  price: string; mrp: string; stock: string; size_required: boolean; sizes: string; description: string; fit: string;
+  price: string; mrp: string; stock: string; stitch_type: StitchType; sizes: string; description: string; fit: string;
   measurements: string; transparency: string; lining: string; care: string; dispatch_days: string; availability: string;
-  customisation: string; origin: string; occasion: string; style_keywords: string; size_guide_image: string;
+  customisation: string; origin: string; occasion: string; style_keywords: string;
 }
 
-const SAFYRA_SIZE_GUIDE_IMAGE = "/api/media/6ae24cb9e00e9748b6ee678a";
 const emptyForm: ProductForm = {
-  title: "", slug: "", status: "draft", category: "", collection: "", fabric: "", craft: "", hsn_code: "62114922", price: "", mrp: "", stock: "0", size_required: true, sizes: "", description: "", fit: "", measurements: "", transparency: "", lining: "", care: "Dry clean only", dispatch_days: "", availability: "Made to order", customisation: "", origin: "Lucknow", occasion: "", style_keywords: "", size_guide_image: SAFYRA_SIZE_GUIDE_IMAGE,
+  title: "", slug: "", status: "draft", category: "", collection: "", fabric: "", craft: "", hsn_code: "62114922", price: "", mrp: "", stock: "0", stitch_type: "stitched", sizes: "", description: "", fit: "", measurements: "", transparency: "", lining: "", care: "Dry clean only", dispatch_days: "", availability: "Made to order", customisation: "", origin: "Lucknow", occasion: "", style_keywords: "",
 };
 const splitList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const statusLabels: Record<PublishingStatus, string> = { draft: "Draft", active: "Active", archived: "Archived" };
+const stitchTypeLabels: Record<StitchType, string> = { stitched: "Stitched — asks for a size, shows the SAFYRA size chart", semi_stitched: "Semi-stitched — no size needed", unstitched: "Unstitched — no size needed", other: "Other (accessories, etc.) — no size needed" };
+
+// Lets an admin close the editor (or lose the tab) mid-edit without losing progress — resumed next time
+// the same product (or a fresh "new product") is opened. Cleared only once the product actually saves.
+interface ProductDraft {
+  form: ProductForm; images: string[]; isGift: boolean; videos: string[]; videoPosters: string[];
+  colorOptions: ProductColorOption[]; setTypes: ProductSetType[]; variants: ProductVariant[]; completeLookIds: string[];
+  merchandising: { featured: boolean; new_arrival: boolean; best_seller: boolean }; savedAt: number;
+}
+const draftKey = (id: string | null) => `safyra-admin-product-draft:${id ?? "new"}`;
+const loadDraft = (id: string | null): ProductDraft | null => {
+  try {
+    const raw = window.localStorage.getItem(draftKey(id));
+    return raw ? (JSON.parse(raw) as ProductDraft) : null;
+  } catch {
+    return null;
+  }
+};
+const clearDraft = (id: string | null) => window.localStorage.removeItem(draftKey(id));
 
 export default function AdminProducts() {
   const queryClient = useQueryClient();
@@ -45,28 +65,26 @@ export default function AdminProducts() {
   const [merchandising, setMerchandising] = useState({ featured: false, new_arrival: false, best_seller: false });
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | PublishingStatus>("all");
-  const [sizeGuideUploading, setSizeGuideUploading] = useState(false);
-  const uploadSizeGuide = async (files: FileList | null) => {
-    const file = files?.[0];
-    if (!file) return;
-    setSizeGuideUploading(true);
-    try {
-      const uploaded = await apiUpload<MediaUploadResponse>("/media/upload", (() => { const data = new FormData(); data.append("file", file); return data; })());
-      setForm((current) => ({ ...current, size_guide_image: uploaded.url }));
-      toast.success("Size guide image uploaded");
-    } catch (reason) {
-      const detail = reason instanceof ApiError && reason.body && typeof reason.body === "object" && "detail" in reason.body && typeof (reason.body as { detail?: unknown }).detail === "string" ? (reason.body as { detail: string }).detail : null;
-      toast.error(detail ? `Size guide image: ${detail}` : "Size guide image could not be uploaded");
-    } finally {
-      setSizeGuideUploading(false);
-    }
+  const [resumedDraftAt, setResumedDraftAt] = useState<number | null>(null);
+
+  const applyDraft = (draft: ProductDraft) => {
+    setForm(draft.form); setImages(draft.images); setIsGift(draft.isGift); setVideos(draft.videos); setVideoPosters(draft.videoPosters);
+    setColorOptions(draft.colorOptions); setSetTypes(draft.setTypes); setVariants(draft.variants); setCompleteLookIds(draft.completeLookIds); setMerchandising(draft.merchandising);
   };
-  const sizes = form.size_required ? splitList(form.sizes) : [];
+  useEffect(() => {
+    if (!editorOpen) return;
+    const draft: ProductDraft = { form, images, isGift, videos, videoPosters, colorOptions, setTypes, variants, completeLookIds, merchandising, savedAt: Date.now() };
+    window.localStorage.setItem(draftKey(editingId), JSON.stringify(draft));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorOpen, editingId, form, images, isGift, videos, videoPosters, colorOptions, setTypes, variants, completeLookIds, merchandising]);
+
+  const sizes = form.stitch_type === "stitched" ? splitList(form.sizes) : [];
   const colors = colorOptions.map((item) => item.name.trim()).filter(Boolean);
   const variantRows = buildVariantRows(sizes, colors, setTypes, variants);
   const visibleProducts = useMemo(() => products.filter((product) => (statusFilter === "all" || product.status === statusFilter) && `${product.title} ${product.category} ${product.collection}`.toLowerCase().includes(query.toLowerCase())), [products, query, statusFilter]);
   const categories = groups.filter((group) => group.group_type === "category");
   const collections = groups.filter((group) => group.group_type === "collection");
+  const fabrics = groups.filter((group) => group.group_type === "fabric");
   const blankCareOriginProducts = useMemo(() => products.filter((product) => !product.care.trim() || !product.origin.trim()), [products]);
   const fillCareOriginMutation = useMutation({
     mutationFn: () => apiPost<Product[]>("/products/bulk", { product_ids: blankCareOriginProducts.map((product) => product.id), care_value: "Dry clean only", origin_value: "Lucknow" }),
@@ -74,7 +92,7 @@ export default function AdminProducts() {
     onError: () => toast.error("Could not fill Care/Origin for these products"),
   });
 
-  const reset = () => { setForm(emptyForm); setImages([]); setVideos([]); setVideoPosters([]); setIsGift(false); setColorOptions([]); setSetTypes([]); setVariants([]); setCompleteLookIds([]); setMerchandising({ featured: false, new_arrival: false, best_seller: false }); setEditingId(null); setEditorOpen(false); };
+  const reset = () => { setForm(emptyForm); setImages([]); setVideos([]); setVideoPosters([]); setIsGift(false); setColorOptions([]); setSetTypes([]); setVariants([]); setCompleteLookIds([]); setMerchandising({ featured: false, new_arrival: false, best_seller: false }); setEditingId(null); setEditorOpen(false); setResumedDraftAt(null); };
   const saveMutation = useMutation({
     mutationFn: () => {
       const body = {

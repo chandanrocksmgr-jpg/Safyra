@@ -5,7 +5,7 @@ import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
 
-GroupType = Literal["category", "collection"]
+GroupType = Literal["category", "collection", "fabric"]
 PublishingStatus = Literal["draft", "active", "archived"]
 
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Instagram, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -24,6 +25,8 @@ export default function Home() {
   const { data: groups = [], isSuccess: groupsLoaded, isFetching: groupsFetching, isError: groupsUnavailable } = useQuery({ queryKey: ["catalog-groups", "public"], queryFn: () => apiGet<CatalogGroup[]>("/catalog-groups"), retry: false });
   const { data: homepage } = useQuery({ queryKey: ["homepage"], queryFn: () => apiGet<HomepageSettings>("/homepage"), retry: false });
   const content = homepage ?? defaultHomepage;
+  const heroImages = content.hero.image_urls.length ? content.hero.image_urls : defaultHomepage.hero.image_urls;
+  const [heroIndex, setHeroIndex] = useState(0);
   const newArrivals = products.filter((product) => product.new_arrival).slice(0, 4);
   const bestSellers = products.filter((product) => product.best_seller).slice(0, 4);
   const luxuryProduct = products.find((product) => product.collection === "Safyra Luxury");
@@ -40,8 +43,14 @@ export default function Home() {
     potentialAction: { "@type": "SearchAction", target: "https://safyra.co/shop?search={search_term_string}", "query-input": "required name=search_term_string" },
   };
 
+  useEffect(() => {
+    if (heroImages.length < 2) return;
+    const timer = window.setInterval(() => setHeroIndex((current) => (current + 1) % heroImages.length), 5500);
+    return () => window.clearInterval(timer);
+  }, [heroImages.length]);
+
   return <div className="page-shell home-page"><Seo title="SAFYRA CHIKANKARI | Lucknowi Chikankari Anarkalis, Angrakhas & Kurtis" description="Shop SAFYRA Lucknowi Chikankari in Kota Doria, viscose and verified fabrics. Discover Anarkalis, Angrakhas, kurtis and SAFYRA Luxury." image="/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png" structuredData={homeStructuredData} /><BrandHeader /><main>
-    <section className="hero-section" data-testid="homepage-hero"><img src={content.hero.image_url} alt="SAFYRA handcrafted Lucknowi Chikankari" className="hero-image" fetchPriority="high" /><div className="hero-overlay" /><div className="hero-copy"><span className="eyebrow hero-eyebrow" data-testid="homepage-hero-eyebrow">{content.hero.eyebrow}</span><h1 data-testid="homepage-hero-title">{content.hero.title}<br /><em>{content.hero.emphasis}</em></h1><p data-testid="homepage-hero-body">{content.hero.body}</p><div className="hero-actions"><Link to={content.hero.primary_url} className="button button-light" data-testid="hero-shop-button">{content.hero.primary_label} <ArrowRight size={16} /></Link>{showSecondaryHeroLink && <Link to={content.hero.secondary_url} className="hero-text-link" data-testid="hero-secondary-link">{content.hero.secondary_label} <ArrowRight size={15} /></Link>}</div></div><div className="hero-note"><span>Lucknow</span><span>Chikankari · Kota Doria · Mukaish</span></div></section>
+    <section className="hero-section" data-testid="homepage-hero">{heroImages.map((image, index) => <SafeProductImage key={image} src={image} alt="SAFYRA handcrafted Lucknowi Chikankari" className={`hero-image ${index === heroIndex % heroImages.length ? "is-active" : ""}`} productName="SAFYRA" fetchPriority={index === 0 ? "high" : "low"} data-testid={`homepage-hero-image-${index + 1}`} />)}<div className="hero-overlay" /><div className="hero-copy"><span className="eyebrow hero-eyebrow" data-testid="homepage-hero-eyebrow">{content.hero.eyebrow}</span><h1 data-testid="homepage-hero-title">{content.hero.title}<br /><em>{content.hero.emphasis}</em></h1><p data-testid="homepage-hero-body">{content.hero.body}</p><div className="hero-actions"><Link to={content.hero.primary_url} className="button button-light" data-testid="hero-shop-button">{content.hero.primary_label} <ArrowRight size={16} /></Link>{showSecondaryHeroLink && <Link to={content.hero.secondary_url} className="hero-text-link" data-testid="hero-secondary-link">{content.hero.secondary_label} <ArrowRight size={15} /></Link>}</div></div><div className="hero-note"><span>Lucknow</span><span>Chikankari · Kota Doria · Mukaish</span></div></section>
 
     {content.sections.show_new_arrivals && newArrivals.length > 0 && <section className="section product-section home-product-section" data-testid="homepage-new-arrivals"><div className="section-heading"><div><span className="eyebrow">{content.new_arrivals_eyebrow}</span><h2>{content.new_arrivals_title}</h2></div><Link to="/shop?new=true&sort=newest" className="underlined-link" data-testid="new-arrivals-link">View new arrivals <ArrowRight size={15} /></Link></div>{isError ? <div className="data-note" data-testid="catalog-error-note">The catalogue is reconnecting. Please try again shortly.</div> : <div className={`product-grid ${newArrivals.length < 4 ? "product-grid-compact" : ""}`}>{newArrivals.map((product, index) => <ProductCard key={product.id} product={product} index={index} />)}</div>}</section>}
 

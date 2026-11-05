@@ -4,6 +4,8 @@ import uuid
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
+from lib.stitch_fields import DEFAULT_SIZE_GUIDE_IMAGE
+
 
 IMAGE_URL_HINT = "Image links must start with https:// or be an uploaded image. Links copied from WhatsApp or your device (blob:, file:) only work on your phone."
 
@@ -88,7 +90,9 @@ class ProductFields(BaseModel):
     mrp: Optional[int] = None
     stock: int = 0
     stock_by_size: dict[str, int] = Field(default_factory=dict)
-    # False for unstitched/no-size products (e.g. fabric by the metre); size selection and the size guide never apply then.
+    # Drives sizing automatically: only "stitched" products ask for a size or carry the SAFYRA size guide.
+    stitch_type: Literal["stitched", "semi_stitched", "unstitched", "other"] = "stitched"
+    # Derived from stitch_type on every save — not admin-managed directly (see lib/stitch_fields.py).
     size_required: bool = True
     sizes: list[str] = Field(default_factory=list)
     colors: list[str] = Field(default_factory=list)
@@ -140,6 +144,7 @@ class ProductUpdate(ProductImageValidation):
     mrp: Optional[int] = None
     stock: Optional[int] = None
     stock_by_size: Optional[dict[str, int]] = None
+    stitch_type: Optional[Literal["stitched", "semi_stitched", "unstitched", "other"]] = None
     size_required: Optional[bool] = None
     sizes: Optional[list[str]] = None
     colors: Optional[list[str]] = None
@@ -195,6 +200,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         mrp=8400,
         stock=0,
         stock_by_size={},
+        stitch_type="stitched",
         sizes=["S", "M", "L", "XL", "XXL", "XXXL"],
         colors=["Blood red", "Forest green"],
         image_url="/api/media/shopify/BF92BEEC-84EB-497C-9B69-2948C142F272.jpg",
@@ -209,7 +215,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         availability="Made to order",
         tags=["Luxury", "Mukaish", "Badla"],
         style_keywords=["Anarkali", "Occasionwear"],
-        size_guide_image="/api/media/shopify/IMG_3734.jpg",
+        size_guide_image=DEFAULT_SIZE_GUIDE_IMAGE,
         featured=True,
     ),
     Product(
@@ -224,6 +230,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         mrp=4500,
         stock=0,
         stock_by_size={},
+        stitch_type="stitched",
         sizes=["XS", "S", "M", "L", "XL", "2XL", "3XL"],
         colors=["Blush petal", "Serene Sky", "Vanilla", "Midnight bloom", "Buttercup yellow"],
         image_url="/api/media/shopify/IMG_3973.jpg",
@@ -240,7 +247,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         tags=["Kota Doria", "Angrakha"],
         origin="India",
         style_keywords=["Angrakha", "A-line"],
-        size_guide_image="/api/media/shopify/IMG_3734.jpg",
+        size_guide_image=DEFAULT_SIZE_GUIDE_IMAGE,
         featured=True,
         new_arrival=True,
     ),
@@ -256,6 +263,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         mrp=3850,
         stock=0,
         stock_by_size={},
+        stitch_type="stitched",
         sizes=["S", "M", "L", "XL", "XXL", "XXXL"],
         colors=["Vanilla", "Peach blossom", "Aster blue", "Lilac mist", "Blush petal"],
         image_url="/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png",
@@ -272,7 +280,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         customisation="Custom dyeing is available through WhatsApp assistance",
         origin="India",
         style_keywords=["Anarkali", "Flowy"],
-        size_guide_image="/api/media/shopify/IMG_3734.jpg",
+        size_guide_image=DEFAULT_SIZE_GUIDE_IMAGE,
         featured=True,
         new_arrival=True,
     ),
@@ -288,6 +296,7 @@ DEFAULT_PRODUCTS: list[Product] = [
         mrp=7600,
         stock=0,
         stock_by_size={},
+        stitch_type="unstitched",
         size_required=False,
         sizes=[],
         colors=["Rose"],

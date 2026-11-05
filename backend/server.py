@@ -44,6 +44,7 @@ load_dotenv(ROOT_DIR / '.env')
 from lib.db import close_db, db, ensure_indexes, init_db
 from lib.legacy_media import migrate_legacy_media
 from lib.colors import migrate_color_options
+from lib.stitch_fields import migrate_stitch_types
 from lib.variants import migrate_product_variants
 
 
@@ -66,6 +67,7 @@ async def _migrate_legacy_media_safely() -> None:
     try:
         await migrate_product_variants()
         await migrate_color_options()
+        await migrate_stitch_types()
         await db.users.update_many({"role": "admin", "admin_role": {"$exists": False}}, {"$set": {"admin_role": "super", "status": "active"}})
     except Exception as exc:  # never crash the app over a data backfill
         logging.getLogger(__name__).error("Product variant migration failed: %s", exc)

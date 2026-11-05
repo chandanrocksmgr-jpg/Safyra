@@ -8,7 +8,8 @@ class HomepageHero(BaseModel):
     title: str = "Chikankari,"
     emphasis: str = "made to be remembered."
     body: str = "Handcrafted Chikankari, created by skilled artisans in Lucknow."
-    image_url: str = "/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png"
+    # Up to 5 photos; the homepage cycles through them automatically for a dynamic feel.
+    image_urls: list[str] = Field(default_factory=lambda: ["/api/media/shopify/3E9BACB7-48E9-4163-B2BD-AA465BF33240.png"], max_length=5)
     primary_label: str = "Shop new arrivals"
     primary_url: str = "/shop?new=true&sort=newest"
     secondary_label: str = "Shop SAFYRA Luxury"
