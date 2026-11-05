@@ -188,6 +188,9 @@ async def create_product(input: ProductCreate, _: dict = Depends(require_admin))
     if document.get("variants"):  # admin editor always sends the table; legacy API payloads keep size-level stock
         document.update(_variant_fields(document, document["variants"]))
     product = Product(**document)
+    existing_with_slug = await db.products.find_one({"slug": product.slug})
+    if existing_with_slug:
+        raise HTTPException(status_code=409, detail=f"That slug is already used by \"{existing_with_slug.get('title', 'another product')}\" — change the URL slug and try again")
     try:
         await db.products.insert_one(product.model_dump())
     except DuplicateKeyError as exc:
@@ -201,6 +204,10 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
     changes = input.model_dump(exclude_unset=True)
+    if changes.get("slug") and changes["slug"] != existing.get("slug"):
+        slug_owner = await db.products.find_one({"slug": changes["slug"], "id": {"$ne": product_id}})
+        if slug_owner:
+            raise HTTPException(status_code=409, detail=f"That slug is already used by \"{slug_owner.get('title', 'another product')}\" — change the URL slug and try again")
     merged = {**existing, **changes}
     changes.update(stitch_fields(merged))
     merged.update(changes)

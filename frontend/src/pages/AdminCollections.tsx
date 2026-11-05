@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useState, type DragEvent, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Edit3, Layers3, Plus, RotateCcw, X } from "lucide-react";
+import { Archive, Edit3, GripVertical, Layers3, Plus, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/AdminShell";
 import ImageManager from "@/components/ImageManager";
@@ -19,6 +19,9 @@ export default function AdminCollections() {
   const [images, setImages] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  // Optimistic per-section drag order, keyed by section type; cleared once the server's sort_order confirms it.
+  const [localOrder, setLocalOrder] = useState<Record<string, string[]>>({});
   const reset = () => { setForm(emptyForm); setImages([]); setEditingId(null); setEditorOpen(false); };
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -36,15 +39,46 @@ export default function AdminCollections() {
     },
     onError: () => toast.error("The collection status could not be updated"),
   });
+  const reorderMutation = useMutation({
+    mutationFn: async (ordered: CatalogGroup[]) => {
+      await Promise.all(ordered.map((group, index) => {
+        const sort_order = (index + 1) * 10;
+        return sort_order === group.sort_order ? null : apiPatch<CatalogGroup>(`/catalog-groups/${group.id}`, { sort_order });
+      }));
+    },
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["catalog-groups"] }),
+    onError: async () => { toast.error("Could not save the new order — please try again"); await queryClient.invalidateQueries({ queryKey: ["catalog-groups"] }); },
+  });
   const edit = (group: CatalogGroup) => { setForm({ name: group.name, slug: group.slug, group_type: group.group_type, description: group.description, status: group.status, sort_order: String(group.sort_order), show_on_home: group.show_on_home }); setImages(group.image_url ? [group.image_url] : []); setEditingId(group.id); setEditorOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const submit = (event: FormEvent) => { event.preventDefault(); saveMutation.mutate(); };
   const collections = groups.filter((group) => group.group_type === "collection");
   const categories = groups.filter((group) => group.group_type === "category");
   const fabrics = groups.filter((group) => group.group_type === "fabric");
+  // Applies the dragged order (while the save is in flight) on top of whatever the server last returned.
+  const orderedItems = (type: string, items: CatalogGroup[]) => {
+    const order = localOrder[type];
+    if (!order) return items;
+    const byId = new Map(items.map((item) => [item.id, item]));
+    const ordered = order.map((id) => byId.get(id)).filter((item): item is CatalogGroup => Boolean(item));
+    return [...ordered, ...items.filter((item) => !order.includes(item.id))];
+  };
+  const handleDrop = (type: string, items: CatalogGroup[], targetId: string) => {
+    const current = orderedItems(type, items);
+    if (!draggedId || draggedId === targetId) { setDraggedId(null); return; }
+    const fromIndex = current.findIndex((item) => item.id === draggedId);
+    const toIndex = current.findIndex((item) => item.id === targetId);
+    setDraggedId(null);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const next = [...current];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setLocalOrder((prev) => ({ ...prev, [type]: next.map((item) => item.id) }));
+    reorderMutation.mutate(next);
+  };
 
   return <AdminShell eyebrow="Store organisation" title="Collections & categories" description="Create the shopping destinations that appear in navigation and on the homepage." actions={<button className="button button-dark" onClick={() => { reset(); setEditorOpen(true); }} data-testid="admin-new-group-button"><Plus size={16} /> Add group</button>}>
     {editorOpen && <form className="admin-editor admin-compact-editor" onSubmit={submit} data-testid="admin-group-editor"><div className="admin-editor-heading"><div><span className="eyebrow">{editingId ? "Editing group" : "New group"}</span><h2 data-testid="admin-group-editor-title">{editingId ? form.name : "Create a shopping group"}</h2></div><button type="button" onClick={reset} aria-label="Close group editor" data-testid="admin-group-editor-close"><X size={19} /></button></div><div className="admin-editor-columns"><div className="admin-editor-stack"><section className="admin-editor-card admin-fields-grid"><h3>Details</h3><label>Name<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value, slug: form.slug || slugify(event.target.value) })} required data-testid="admin-group-name" /></label><label>URL slug<input value={form.slug} onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })} required data-testid="admin-group-slug" /></label><label className="admin-field-wide">Description<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} data-testid="admin-group-description" /></label></section><section className="admin-editor-card"><ImageManager images={images} onChange={setImages} label="Collection cover" testId="admin-group-image" limit={1} /></section></div><aside className="admin-editor-stack"><section className="admin-editor-card"><h3>Organisation</h3><label>Type<select value={form.group_type} onChange={(event) => setForm({ ...form, group_type: event.target.value as CatalogGroupType })} data-testid="admin-group-type"><option value="collection">Collection</option><option value="category">Category</option><option value="fabric">Fabric</option></select></label><label>Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as PublishingStatus })} disabled={form.status === "archived"} data-testid="admin-group-status"><option value="draft">Draft</option><option value="active">Active</option>{form.status === "archived" && <option value="archived">Archived — restore from the list</option>}</select></label><p className="admin-help-text">Use the confirmed Archive action in the list to hide a group without deleting it.</p><label>Display order<input type="number" min="0" value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: event.target.value })} data-testid="admin-group-sort-order" /></label><label className="admin-check"><input type="checkbox" checked={form.show_on_home} onChange={(event) => setForm({ ...form, show_on_home: event.target.checked })} data-testid="admin-group-show-home" /> Show on homepage</label></section><button className="button button-dark button-full" disabled={saveMutation.isPending} data-testid="admin-group-save"><Layers3 size={16} /> {saveMutation.isPending ? "Saving…" : "Save group"}</button></aside></div></form>}
     {isError && <div className="form-error" data-testid="admin-groups-error">Collections and categories could not be loaded.</div>}
-    {[{ title: "Collections", items: collections, type: "collections" }, { title: "Categories", items: categories, type: "categories" }, { title: "Fabrics", items: fabrics, type: "fabrics" }].map((section) => <section className="admin-resource-list" key={section.type} data-testid={`admin-${section.type}-list`}><div className="admin-list-toolbar"><div><span className="eyebrow">Customer discovery</span><h2>{section.title} · {section.items.length}</h2></div></div><div className="admin-group-grid">{section.items.map((group) => <article className="admin-group-card" key={group.id} data-testid={`admin-group-${group.id}`}><div className="admin-group-image"><SafeProductImage src={group.image_url} alt={group.name} productName={group.name} /></div><div><span className={`admin-status-pill status-${group.status}`} data-testid={`admin-group-status-${group.id}`}>{group.status}</span><h3>{group.name}</h3><p>{group.description || "No customer-facing description yet."}</p><small>{group.status === "archived" ? "Archived · hidden from storefront and navigation" : `Order ${group.sort_order} · ${group.show_on_home ? "Homepage visible" : "Hidden from homepage"}`}</small></div><div className="admin-row-actions"><button onClick={() => edit(group)} aria-label={`Edit ${group.name}`} data-testid={`admin-group-edit-${group.id}`}><Edit3 size={16} /></button>{group.status === "archived" ? <button onClick={() => statusMutation.mutate({ id: group.id, status: "active" })} aria-label={`Restore ${group.name}`} data-testid={`admin-group-restore-${group.id}`}><RotateCcw size={16} /></button> : <button className="danger-icon" onClick={() => window.confirm(`Archive ${group.name}? It will be hidden from the storefront and navigation. Its data and product assignments will be preserved.`) && statusMutation.mutate({ id: group.id, status: "archived" })} aria-label={`Archive ${group.name}`} data-testid={`admin-group-archive-${group.id}`}><Archive size={16} /></button>}</div></article>)}</div></section>)}
+    {[{ title: "Collections", items: collections, type: "collections" }, { title: "Categories", items: categories, type: "categories" }, { title: "Fabrics", items: fabrics, type: "fabrics" }].map((section) => { const ordered = orderedItems(section.type, section.items); return <section className="admin-resource-list" key={section.type} data-testid={`admin-${section.type}-list`}><div className="admin-list-toolbar"><div><span className="eyebrow">Customer discovery</span><h2>{section.title} · {section.items.length}</h2></div><p className="admin-help-text">Drag a card by its handle to reorder — the new order saves automatically.</p></div><div className="admin-group-grid">{ordered.map((group) => <article className={`admin-group-card${draggedId === group.id ? " admin-group-card-dragging" : ""}`} key={group.id} data-testid={`admin-group-${group.id}`} draggable onDragStart={() => setDraggedId(group.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleDrop(section.type, section.items, group.id); }} onDragEnd={() => setDraggedId(null)}><div className="admin-group-drag-handle" aria-label={`Drag to reorder ${group.name}`} data-testid={`admin-group-drag-${group.id}`}><GripVertical size={16} /></div><div className="admin-group-image"><SafeProductImage src={group.image_url} alt={group.name} productName={group.name} /></div><div><span className={`admin-status-pill status-${group.status}`} data-testid={`admin-group-status-${group.id}`}>{group.status}</span><h3>{group.name}</h3><p>{group.description || "No customer-facing description yet."}</p><small>{group.status === "archived" ? "Archived · hidden from storefront and navigation" : `Order ${group.sort_order} · ${group.show_on_home ? "Homepage visible" : "Hidden from homepage"}`}</small></div><div className="admin-row-actions"><button onClick={() => edit(group)} aria-label={`Edit ${group.name}`} data-testid={`admin-group-edit-${group.id}`}><Edit3 size={16} /></button>{group.status === "archived" ? <button onClick={() => statusMutation.mutate({ id: group.id, status: "active" })} aria-label={`Restore ${group.name}`} data-testid={`admin-group-restore-${group.id}`}><RotateCcw size={16} /></button> : <button className="danger-icon" onClick={() => window.confirm(`Archive ${group.name}? It will be hidden from the storefront and navigation. Its data and product assignments will be preserved.`) && statusMutation.mutate({ id: group.id, status: "archived" })} aria-label={`Archive ${group.name}`} data-testid={`admin-group-archive-${group.id}`}><Archive size={16} /></button>}</div></article>)}</div></section>; })}
   </AdminShell>;
 }
