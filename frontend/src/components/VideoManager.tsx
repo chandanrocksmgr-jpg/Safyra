@@ -118,7 +118,7 @@ export default function VideoManager({ videos, posters, gallery, onChange }: Vid
   const remove = (index: number) => onChange(videos.filter((_, position) => position !== index), posters.filter((_, position) => position !== index));
 
   return <div className="video-manager" data-testid="admin-video-manager">
-    <div className="variant-block-heading"><div><strong><Film size={15} /> Product videos</strong><small>Up to two short films shown on the product page. MP4, WebM or MOV, 40 MB each. A cover still is captured automatically — or choose a gallery photo instead.</small></div></div>
+    <div className="variant-block-heading"><div><strong><Film size={15} /> Product videos</strong><small>Up to two short films shown on the product page. MP4, WebM or MOV, 250 MB each. A cover still is captured automatically — or choose a gallery photo instead.</small></div></div>
     <div className="video-manager-list">
       {videos.map((url, index) => <div className="video-manager-item" key={url} data-testid={`admin-video-${index}`}>
         <video src={url} poster={posterAt(index) || undefined} controls preload="metadata" playsInline />

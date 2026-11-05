@@ -36,7 +36,7 @@ OPTIMISE_LONG_EDGE = 4000
 OPTIMISE_OVER_BYTES = 6 * 1024 * 1024
 FORMAT_TYPES = {"JPEG": "image/jpeg", "MPO": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 VIDEO_TYPES = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
-MAX_VIDEO_BYTES = 40 * 1024 * 1024
+MAX_VIDEO_BYTES = 250 * 1024 * 1024
 # A decoded RGB buffer costs ~3 bytes/pixel in memory; this cap (covers any phone or studio camera in practical
 # use) keeps a single decode well within the server's memory budget. Pillow raises DecompressionBombError above it.
 Image.MAX_IMAGE_PIXELS = 60_000_000
@@ -174,12 +174,21 @@ async def upload_video(file: UploadFile = File(...), _: dict = Depends(require_a
     if not content:
         raise HTTPException(status_code=400, detail="The uploaded video is empty")
     if len(content) > MAX_VIDEO_BYTES:
-        raise HTTPException(status_code=413, detail="Videos must be 40 MB or smaller")
-    media_id = await _media_bucket().upload_from_stream(
-        f"{uuid.uuid4()}{VIDEO_TYPES[file.content_type]}",
-        content,
-        metadata={"content_type": file.content_type, "size": len(content), "kind": "video"},
-    )
+        raise HTTPException(status_code=413, detail="Videos must be 250 MB or smaller")
+    # A 250 MB buffer is sizeable; the same slot limiter as photo uploads keeps a burst of large videos
+    # from stacking peak memory past the server's limit.
+    try:
+        await asyncio.wait_for(_UPLOAD_SLOTS.acquire(), timeout=_UPLOAD_SLOT_WAIT_SECONDS)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=429, detail="The server is busy processing other uploads — please try again in a few seconds")
+    try:
+        media_id = await _media_bucket().upload_from_stream(
+            f"{uuid.uuid4()}{VIDEO_TYPES[file.content_type]}",
+            content,
+            metadata={"content_type": file.content_type, "size": len(content), "kind": "video"},
+        )
+    finally:
+        _UPLOAD_SLOTS.release()
     return MediaVideoResponse(url=f"/api/media/{media_id}", content_type=file.content_type, size=len(content))
 
 
