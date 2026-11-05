@@ -1405,6 +1405,7 @@ select,
 .admin-editor-card { padding: 1.25rem; border: 1px solid var(--safyra-border); display: grid; gap: 1rem; background: var(--safyra-ivory); }
 .admin-editor-card h3 { margin: 0; font-family: 'Manrope Variable', sans-serif; font-size: .76rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .admin-editor-card > p, .admin-help-text { margin: -.4rem 0 0; color: var(--safyra-espresso-soft); font-size: .7rem; line-height: 1.55; }
+.admin-draft-banner { margin: -.5rem 1.5rem .75rem; padding: .6rem .9rem; background: #fdf3dd; border: 1px solid #b49861; border-radius: 2px; font-size: .76rem; color: #5c463d; display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
 .admin-editor-card textarea { min-height: 110px; resize: vertical; }
 .admin-fields-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-fields-grid > h3, .admin-field-wide { grid-column: 1 / -1; }
