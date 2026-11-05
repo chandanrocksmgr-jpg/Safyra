@@ -178,6 +178,11 @@ No courier-label API is integrated. Manual courier name, tracking number/link an
 - Product images: effectively unrestricted — `MAX_BYTES` is 200 MB (was 8 MB) and Pillow's decompression guard is 200 MP; videos stay at 40 MB.
 - Auto-optimisation (`_optimised()` in routers/media.py): an upload over 6 MB or longer than 4000 px on its long edge is EXIF-rotated, capped at a 4000 px long edge and re-encoded (JPEG q92 progressive; PNG/WebP keep their format), and the response carries a "Optimised from N MP…" note. JPEG decoding uses `draft()` so a 100 MP original is never expanded at full size in memory. Smaller photos are stored byte-for-byte, and if the re-encode is not smaller the original is kept. Verified: an 80 MP / 21 MB JPEG stored at 3200×4000 / 8.9 MB; a 30 KB photo untouched.
 
+## Saving a product as Draft (no photo/price yet)
+- A product can now be created or updated with `status: "draft"` even with no photo and ₹0 price — the client no longer hard-blocks submission on a missing image, and the backend's primary-image validator accepts blank for any status. This is the actual "save progress" a WIP product gets server-side (shows up in Admin → Products with the Draft pill), distinct from the separate per-browser localStorage autosave/resume that already existed.
+- Switching a product to **Active** (create or update) is blocked with 422 unless it has a real photo (`image_url`) and a price above ₹0 — enforced in `routers/products.py` (`PUBLISH_REQUIRES_PHOTO` + a price check) and mirrored client-side (Price field only HTML-required when Status = Active).
+- Slug conflicts on create/update now name the exact existing product holding that slug instead of a generic message.
+
 ## Bulk photo upload
 - `ImageManager` accepts a whole shoot dropped anywhere on the gallery panel (dashed highlight while dragging) as well as the existing multi-select "Upload images" button and single URL paste; a live "Uploading n of N…" counter runs during the batch.
 - Tiles are drag-and-drop reorderable (HTML5 draggable, drop on the tile you want to take that position) alongside the existing move-up/move-down/make-primary buttons. Verified: three photos dropped at once, then the third tile dragged to Primary.

@@ -22,7 +22,9 @@ class ProductImageValidation(BaseModel):
     @field_validator("image_url", check_fields=False)
     @classmethod
     def _primary_image(cls, value: Optional[str]) -> Optional[str]:
-        return _check_image_url(value, allow_empty=False)
+        # A product can be saved as a Draft with no photo yet so admins can save progress early;
+        # going Active without one is blocked separately in routers/products.py.
+        return _check_image_url(value, allow_empty=True)
 
     @field_validator("size_guide_image", check_fields=False)
     @classmethod

@@ -180,6 +180,9 @@ def _color_fields(product: dict) -> dict:
     return {"colors": colors, "color_options": options}
 
 
+PUBLISH_REQUIRES_PHOTO = "Add at least one product photo before setting status to Active."
+
+
 @router.post("", response_model=Product, status_code=201)
 async def create_product(input: ProductCreate, _: dict = Depends(require_admin)):
     document = Product(**input.model_dump()).model_dump()
@@ -188,6 +191,10 @@ async def create_product(input: ProductCreate, _: dict = Depends(require_admin))
     if document.get("variants"):  # admin editor always sends the table; legacy API payloads keep size-level stock
         document.update(_variant_fields(document, document["variants"]))
     product = Product(**document)
+    if product.status == "active" and not product.image_url.strip():
+        raise HTTPException(status_code=422, detail=PUBLISH_REQUIRES_PHOTO)
+    if product.status == "active" and product.price <= 0:
+        raise HTTPException(status_code=422, detail="Set a price above ₹0 before setting status to Active.")
     existing_with_slug = await db.products.find_one({"slug": product.slug})
     if existing_with_slug:
         raise HTTPException(status_code=409, detail=f"That slug is already used by \"{existing_with_slug.get('title', 'another product')}\" — change the URL slug and try again")
@@ -217,6 +224,10 @@ async def update_product(product_id: str, input: ProductUpdate, _: dict = Depend
     if changes.get("variants") or ("variants" not in changes and existing.get("variants") and {"set_types", "sizes", "colors"} & changes.keys()):
         # Keep an existing variant table aligned when options change; never invent one for legacy size-stock updates.
         changes.update(_variant_fields(merged, merged.get("variants") or []))
+    if merged.get("status") == "active" and not (merged.get("image_url") or "").strip():
+        raise HTTPException(status_code=422, detail=PUBLISH_REQUIRES_PHOTO)
+    if merged.get("status") == "active" and (merged.get("price") or 0) <= 0:
+        raise HTTPException(status_code=422, detail="Set a price above ₹0 before setting status to Active.")
     changes["updated_at"] = datetime.now(timezone.utc)
     try:
         await db.products.update_one({"id": product_id}, {"$set": changes})
